@@ -1,11 +1,20 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, Text, Text3D, Center, useGLTF, Stats, Line, useTexture, useProgress } from '@react-three/drei'
+import { Environment, Text, useGLTF, Stats, Line, useTexture, useProgress } from '@react-three/drei'
 import { EffectComposer, Bloom, ChromaticAberration, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 // 🟢 Global warp offset for velocity-driven chromatic aberration
 export const warpOffset = new THREE.Vector2(0.002, 0.002)
+
+// 🎡 Per-card drag rotation state (module-level, read in useFrame)
+const dragRotState = {
+    isDragging: false,
+    lastX: 0, lastY: 0,
+    cardIndex: -1,        // which card is being dragged (0-2)
+    rotX: [0, 0, 0],     // accumulated pitch per card
+    rotY: [0, 0, 0],     // accumulated yaw per card
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. CONFIGURATION & CAMERA PATH
@@ -513,7 +522,7 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
     return { clone, mats }
 }
 
-function TruckImmobilizerScene({ hovered, appeared }) {
+function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
     const { scene: truckScene } = useGLTF('/Truck.glb')
     const { scene: immScene }   = useGLTF('/Engine Immobilizer.glb')
 
@@ -521,6 +530,7 @@ function TruckImmobilizerScene({ hovered, appeared }) {
     const immGroupRef   = useRef()
     const truckOpRef    = useRef(0)
     const immOpRef      = useRef(0)
+    const autoRotY      = useRef(0)
 
     const { clone: truckClone, mats: truckMats } =
         useMemo(() => makeTexturedHologramClone(truckScene, '#00aaff', 2.2), [truckScene])
@@ -535,8 +545,13 @@ function TruckImmobilizerScene({ hovered, appeared }) {
         immOpRef.current = dampValue(immOpRef.current, appeared ? 0.9 : 0, 5, delta)
         immMats.forEach(m => { m.opacity = immOpRef.current })
 
-        if (truckGroupRef.current) truckGroupRef.current.rotation.y += delta * 0.22
-        if (immGroupRef.current)   immGroupRef.current.lookAt(state.camera.position)
+        if (truckGroupRef.current) {
+            if (!dragRotState.isDragging || dragRotState.cardIndex !== cardIndex)
+                autoRotY.current += delta * 0.22
+            truckGroupRef.current.rotation.y = autoRotY.current + dragRotState.rotY[cardIndex]
+            truckGroupRef.current.rotation.x = dragRotState.rotX[cardIndex]
+        }
+        if (immGroupRef.current) immGroupRef.current.lookAt(state.camera.position)
     })
 
     return (
@@ -570,11 +585,12 @@ function TruckImmobilizerScene({ hovered, appeared }) {
 useGLTF.preload('/Truck.glb')
 useGLTF.preload('/Engine Immobilizer.glb')
 
-function WorkflowsScene({ hovered, appeared }) {
+function WorkflowsScene({ hovered, appeared, cardIndex }) {
     const { scene: wfScene } = useGLTF('/workflows.glb')
 
     const groupRef = useRef()
     const opRef    = useRef(0)
+    const autoRotY = useRef(0)
 
     const { clone: wfClone, mats: wfMats } =
         useMemo(() => makeTexturedHologramClone(wfScene, '#ff3366', 2.8), [wfScene])
@@ -582,7 +598,12 @@ function WorkflowsScene({ hovered, appeared }) {
     useFrame((_, delta) => {
         opRef.current = dampValue(opRef.current, appeared ? 0.9 : 0, 5, delta)
         wfMats.forEach(m => { m.opacity = opRef.current })
-        if (groupRef.current) groupRef.current.rotation.y += delta * 0.18
+        if (groupRef.current) {
+            if (!dragRotState.isDragging || dragRotState.cardIndex !== cardIndex)
+                autoRotY.current += delta * 0.18
+            groupRef.current.rotation.y = autoRotY.current + dragRotState.rotY[cardIndex]
+            groupRef.current.rotation.x = dragRotState.rotX[cardIndex]
+        }
     })
 
     return (
@@ -597,12 +618,14 @@ function WorkflowsScene({ hovered, appeared }) {
 
 useGLTF.preload('/workflows.glb')
 
-function CaseStudyObject({ objectType, color, hovered, appeared }) {
+function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex }) {
     const meshRef = useRef()
     const wireRef = useRef()
     const pulseRef = useRef()
     const solidOpacityRef = useRef(0)
     const wireOpacityRef = useRef(0)
+    const autoRotX = useRef(0)
+    const autoRotY = useRef(0)
 
     const geometry = useMemo(() => {
         switch (objectType) {
@@ -616,10 +639,16 @@ function CaseStudyObject({ objectType, color, hovered, appeared }) {
     useFrame((_, delta) => {
         if (!meshRef.current || !wireRef.current) return
         const speed = hovered ? 2.2 : 1.0
-        meshRef.current.rotation.x += delta * 0.003 * speed
-        meshRef.current.rotation.y += delta * 0.007 * speed
-        wireRef.current.rotation.x = meshRef.current.rotation.x
-        wireRef.current.rotation.y = meshRef.current.rotation.y
+        if (!dragRotState.isDragging || dragRotState.cardIndex !== cardIndex) {
+            autoRotX.current += delta * 0.003 * speed
+            autoRotY.current += delta * 0.007 * speed
+        }
+        const finalX = autoRotX.current + dragRotState.rotX[cardIndex]
+        const finalY = autoRotY.current + dragRotState.rotY[cardIndex]
+        meshRef.current.rotation.x = finalX
+        meshRef.current.rotation.y = finalY
+        wireRef.current.rotation.x = finalX
+        wireRef.current.rotation.y = finalY
 
         solidOpacityRef.current = dampValue(solidOpacityRef.current, hovered ? 0.72 : 0.0, 5, delta)
         wireOpacityRef.current  = dampValue(wireOpacityRef.current,  hovered ? 0.25 : (appeared ? 0.85 : 0.0), 5, delta)
@@ -636,10 +665,10 @@ function CaseStudyObject({ objectType, color, hovered, appeared }) {
     })
 
     if (objectType === 'truck_immobilizer') {
-        return <TruckImmobilizerScene hovered={hovered} appeared={appeared} />
+        return <TruckImmobilizerScene hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
     }
     if (objectType === 'workflows') {
-        return <WorkflowsScene hovered={hovered} appeared={appeared} />
+        return <WorkflowsScene hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
     }
 
     return (
@@ -690,13 +719,13 @@ function HudPanel({ stats, tech, color, appeared, side = 'left' }) {
 
     return (
         <group ref={groupRef} position={[xPos, 0, 0.1]}>
-            <Text position={[0, 0.65, 0]} fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>ROLE ──────────────────</Text>
-            <Text position={[0, 0.48, 0]} fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.role}</Text>
-            <Text position={[0, 0.18, 0]} fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>YEAR ──────────────────</Text>
-            <Text position={[0, 0.02, 0]} fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.year}</Text>
-            <Text position={[0, -0.28, 0]} fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>Company ─────────────────</Text>
-            <Text position={[0, -0.44, 0]} fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.client}</Text>
-            <Text position={[0, -0.74, 0]} fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1}  material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')} {blink ? '|' : ' '}</Text>
+            <Text position={[0, 0.65, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>ROLE ──────────────────</Text>
+            <Text position={[0, 0.48, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.role}</Text>
+            <Text position={[0, 0.18, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>YEAR ──────────────────</Text>
+            <Text position={[0, 0.02, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.year}</Text>
+            <Text position={[0, -0.28, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>Company ─────────────────</Text>
+            <Text position={[0, -0.44, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.client}</Text>
+            <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1}  material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')} {blink ? '|' : ' '}</Text>
         </group>
     )
 }
@@ -811,7 +840,7 @@ function ProjectZoneGrid({ scrollRef }) {
 }
 
 // ─── Project card — full assembly ─────────────────────────────────────────────
-function ProjectCard({ config, scrollRef }) {
+function ProjectCard({ config, scrollRef, cardIndex }) {
     const [hovered, setHovered] = useState(false)
     const [appeared, setAppeared] = useState(false)
     const [scanActive, setScanActive] = useState(false)
@@ -832,19 +861,12 @@ function ProjectCard({ config, scrollRef }) {
             onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
             onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
         >
-            <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} />
+            <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
             <TargetingReticle hovered={hovered} appeared={appeared} color={config.color} radius={2.0} />
             <ScanReveal color={config.color} active={scanActive} onComplete={() => setAppeared(true)} />
             <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
 
-            <group position={[0, 1.95, 0.1]}>
-                <Center>
-                    <Text3D font="/fonts/Niki/Niki_Regular.json" size={0.45} depth={0.05} letterSpacing={0.05} curveSegments={12}>
-                        {config.title}
-                        <meshStandardMaterial color={config.color} transparent opacity={appeared ? 1 : 0} toneMapped={false} emissive={config.color} emissiveIntensity={0.2} />
-                    </Text3D>
-                </Center>
-            </group>
+            <Text position={[0, 1.95, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
             <Text position={[0, 1.55, 0.1]} fontSize={0.1}  color="#445577"      anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
             <Text position={[0, -1.8, 0.1]} fontSize={0.13} color="#667799"      anchorX="center" anchorY="top"    maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
 
@@ -1033,14 +1055,7 @@ function HeroSection() {
                 />
             ))}
 
-            <group position={[0, cfg.subtitleYOffset * letterScale, 0]}>
-                <Center>
-                    <Text3D font="/fonts/Niki/Niki_Regular.json" size={cfg.subtitleFontSize * letterScale} depth={0.01} letterSpacing={0.08} curveSegments={8}>
-                        {cfg.subtitleText}
-                        <meshStandardMaterial color="#8899cc" toneMapped={false} />
-                    </Text3D>
-                </Center>
-            </group>
+            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0.08} color="#8899cc" material-toneMapped={false}>{cfg.subtitleText}</Text>
         </group>
     )
 }
@@ -1266,7 +1281,7 @@ function ProjectsSection({ scrollRef }) {
         <group>
             <ProjectZoneGrid scrollRef={scrollRef} />
             {PROJECT_CARDS.map((config, i) => (
-                <ProjectCard key={i} config={config} scrollRef={scrollRef} />
+                <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} />
             ))}
         </group>
     )
@@ -1616,7 +1631,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                             position: 'absolute', top: '13px', left: '50%',
                             transform: 'translateX(-50%)',
                             fontSize: '8px', letterSpacing: '2px',
-                            color: '#2d4070', fontFamily: 'monospace',
+                            color: '#2d4070', fontFamily: 'var(--font-mono)',
                             whiteSpace: 'nowrap', userSelect: 'none',
                             transition: 'color 0.25s, opacity 0.25s',
                         }}>
@@ -1653,7 +1668,7 @@ export function BioOverlay({ scrollRef }) {
             <div style={{ maxWidth: '340px', color: '#fff' }}>
                 <div style={{ fontSize: '10px', letterSpacing: '4px', color: '#3366ff', marginBottom: '20px', fontFamily: 'monospace' }}>SYS://IDENTITY_RESOLVED</div>
                 <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, letterSpacing: '6px', margin: '0 0 8px 0', textTransform: 'uppercase', lineHeight: 1 }}>MUSTAFA</h2>
-                <div style={{ fontSize: '11px', letterSpacing: '3px', color: '#445577', marginBottom: '32px', fontFamily: 'monospace' }}>SENIOR PRODUCT DESIGNER · CREATIVE ENGINEER</div>
+                <div style={{ fontSize: '11px', letterSpacing: '3px', color: '#445577', marginBottom: '32px', fontFamily: 'monospace' }}>I am an endlessly curious Designer and Developer</div>
                 <p style={{ fontSize: '14px', lineHeight: 1.8, color: '#8899bb', margin: '0 0 40px 0', fontFamily: 'monospace' }}>
                     I design systems that think and interfaces that feel inevitable. Five years building products at the intersection of craft and engineering — where the seams between form and function disappear.
                 </p>
@@ -1729,11 +1744,58 @@ function BioSection({ scrollRef }) {
 // 5. MAIN SCENE & APP EXPORT
 // ═════════════════════════════════════════════════════════════════════════════
 
+// Cards live at SECTION_STOPS indices 3, 4, 5 → cardIndex 0, 1, 2
+function DragController({ currentSectionRef }) {
+    const { gl } = useThree()
+
+    useEffect(() => {
+        const el = gl.domElement
+
+        const onDown = (e) => {
+            const ci = currentSectionRef.current - 3
+            if (ci < 0 || ci > 2) return
+            dragRotState.isDragging = true
+            dragRotState.cardIndex  = ci
+            dragRotState.lastX = e.clientX
+            dragRotState.lastY = e.clientY
+            el.setPointerCapture(e.pointerId)
+        }
+
+        const onMove = (e) => {
+            if (!dragRotState.isDragging) return
+            const ci = dragRotState.cardIndex
+            dragRotState.rotY[ci] += (e.clientX - dragRotState.lastX) * 0.009
+            dragRotState.rotX[ci] += (e.clientY - dragRotState.lastY) * 0.009
+            dragRotState.rotX[ci] = Math.max(-Math.PI * 0.55, Math.min(Math.PI * 0.55, dragRotState.rotX[ci]))
+            dragRotState.lastX = e.clientX
+            dragRotState.lastY = e.clientY
+        }
+
+        const onUp = (e) => {
+            if (!dragRotState.isDragging) return
+            dragRotState.isDragging = false
+            try { el.releasePointerCapture(e.pointerId) } catch (_) {}
+        }
+
+        el.addEventListener('pointerdown', onDown)
+        window.addEventListener('pointermove', onMove)
+        window.addEventListener('pointerup', onUp)
+        return () => {
+            el.removeEventListener('pointerdown', onDown)
+            window.removeEventListener('pointermove', onMove)
+            window.removeEventListener('pointerup', onUp)
+        }
+    }, [gl, currentSectionRef])
+
+    return null
+}
+
 function Scene({ scrollRef, currentSectionRef }) {
     return (
         <>
             <ScrollSmoother currentSectionRef={currentSectionRef} scrollRef={scrollRef} />
             <CameraController scrollRef={scrollRef} />
+            <DragController currentSectionRef={currentSectionRef} />
 
             <ambientLight intensity={0.3} />
             <directionalLight position={[5, 5, 5]} intensity={1.5} color="#ffffff" />

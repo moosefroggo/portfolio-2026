@@ -1,5 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500&display=swap');
 
+@font-face {
+  font-family: 'RocketCommandExpand';
+  src: url('/fonts/Rocket%20Command/rocketcommandexpand.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -62,7 +69,7 @@ body::after {
 
 /* ─── Variables ───────────────────────────────────────────────────────────── */
 :root {
-  --font-mono: 'Space Mono', 'Courier New', monospace;
+  --font-mono: 'RocketCommandExpand', 'Space Mono', monospace;
   --font-body: 'Inter', system-ui, sans-serif;
   --color-text: #c8d4e8;
   --color-text-muted: rgba(180, 200, 230, 0.45);
@@ -575,8 +582,8 @@ button:hover~.precision-crosshair .cross-center,
 .ethos-title {
   font-size: clamp(26px, 3.5vw, 46px);
   color: #ffffff;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: normal;
+  letter-spacing: 0.06em;
   line-height: 1.1;
 }
 
