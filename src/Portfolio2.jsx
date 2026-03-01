@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, Text, Text3D, Center, useGLTF, Stats, Line, useTexture } from '@react-three/drei'
+import { Environment, Text, Text3D, Center, useGLTF, Stats, Line, useTexture, useProgress } from '@react-three/drei'
 import { EffectComposer, Bloom, ChromaticAberration, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
@@ -1765,6 +1765,69 @@ function Scene({ scrollRef, currentSectionRef }) {
 
 // EthosOverlay removed — ethos is now an in-scene 3D component (EthosSection)
 
+// ═════════════════════════════════════════════════════════════════════════════
+// LOADING SCREEN
+// ═════════════════════════════════════════════════════════════════════════════
+const LOAD_STATUSES = [
+    'INITIALIZING WEBGL CONTEXT',
+    'LOADING GEOMETRY BUFFERS',
+    'COMPILING SHADER PROGRAMS',
+    'UPLOADING TEXTURE DATA',
+    'BUILDING SCENE GRAPH',
+    'CALIBRATING CAMERA PATH',
+    'SYSTEM READY',
+]
+const SEGMENTS = 22
+
+function LoadingScreen() {
+    const { progress, active } = useProgress()
+    const [gone, setGone]   = useState(false)
+    const [exit, setExit]   = useState(false)
+
+    useEffect(() => {
+        if (progress >= 100 && !active) {
+            const t1 = setTimeout(() => setExit(true),  350)
+            const t2 = setTimeout(() => setGone(true), 1300)
+            return () => { clearTimeout(t1); clearTimeout(t2) }
+        }
+    }, [progress, active])
+
+    if (gone) return null
+
+    const filled  = Math.round((progress / 100) * SEGMENTS)
+    const msgIdx  = Math.min(Math.floor((progress / 100) * LOAD_STATUSES.length), LOAD_STATUSES.length - 1)
+
+    return (
+        <div className="loader-root" style={{ opacity: exit ? 0 : 1 }}>
+            <div className="loader-scanlines" />
+            <div className="loader-corner tl" />
+            <div className="loader-corner tr" />
+            <div className="loader-corner bl" />
+            <div className="loader-corner br" />
+
+            <div className="loader-center">
+                <div className="loader-eyebrow">SYS://PORTFOLIO_2026 · IDENTITY_UNRESOLVED</div>
+                <div className="loader-title" data-text="MUSTAFA">MUSTAFA</div>
+                <div className="loader-rule" />
+                <div className="loader-bar-wrap">
+                    {Array.from({ length: SEGMENTS }, (_, i) => (
+                        <div key={i} className={`loader-seg${i < filled ? ' active' : ''}`} />
+                    ))}
+                </div>
+                <div className="loader-meta">
+                    <span className="loader-pct">{Math.round(progress).toString().padStart(3, '0')}%</span>
+                    <span className="loader-status">{LOAD_STATUSES[msgIdx]}</span>
+                </div>
+            </div>
+
+            <div className="loader-bottom">
+                <span>RENDER ENGINE // THREE.JS r{THREE.REVISION}</span>
+                <span>WEBGL 2.0 · 60FPS TARGET</span>
+            </div>
+        </div>
+    )
+}
+
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
@@ -1803,6 +1866,7 @@ export default function Portfolio() {
 
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#050510', overflow: 'hidden' }}>
+            <LoadingScreen />
 
             {/* GLOBAL HUD */}
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px', boxSizing: 'border-box' }}>
