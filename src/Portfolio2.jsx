@@ -50,15 +50,14 @@ const CAMERA_PATH = [
 // Section snap stops — camera always rests at one of these t-values
 const SECTION_STOPS = [
     0.00,   // hero
-    0.16,   // ethos (checkpoints 1+2)
-    0.22,   // ethos (checkpoint 3 — progress=0.875 > threshold 0.80)
+    0.16,   // ethos
     0.44,   // card 1 park
     0.62,   // card 2 park
     0.80,   // card 3 park
     0.96,   // bio
 ]
 const WHEEL_THRESHOLD = 60   // deltaY pixels to trigger a section advance
-const SECTION_LABELS  = ['HERO', 'ETHOS', 'ETHOS', 'NEXUS', 'AURA', 'ECHO', 'BIO']
+const SECTION_LABELS  = ['HERO', 'ETHOS', 'NEXUS', 'AURA', 'ECHO', 'BIO']
 
 const PROJECT_CARDS = [
     {
@@ -227,17 +226,13 @@ function CursorFX() {
             <group ref={orbRef}>
                 {/* Glass shell — reflective crystal, lit from inside */}
                 <mesh>
-                    <sphereGeometry args={[0.22, 64, 64]} />
-                    <meshPhysicalMaterial
+                    <sphereGeometry args={[0.22, 32, 32]} />
+                    <meshStandardMaterial
                         color="#cce4ff"
                         emissive="#2244aa"
                         emissiveIntensity={0.18}
                         roughness={0.0}
-                        metalness={0.0}
-                        clearcoat={1.0}
-                        clearcoatRoughness={0.0}
-                        ior={1.65}
-                        reflectivity={1.0}
+                        metalness={0.1}
                         envMapIntensity={3.5}
                         transparent
                         opacity={0.22}
@@ -247,7 +242,7 @@ function CursorFX() {
                 </mesh>
                 {/* Inner glow core */}
                 <mesh scale={0.55}>
-                    <sphereGeometry args={[0.22, 32, 32]} />
+                    <sphereGeometry args={[0.22, 16, 16]} />
                     <meshBasicMaterial color="#99ccff" transparent opacity={0.82} toneMapped={false} />
                 </mesh>
                 {/* Hot nucleus for bloom */}
@@ -263,18 +258,18 @@ function CursorFX() {
                 {/* Spike left — tip points away from centre */}
                 <mesh position={[-0.58, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
                     <coneGeometry args={[0.042, 0.32, 6]} />
-                    <meshPhysicalMaterial
+                    <meshStandardMaterial
                         color="#aaccff" emissive="#6688cc" emissiveIntensity={1.2}
-                        roughness={0} metalness={0.2} clearcoat={1} clearcoatRoughness={0}
+                        roughness={0} metalness={0.2}
                         transparent opacity={0.85} toneMapped={false}
                     />
                 </mesh>
                 {/* Spike right */}
                 <mesh position={[0.58, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
                     <coneGeometry args={[0.042, 0.32, 6]} />
-                    <meshPhysicalMaterial
+                    <meshStandardMaterial
                         color="#aaccff" emissive="#6688cc" emissiveIntensity={1.2}
-                        roughness={0} metalness={0.2} clearcoat={1} clearcoatRoughness={0}
+                        roughness={0} metalness={0.2}
                         transparent opacity={0.85} toneMapped={false}
                     />
                 </mesh>
@@ -482,7 +477,7 @@ function makeHologramClones(scene, color, targetSize) {
     const solidMats = []
     solid.traverse(c => {
         if (!c.isMesh) return
-        const m = new THREE.MeshPhysicalMaterial({ color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0, roughness: 0.05, metalness: 0.8, side: THREE.DoubleSide, toneMapped: false, depthWrite: false })
+        const m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0, roughness: 0.05, metalness: 0.8, side: THREE.DoubleSide, toneMapped: false, depthWrite: false })
         c.material = m; solidMats.push(m)
     })
     return { wire, solid, wireMats, solidMats }
@@ -677,7 +672,7 @@ function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex }) {
                 <meshBasicMaterial color={color} wireframe transparent opacity={0} toneMapped={false} />
             </mesh>
             <mesh ref={meshRef} geometry={geometry} visible={false}>
-                <meshPhysicalMaterial color={color} transparent opacity={0} roughness={0.1} metalness={0.9} emissive={color} emissiveIntensity={0.3} toneMapped={false} side={THREE.DoubleSide} />
+                <meshStandardMaterial color={color} transparent opacity={0} roughness={0.1} metalness={0.9} emissive={color} emissiveIntensity={0.3} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
             <mesh ref={pulseRef}>
                 <torusGeometry args={[1.9, 0.015, 8, 64]} />
@@ -1010,11 +1005,8 @@ function HeroSection() {
 
     const material = useMemo(() => new THREE.MeshPhysicalMaterial({
         color: '#b8d6ff',
-        metalness: 0.2,
-        roughness: 0.05,
-        transmission: 0.85,
-        thickness: 1.2,
-        ior: 1.5,
+        metalness: 0.6,
+        roughness: 0.02,
         clearcoat: 1.0,
         clearcoatRoughness: 0.0,
         emissive: '#0a1a33',
@@ -1403,9 +1395,6 @@ function GlassShard({ index, totalShards, uvOffset, uvSize, worldPos, worldSize,
     const opacityRef = useRef(0)
     const scaleRef   = useRef(0.3)
 
-    // Per-shard slightly varied IOR — makes each piece feel unique
-    const ior = useMemo(() => 1.45 + (index / totalShards) * 0.25, [index, totalShards])
-
     // UV-remapped photo geometry
     const photoGeo = useMemo(() => {
         const geo = new THREE.PlaneGeometry(worldSize[0], worldSize[1])
@@ -1445,11 +1434,9 @@ function GlassShard({ index, totalShards, uvOffset, uvSize, worldPos, worldSize,
             </mesh>
             {/* Glass slab — clearcoat reflections, no transmission (perf) */}
             <mesh ref={glassRef} geometry={glassGeo}>
-                <meshPhysicalMaterial
+                <meshStandardMaterial
                     transparent opacity={0}
-                    roughness={0.02} metalness={0}
-                    ior={ior}
-                    clearcoat={1.0} clearcoatRoughness={0.01}
+                    roughness={0.02} metalness={0.1}
                     envMapIntensity={2.5}
                     color="#cce8ff"
                     toneMapped={false}
@@ -1753,7 +1740,7 @@ function DragController({ currentSectionRef }) {
         const el = gl.domElement
 
         const onDown = (e) => {
-            const ci = currentSectionRef.current - 3
+            const ci = currentSectionRef.current - 2
             if (ci < 0 || ci > 2) return
             dragRotState.isDragging = true
             dragRotState.cardIndex  = ci
@@ -1804,7 +1791,7 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <Environment preset="night" />
 
             <EffectComposer disableNormalPass>
-                <Bloom luminanceThreshold={0.5} mipmapBlur intensity={1.2} />
+                <Bloom luminanceThreshold={0.5} intensity={1.2} levels={4} />
                 <ChromaticAberration offset={warpOffset} />
                 <Vignette eskil={false} offset={0.1} darkness={1.1} />
             </EffectComposer>
@@ -2022,7 +2009,9 @@ export default function Portfolio() {
             e.preventDefault()
             if (locked) return
 
-            wheelAccum += e.deltaY
+            // Normalize across deltaMode: pixels (0) → as-is, lines (1) → ×40, pages (2) → ×800
+            const normalized = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY
+            wheelAccum += normalized
 
             if (wheelAccum >= WHEEL_THRESHOLD) {
                 wheelAccum = 0
@@ -2046,7 +2035,7 @@ export default function Portfolio() {
             <LoadingScreen />
 
             {/* GLOBAL HUD */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px', boxSizing: 'border-box' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '12px' }}>
                     <div style={{ fontWeight: 'bold' }}>MUSTAFA // PORTFOLIO</div>
                     <div style={{ pointerEvents: 'auto' }}>
@@ -2069,7 +2058,7 @@ export default function Portfolio() {
             <BioOverlay scrollRef={scrollRef} />
             <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
-            <Canvas camera={{ position: [0, 1, 16], fov: 70 }}>
+            <Canvas camera={{ position: [0, 1, 16], fov: 70 }} dpr={[1, 1.5]}>
                 <React.Suspense fallback={null}>
                     <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={setActiveProject} />
                 </React.Suspense>
