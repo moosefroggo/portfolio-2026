@@ -840,7 +840,7 @@ function ProjectZoneGrid({ scrollRef }) {
 }
 
 // ─── Project card — full assembly ─────────────────────────────────────────────
-function ProjectCard({ config, scrollRef, cardIndex }) {
+function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
     const [hovered, setHovered] = useState(false)
     const [appeared, setAppeared] = useState(false)
     const [scanActive, setScanActive] = useState(false)
@@ -860,6 +860,7 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
             rotation={config.rot}
             onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
             onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
+            onClick={e => { e.stopPropagation(); onOpen?.() }}
         >
             <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
             <TargetingReticle hovered={hovered} appeared={appeared} color={config.color} radius={2.0} />
@@ -1276,12 +1277,12 @@ function EthosSection({ scrollRef }) {
     )
 }
 
-function ProjectsSection({ scrollRef }) {
+function ProjectsSection({ scrollRef, onOpenProject }) {
     return (
         <group>
             <ProjectZoneGrid scrollRef={scrollRef} />
             {PROJECT_CARDS.map((config, i) => (
-                <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} />
+                <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} onOpen={() => onOpenProject?.(config)} />
             ))}
         </group>
     )
@@ -1790,7 +1791,7 @@ function DragController({ currentSectionRef }) {
     return null
 }
 
-function Scene({ scrollRef, currentSectionRef }) {
+function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
     return (
         <>
             <ScrollSmoother currentSectionRef={currentSectionRef} scrollRef={scrollRef} />
@@ -1817,7 +1818,7 @@ function Scene({ scrollRef, currentSectionRef }) {
             <HeroSection />
             <SigilCorridor />
             <EthosSection scrollRef={scrollRef} />
-            <ProjectsSection scrollRef={scrollRef} />
+            <ProjectsSection scrollRef={scrollRef} onOpenProject={onOpenProject} />
             <BioSection scrollRef={scrollRef} />
             
             <Stats />
@@ -1826,6 +1827,119 @@ function Scene({ scrollRef, currentSectionRef }) {
 }
 
 // EthosOverlay removed — ethos is now an in-scene 3D component (EthosSection)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PROJECT TERMINAL OVERLAY
+// ═════════════════════════════════════════════════════════════════════════════
+function ProjectTerminal({ project, onClose }) {
+    const [visible, setVisible] = useState(false)
+
+    useEffect(() => {
+        if (project) {
+            requestAnimationFrame(() => setVisible(true))
+        } else {
+            setVisible(false)
+        }
+    }, [project])
+
+    if (!project) return null
+
+    return (
+        <div
+            style={{
+                position: 'fixed',
+                top: 0, left: 0, width: '100vw', height: '100vh',
+                zIndex: 200,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: visible ? 'rgba(5, 5, 16, 0.88)' : 'rgba(5, 5, 16, 0)',
+                backdropFilter: visible ? 'blur(14px)' : 'blur(0px)',
+                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                pointerEvents: 'auto',
+                padding: '4vw',
+            }}
+            onClick={onClose}
+        >
+            <div
+                style={{
+                    position: 'relative',
+                    width: '100%', maxWidth: '1000px',
+                    background: '#030508',
+                    border: `1px solid ${project.color}`,
+                    boxShadow: visible ? `0 0 40px ${project.color}33, inset 0 0 20px ${project.color}11` : 'none',
+                    transform: visible ? 'scale(1) translateY(0)' : 'scale(0.97) translateY(24px)',
+                    opacity: visible ? 1 : 0,
+                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                    display: 'flex', flexDirection: 'column',
+                }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* HUD HEADER */}
+                <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 20px',
+                    borderBottom: `1px solid ${project.color}55`,
+                    background: `${project.color}0d`,
+                    fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '2px', color: project.color,
+                }}>
+                    <span>SYS://OVERRIDE_ACTIVE // {project.objectType.toUpperCase()}</span>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: 'none', border: 'none', color: project.color,
+                            fontFamily: 'var(--font-mono)', fontSize: '14px', cursor: 'none',
+                            padding: '4px 8px', outline: 'none', letterSpacing: '2px',
+                            transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = `${project.color}22`}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >[ X ]</button>
+                </div>
+
+                {/* VIDEO / UI DEMO AREA */}
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000', overflow: 'hidden' }}>
+                    <img
+                        src={`https://picsum.photos/seed/${project.title}/1200/675`}
+                        alt={`${project.title} UI`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }}
+                    />
+                    {/* Scanlines */}
+                    <div style={{
+                        position: 'absolute', inset: 0, pointerEvents: 'none',
+                        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.18), rgba(0,0,0,0.18) 1px, transparent 1px, transparent 2px)',
+                    }} />
+                    {/* Corner reticles */}
+                    <div style={{ position: 'absolute', top: '16px', left: '16px', width: '18px', height: '18px', borderTop: `1px solid ${project.color}`, borderLeft: `1px solid ${project.color}` }} />
+                    <div style={{ position: 'absolute', top: '16px', right: '16px', width: '18px', height: '18px', borderTop: `1px solid ${project.color}`, borderRight: `1px solid ${project.color}` }} />
+                    <div style={{ position: 'absolute', bottom: '16px', left: '16px', width: '18px', height: '18px', borderBottom: `1px solid ${project.color}`, borderLeft: `1px solid ${project.color}` }} />
+                    <div style={{ position: 'absolute', bottom: '16px', right: '16px', width: '18px', height: '18px', borderBottom: `1px solid ${project.color}`, borderRight: `1px solid ${project.color}` }} />
+                </div>
+
+                {/* FOOTER */}
+                <div style={{ padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '24px' }}>
+                    <div>
+                        <h3 style={{ margin: '0 0 8px 0', fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 'normal', color: '#fff', textTransform: 'uppercase', letterSpacing: '4px', fontFamily: 'var(--font-mono)' }}>
+                            {project.title}
+                        </h3>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#556688', letterSpacing: '2px' }}>
+                            {project.tech.join('  //  ')}
+                        </div>
+                    </div>
+                    <a
+                        href="#"
+                        style={{
+                            display: 'inline-block', padding: '10px 24px', flexShrink: 0,
+                            border: `1px solid ${project.color}`, color: project.color,
+                            fontFamily: 'var(--font-mono)', fontSize: '11px', textDecoration: 'none',
+                            letterSpacing: '2px', textTransform: 'uppercase', transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = `${project.color}22`}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >ACCESS_LIVE_BUILD</a>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOADING SCREEN
@@ -1893,6 +2007,7 @@ function LoadingScreen() {
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
+    const [activeProject, setActiveProject] = useState(null)
 
     useEffect(() => {
         return () => { document.body.style.cursor = 'auto' }
@@ -1956,10 +2071,11 @@ export default function Portfolio() {
 
             <Canvas camera={{ position: [0, 1, 16], fov: 70 }}>
                 <React.Suspense fallback={null}>
-                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
+                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={setActiveProject} />
                 </React.Suspense>
             </Canvas>
 
+            <ProjectTerminal project={activeProject} onClose={() => setActiveProject(null)} />
         </div>
     )
 }
