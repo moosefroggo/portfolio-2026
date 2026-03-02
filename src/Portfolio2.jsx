@@ -3059,6 +3059,44 @@ const SCROLL_HINT_CSS = `
     font-size: 8px; letter-spacing: 0.3em; color: rgba(136,153,204,0.4);
     font-family: 'Courier New', monospace; text-transform: uppercase;
 }
+
+@keyframes glitch-link-1 {
+    0% { clip-path: inset(20% 0 10% 0); transform: translate(-1px, -1px); }
+    20% { clip-path: inset(60% 0 40% 0); transform: translate(1px, 1px); }
+    40% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
+    60% { clip-path: inset(40% 0 20% 0); transform: translate(1px, -1px); }
+    80% { clip-path: inset(80% 0 5% 0); transform: translate(-1px, 1px); }
+    100% { clip-path: inset(30% 0 40% 0); transform: translate(1px, -1px); }
+}
+.glitch-link {
+    position: relative;
+    display: inline-block;
+    transition: color 0.2s;
+}
+.glitch-link:hover { color: #fff !important; }
+.glitch-link::before,
+.glitch-link::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #050510;
+    display: none;
+}
+.glitch-link:hover::before {
+    display: block;
+    left: 2px;
+    text-shadow: -1px 0 #ff00c1;
+    clip-path: inset(10% 0 70% 0);
+    animation: glitch-link-1 0.4s infinite linear alternate-reverse;
+}
+.glitch-link:hover::after {
+    display: block;
+    left: -2px;
+    text-shadow: 1px 0 #00fff9;
+    clip-path: inset(70% 0 10% 0);
+    animation: glitch-link-1 0.3s infinite linear alternate-reverse;
+}
 `
 
 function ScrollHint({ scrollRef }) {
@@ -3084,6 +3122,14 @@ function ScrollHint({ scrollRef }) {
             </div>
             <div className="scroll-hint-label">SCROLL</div>
         </div>
+    )
+}
+
+function GlitchLink({ href, children, ...props }) {
+    return (
+        <a href={href} className="glitch-link" data-text={children.toString().toUpperCase()} target="_blank" rel="noreferrer" {...props}>
+            {children}
+        </a>
     )
 }
 
@@ -3147,9 +3193,9 @@ export default function Portfolio() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', pointerEvents: 'auto', padding: '24px 0' }}>
                     <div style={{ display: 'flex', gap: '20px' }}>
-                        <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
-                        <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
-                        <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
+                        <GlitchLink href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing">RESUME</GlitchLink>
+                        <GlitchLink href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/">LINKEDIN</GlitchLink>
+                        <GlitchLink href="https://github.com/moosefroggo">GITHUB</GlitchLink>
                     </div>
                     <div>
                         <CopyEmailHud />
