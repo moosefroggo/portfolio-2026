@@ -11,9 +11,9 @@ export const warpOffset = new THREE.Vector2(0.002, 0.002)
 const dragRotState = {
     isDragging: false,
     lastX: 0, lastY: 0,
-    cardIndex: -1,        // which card is being dragged (0-2)
-    rotX: [0, 0, 0],     // accumulated pitch per card
-    rotY: [0, 0, 0],     // accumulated yaw per card
+    cardIndex: -1,        // which card is being dragged (0-1)
+    rotX: [0, 0],        // accumulated pitch per card
+    rotY: [0, 0],        // accumulated yaw per card
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -45,10 +45,8 @@ const CAMERA_PATH = [
     { t: 0.86, pos: [140, 0, 0],   look: [140, -1, -30], fov: 48, roll: 0 },
     { t: 0.93, pos: [140, 0, -10], look: [140, -1, -30], fov: 48, roll: 0 },
     { t: 1.00, pos: [140, 0, -18], look: [140, -1, -34], fov: 48, roll: 0 },
-    // ── Bio — bust reveal ──
+    // ── Dossier — close-up bust left, resume panel right ──
     { t: 1.10, pos: [140, -2.2, -24], look: [140, -2.2, -30], fov: 36, roll: 0 },
-    // ── Bio — diptych zoom-out ──
-    { t: 1.20, pos: [140, 0.5, -11], look: [140, 0, -30], fov: 64, roll: 0 },
 ]
 
 // Section snap stops — camera always rests at one of these t-values
@@ -57,42 +55,19 @@ const SECTION_STOPS = [
     0.16,   // ethos
     0.44,   // card 1 park
     0.62,   // card 2 park
-    0.80,   // card 3 park
     0.96,   // bio patch
-    1.10,   // bio bust face
-    1.20,   // bio diptych
+    1.10,   // dossier (close-up camera on bust + resume panel)
 ]
 const WHEEL_THRESHOLD = 60   // deltaY pixels to trigger a section advance
-const SECTION_LABELS = ['HERO', 'ETHOS', 'NEXUS', 'Workflows', 'ECHO', 'BIO', 'FACE', 'DOSSIER']
+const SECTION_LABELS = ['HERO', 'ETHOS', 'NEXUS', 'Workflows', 'BIO', 'DOSSIER']
 // Visual positions in the nav bar (independent of scroll stops)
-const SECTION_BAR_POSITIONS = [0.00, 0.13, 0.30, 0.47, 0.63, 0.75, 0.87, 1.00]
+const SECTION_BAR_POSITIONS = [0.00, 0.13, 0.30, 0.47, 0.67, 1.00]
 
 // Shared flag: true when mouse is over an HTML UI element (not the canvas)
 const uiHoveredRef = { current: false }
 
 // ─── Font options for subtitle testing ────────────────────────────────────────
-const FONT_OPTIONS = [
-    { label: 'Rocket Command', path: '/fonts/ALL%20FONTS%20FLAT/rocketcommandexpand.ttf' },
-    { label: 'Rocket Cmd Cond', path: '/fonts/ALL%20FONTS%20FLAT/rocketcommandcond.ttf' },
-    { label: 'Rocket Cmd Regular', path: '/fonts/ALL%20FONTS%20FLAT/rocketcommand.ttf' },
-    { label: 'Nodulus', path: '/fonts/ALL%20FONTS%20FLAT/nodulus.ttf' },
-    { label: 'Nodulus Cond', path: '/fonts/ALL%20FONTS%20FLAT/noduluscond.ttf' },
-    { label: 'Nodulus Expand', path: '/fonts/ALL%20FONTS%20FLAT/nodulusexpand.ttf' },
-    { label: 'Nodulus Engrave', path: '/fonts/ALL%20FONTS%20FLAT/nodulusengrave.ttf' },
-    { label: 'Nodulus Chrome', path: '/fonts/ALL%20FONTS%20FLAT/noduluschrome.ttf' },
-    { label: 'Neutra', path: '/fonts/ALL%20FONTS%20FLAT/Neutra.otf' },
-    { label: 'Eastback', path: '/fonts/ALL%20FONTS%20FLAT/Eastback-Regular.ttf' },
-    { label: 'Grafmassa', path: '/fonts/ALL%20FONTS%20FLAT/Grafmassa-Regular.ttf' },
-    { label: 'Avianz', path: '/fonts/ALL%20FONTS%20FLAT/Avianz%20Trial.otf' },
-    { label: 'Ortland', path: '/fonts/ALL%20FONTS%20FLAT/Ortland.otf' },
-    { label: 'Sparkster One', path: '/fonts/ALL%20FONTS%20FLAT/Sparkster-One.ttf' },
-    { label: 'Sparkster Two', path: '/fonts/ALL%20FONTS%20FLAT/Sparkster-Two.ttf' },
-    { label: 'Beyond 2025', path: '/fonts/ALL%20FONTS%20FLAT/Beyond%202025.ttf' },
-    { label: 'Gamma 1500', path: '/fonts/ALL%20FONTS%20FLAT/gamma1500.ttf' },
-    { label: 'Balisong', path: '/fonts/ALL%20FONTS%20FLAT/Balisong-Ultra.ttf' },
-    { label: 'Cyber Display', path: '/fonts/ALL%20FONTS%20FLAT/Cyber%20Display.ttf' },
-    { label: 'ParaAminobenzoic', path: '/fonts/ALL%20FONTS%20FLAT/ParaAminobenzoic.otf' },
-]
+const SUBTITLE_FONT = '/fonts/Oxanium-VariableFont_wght.ttf'
 
 const PROJECT_CARDS = [
     {
@@ -100,24 +75,16 @@ const PROJECT_CARDS = [
         title: 'Engine Immobilizer', subtitle: '01 // Motive',
         desc: 'Allowing managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
-        stats: { role: 'Senior Product Designer', year: '2024', client: 'Motive' },
+        stats: { role: 'Senior Product Designer', year: '2024', company: 'Motive' },
         objectType: 'truck_immobilizer',
     },
     {
         pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
         title: 'Workflows', subtitle: '02 // Educative',
         desc: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
-        tech: ['Next.js', 'Tailwind', 'Prisma'],
-        stats: { role: 'FULLSTACK', year: '2023', client: 'AURA HLTH' },
+        tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
+        stats: { role: 'UX Design & Strategy', year: '2023', company: 'Educative' },
         objectType: 'workflows',
-    },
-    {
-        pos: [140, 0.5, 0], rot: [0, -0.1, 0.02], color: '#44ff88', appear: 0.80,
-        title: 'ECHO', subtitle: '03 // WEB3 PROTOCOL',
-        desc: 'Decentralized identity verification layer built on Ethereum. Custom smart contracts paired with a buttery smooth Framer Motion frontend.',
-        tech: ['Solidity', 'Ethers.js', 'Framer'],
-        stats: { role: 'WEB3 DEV', year: '2023', client: 'ECHO LABS' },
-        objectType: 'icosahedron',
     },
 ]
 
@@ -137,14 +104,14 @@ const HERO_CONFIG = {
         { char: 'A', yOffset: 0, zOffset: 0 },
     ],
     spacing: 3.6,            // units between letter centers (pre-scale)
-    groupY: 1.2,             // vertical offset of the whole hero group
-    targetFraction: 0.72,    // fraction of viewport width that MUSTAFA fills
+    groupY: 2.8,             // vertical offset of the whole hero group
+    targetFraction: 0.62,    // fraction of viewport width that MUSTAFA fills
 
-    subtitleText: 'An endlessly curios product designer working on creating delightful experiences, currently working with Dell, School of Information, and McCombs School of Business. ',
-    subtitleYOffset: -6.8,   // Y below letter baseline (pre-scale)
+    subtitleText: 'An endlessly curios product designer working on creating delightful experiences, currently designing AI-based leak protection system at Dell, and developing a SaaS capstone application at School of Information.',
+    subtitleYOffset: -5.8,   // Y below letter baseline (pre-scale)
     subtitleFontSize: 0.6,   // font size (pre-scale)
     subtitleLetterSpacing: 0.15,
-    spineRotationSpeed: 1.5,     // radians/sec — spin of individual spine pieces around their tangent axis
+    spineRotationSpeed: 0.3,     // radians/sec — spin of individual spine pieces around their tangent axis
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -979,7 +946,7 @@ function ProjectZoneGrid({ scrollRef }) {
 }
 
 // ─── Project card — full assembly ─────────────────────────────────────────────
-function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
+function ProjectCard({ config, scrollRef, cardIndex }) {
     const [hovered, setHovered] = useState(false)
     const [appeared, setAppeared] = useState(false)
     const [scanActive, setScanActive] = useState(false)
@@ -999,7 +966,7 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             rotation={config.rot}
             onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
             onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
-            onClick={e => { e.stopPropagation(); onOpen?.() }}
+            onClick={e => e.stopPropagation()}
         >
             <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
             <TargetingReticle hovered={hovered} appeared={appeared} color={config.color} radius={2.0} />
@@ -1233,7 +1200,7 @@ function StarField() {
     )
 }
 
-function HeroSection({ subtitleFont }) {
+function HeroSection() {
     const { size } = useThree()
     const { scene: spineScene } = useGLTF('/spine.glb')
 
@@ -1288,7 +1255,7 @@ function HeroSection({ subtitleFont }) {
                 />
             ))}
 
-            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font={subtitleFont ?? FONT_OPTIONS[0].path} fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0} color="#8899cc" material-toneMapped={false} maxWidth={(cfg.letters.length - 1) * actualSpacing} textAlign="center" lineHeight={1.5}>{cfg.subtitleText}</Text>
+            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font={SUBTITLE_FONT} fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0} color="#8899cc" material-toneMapped={false} maxWidth={(cfg.letters.length - 1) * actualSpacing} textAlign="center" lineHeight={1.5}>{cfg.subtitleText}</Text>
         </group>
     )
 }
@@ -1307,15 +1274,15 @@ const ETHOS_EXIT = 0.24   // scroll fraction: ethos ends
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'We do not build templates. We sculpt digital space — every pixel intentional, every interaction considered.',
+        text: 'Build products that solve human problems, look delightful, are fun to use.',
     },
     {
         label: 'SYSTEMS',
-        text: 'Design systems that breathe. Code architecture that scales. Obsessive attention to the seams between form and function.',
+        text: 'I break the product down to its individual cogs, then I rebuild and rearrange those cogs to solve problems. ',
     },
     {
         label: 'VISION',
-        text: 'The web is not a printed page. It is a living medium — and we shape it into something that moves people.',
+        text: 'Design is a neccessity and it is everywhere, I look at the tangible world around me for inspiration to build products for the future.',
     },
 ]
 
@@ -1395,14 +1362,12 @@ function EthosOverlay({ scrollRef }) {
                     bump(0)
                 }
             } else if (activeRef.current === 0) {
-                // Just entered — fire bullet 1 immediately, schedule 2 & 3
+                // Just entered — fire bullet 1 immediately, schedule 2 & 3 in sequence
                 bump(1)
                 if (!scheduledRef.current) {
                     scheduledRef.current = true
-                    // bullet 1 types ~107 chars × 25 ms ≈ 2.7 s → give 3.2 s
-                    timersRef.current[0] = setTimeout(() => bump(2), 3200)
-                    // bullet 2 types ~120 chars × 25 ms ≈ 3.0 s → 3.2 + 3.5 = 6.7 s
-                    timersRef.current[1] = setTimeout(() => bump(3), 6700)
+                    timersRef.current[0] = setTimeout(() => bump(2), 1100)
+                    timersRef.current[1] = setTimeout(() => bump(3), 2200)
                 }
             }
 
@@ -1494,7 +1459,9 @@ function SigilModel({ position, scale = 1 }) {
     return (
         <group position={position} scale={scale}>
             <group ref={spinRef}>
-                <primitive object={cloned} position={SIGIL2_OFFSET} />
+                <group rotation={[Math.PI / 2, 0, 0]}>
+                    <primitive object={cloned} position={SIGIL2_OFFSET} />
+                </group>
             </group>
         </group>
     )
@@ -1535,9 +1502,9 @@ function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
 }
 
 // ─── Main Ethos Section (3D) ──────────────────────────────────────────────────
-const ETHOS_SIGIL_POS  = [3, 0, 4]
-const ETHOS_LEFT_PIL   = [-7, 0, 4]
-const ETHOS_RIGHT_PIL  = [13, 0, 4]
+const ETHOS_SIGIL_POS  = [3, 0, 11]
+const ETHOS_LEFT_PIL   = [-7, 0, 11]
+const ETHOS_RIGHT_PIL  = [13, 0, 11]
 const ETHOS_CHAIN_Y    = 2.1   // height of pillar tops
 
 function EthosSection({ scrollRef }) {
@@ -1555,16 +1522,16 @@ function EthosSection({ scrollRef }) {
             <SigilModel position={ETHOS_SIGIL_POS} scale={3} />
 
             {/* Left pillar — me */}
-            <Pillar position={ETHOS_LEFT_PIL} bustUrl="/me.glb" bustRotSpeed={0.05} bustScale={3} />
+            <Pillar position={ETHOS_LEFT_PIL} bustUrl="/me.glb" bustRotSpeed={0.05} bustScale={5} />
 
             {/* Right pillar — robot me */}
-            <Pillar position={ETHOS_RIGHT_PIL} bustUrl="/also-me.glb" bustRotSpeed={-0.04} bustScale={3} />
+            <Pillar position={ETHOS_RIGHT_PIL} bustUrl="/also-me.glb" bustRotSpeed={-0.04} bustScale={5} />
 
             {/* Spine chain connecting the two pillar tops */}
             <SpineChain
                 start={[ETHOS_LEFT_PIL[0],  ETHOS_CHAIN_Y, ETHOS_LEFT_PIL[2]]}
                 end={[ETHOS_RIGHT_PIL[0], ETHOS_CHAIN_Y, ETHOS_RIGHT_PIL[2]]}
-                mid={[3, ETHOS_CHAIN_Y - 2.8, 4]}
+                mid={[3, ETHOS_CHAIN_Y - 2.8, 11]}
                 color="#3366ff"
                 active={false}
                 segments={30}
@@ -1577,12 +1544,12 @@ function EthosSection({ scrollRef }) {
     )
 }
 
-function ProjectsSection({ scrollRef, onOpenProject }) {
+function ProjectsSection({ scrollRef }) {
     return (
         <group>
             <ProjectZoneGrid scrollRef={scrollRef} />
             {PROJECT_CARDS.map((config, i) => (
-                <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} onOpen={() => onOpenProject?.(config)} />
+                <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} />
             ))}
         </group>
     )
@@ -1943,6 +1910,114 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
 // BioOverlay replaced by in-scene ModularResumePatch
 export function BioOverlay() { return null }
 
+// ─── Dossier overlay — full-height resume panel, shown on final scroll stop ──
+const DOSSIER_CSS = `
+.dossier-panel {
+    position: fixed;
+    right: 0; top: 0;
+    width: 40vw; height: 100vh;
+    background: #f8f6f1;
+    color: #111;
+    font-family: 'Georgia', serif;
+    overflow-y: auto;
+    padding: 52px 44px;
+    box-sizing: border-box;
+    pointer-events: auto;
+    border-left: 1px solid rgba(0,0,0,0.06);
+    box-shadow: -32px 0 80px rgba(0,0,0,0.42);
+    z-index: 80;
+    transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.16,1,0.3,1);
+}
+.dossier-panel.hidden { opacity: 0; transform: translateX(30px); pointer-events: none; }
+.dossier-panel h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; margin: 0 0 4px; }
+.dossier-panel .role { font-size: 8px; letter-spacing: 0.26em; color: #666; margin: 0 0 22px; font-family: 'Courier New', monospace; text-transform: uppercase; }
+.dossier-panel hr { border: none; border-top: 1px solid #d8d4cc; margin: 0 0 18px; }
+.dossier-panel .section-label { font-size: 7px; letter-spacing: 0.28em; color: #999; margin: 0 0 10px; font-family: 'Courier New', monospace; text-transform: uppercase; }
+.dossier-panel .entry { margin: 0 0 14px; }
+.dossier-panel .entry strong { display: block; font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+.dossier-panel .entry span { font-size: 9.5px; color: #666; line-height: 1.6; }
+.dossier-panel .skills-list { font-size: 9.5px; color: #444; line-height: 2.1; letter-spacing: 0.04em; }
+.dossier-panel .contact-line { font-size: 9px; color: #666; font-family: 'Courier New', monospace; margin: 6px 0; letter-spacing: 0.06em; }
+.dossier-panel .dl-btn { display: block; width: 100%; margin-top: 28px; padding: 13px 0; background: #111; color: #f8f6f1; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; text-decoration: none; border: none; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
+.dossier-panel .dl-btn:hover { background: #1a1a2e; color: #ffffff; }
+`
+
+function DossierOverlay({ scrollRef }) {
+    const panelRef = useRef()
+    const visRef = useRef(false)
+
+    useEffect(() => {
+        let rafId
+        const tick = () => {
+            const t = scrollRef.current ?? 0
+            const now = t >= DIPTYCH_ENTER
+            if (now !== visRef.current) {
+                visRef.current = now
+                if (panelRef.current)
+                    panelRef.current.classList.toggle('hidden', !now)
+            }
+            rafId = requestAnimationFrame(tick)
+        }
+        rafId = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(rafId)
+    }, [scrollRef])
+
+    return (
+        <>
+            <style>{DOSSIER_CSS}</style>
+            <div ref={panelRef} className="dossier-panel hidden">
+                <h1>MUSTAFA ALEEM</h1>
+                <p className="role">UX Architect &nbsp;·&nbsp; Spatial Dev &nbsp;·&nbsp; Systems Thinker</p>
+                <hr />
+
+                <p className="section-label">Experience</p>
+                <div className="entry">
+                    <strong>CBRE</strong>
+                    <span>Visual Systems Designer &nbsp;·&nbsp; 2025</span>
+                </div>
+                <div className="entry">
+                    <strong>Motive</strong>
+                    <span>Senior Product Designer &nbsp;·&nbsp; 2024</span>
+                </div>
+                <div className="entry">
+                    <strong>Educative</strong>
+                    <span>UX Designer &nbsp;·&nbsp; 2023</span>
+                </div>
+                <hr />
+
+                <p className="section-label">Education</p>
+                <div className="entry">
+                    <strong>UT Austin &nbsp;— School of Information</strong>
+                    <span>BS Information Science &nbsp;·&nbsp; In Progress</span>
+                </div>
+                <div className="entry">
+                    <strong>UT Austin &nbsp;— McCombs School of Business</strong>
+                    <span>Business Foundations Certificate &nbsp;·&nbsp; 2024</span>
+                </div>
+                <hr />
+
+                <p className="section-label">Skills</p>
+                <p className="skills-list">
+                    Figma &nbsp;·&nbsp; Framer &nbsp;·&nbsp; Origami Studio<br />
+                    React &nbsp;·&nbsp; TypeScript &nbsp;·&nbsp; Three.js<br />
+                    Systems Design &nbsp;·&nbsp; Interaction Design<br />
+                    UX Research &nbsp;·&nbsp; Visual Language
+                </p>
+                <hr />
+
+                <p className="section-label">Contact</p>
+                <p className="contact-line">hello@mustafaaleem.com</p>
+                <p className="contact-line">github.com/mustafaaleem</p>
+                <p className="contact-line">linkedin.com/in/mustafaaleem</p>
+
+                <a href="/resume.pdf" download className="dl-btn">
+                    Download Resume
+                </a>
+            </div>
+        </>
+    )
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // MODULAR RESUME PATCH BAY
 // ═════════════════════════════════════════════════════════════════════════════
@@ -2291,15 +2366,21 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
     const robotClone = useMemo(() => {
         const c = robotScene.clone(true)
         c.traverse(child => {
-            if (!child.isMesh) return
+            if (!child.isMesh || !child.material) return
+            const orig = Array.isArray(child.material) ? child.material[0] : child.material
             child.material = new THREE.MeshStandardMaterial({
-                color: '#001a33',
-                emissive: '#00ccff',
-                emissiveIntensity: 2.2,
+                map: orig.map ?? null,
+                normalMap: orig.normalMap ?? null,
+                roughnessMap: orig.roughnessMap ?? null,
+                metalnessMap: orig.metalnessMap ?? null,
+                roughness: orig.roughness ?? 0.6,
+                metalness: orig.metalness ?? 0.4,
+                emissive: new THREE.Color('#00ccff'),
+                emissiveIntensity: 0.35,
                 transparent: true,
-                opacity: 0.88,
-                side: THREE.DoubleSide,
+                opacity: 0.92,
                 toneMapped: false,
+                side: THREE.DoubleSide,
             })
         })
         return c
@@ -2343,9 +2424,9 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
             }
 
         } else if (s.phase === 'robot') {
-            // pulse the hologram emissive
+            // pulse the hologram emissive — subtle, face stays readable
             robotClone.traverse(child => {
-                if (child.isMesh) child.material.emissiveIntensity = 2.0 + Math.sin(state.clock.elapsedTime * 8) * 0.4
+                if (child.isMesh) child.material.emissiveIntensity = 0.28 + Math.sin(state.clock.elapsedTime * 8) * 0.10
             })
             if (s.timer > 1.0 + Math.random() * 0.8) { s.phase = 'to_human'; s.ft = 0 }
         }
@@ -2364,7 +2445,7 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
 }
 
 // ─── Diptych — bust + resume side-by-side revealed on final scroll ────────────
-const DIPTYCH_ENTER = 1.12   // starts sliding in just after face stop
+const DIPTYCH_ENTER = 1.06   // appears as camera approaches dossier stop
 
 const RESUME_CSS = `
 .dossier { width:240px; background:#f7f6f2; color:#111; font-family:'Georgia',serif;
@@ -2380,81 +2461,22 @@ const RESUME_CSS = `
 `
 
 function BustDiptych({ scrollRef }) {
-    const groupRef = useRef()
-    const faceBustRef = useRef()
+    const opRef = useRef()
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
         const show = t >= DIPTYCH_ENTER
-        if (groupRef.current)
-            groupRef.current.position.y = dampValue(groupRef.current.position.y, show ? 0 : -22, 4.5, delta)
-        // face bust slides down as diptych rises
-        if (faceBustRef.current)
-            faceBustRef.current.position.y = dampValue(faceBustRef.current.position.y, show ? -18 : -5, 4.5, delta)
+        if (opRef.current)
+            opRef.current.position.y = dampValue(opRef.current.position.y, show ? 0 : -3, 5, delta)
     })
 
     return (
-        <>
-            {/* Face-close-up bust — glitch bust, slides away when diptych enters */}
-            <group ref={faceBustRef} position={[0, -5, 0]}>
-                <GlitchBust position={[0, 0, 0]} scale={4} rotSpeed={0.06} />
-            </group>
-
-            {/* Diptych group — slides up from below */}
-            <group ref={groupRef} position={[0, -22, 0]}>
-                {/* ── Left half: front bust + sigil + back bust ── */}
-                <group position={[-5, 0, 0]}>
-                    {/* Front bust — glitch bust, faces camera */}
-                    <GlitchBust position={[0, 0, 1.5]} scale={6} rotSpeed={0.04} />
-                    {/* Sigil separator */}
-                    <SigilModel position={[0, 0, -0.2]} scale={1.8} />
-                    {/* Back bust — wrapped 180° so it faces away */}
-                    <group rotation={[0, Math.PI, 0]}>
-                        <RotatingBust url="/also-me.glb" position={[0, 0, 1.5]} tiltAxis={[0, 0, 0]} rotSpeed={0.04} scale={6} />
-                    </group>
-                </group>
-
-                {/* Thin vertical centre divider */}
-                <mesh position={[0, 0, 0]}>
-                    <planeGeometry args={[0.018, 9]} />
-                    <meshBasicMaterial color="#1a2d55" transparent opacity={0.5} toneMapped={false} />
-                </mesh>
-
-                {/* ── Right half: plain resume ── */}
-                <group position={[5, 0, 0]}>
-                    <Html transform occlude={false} distanceFactor={4.2} style={{ pointerEvents: 'none' }}>
-                        <style>{RESUME_CSS}</style>
-                        <div className="dossier">
-                            <h1>MUSTAFA ALEEM</h1>
-                            <p className="role">UX ARCHITECT · SPATIAL DEV · SYSTEMS THINKER</p>
-                            <hr />
-                            <p className="section">EXPERIENCE</p>
-                            <div className="entry">
-                                <strong>CBRE</strong>
-                                <span>Visual Systems Designer · 2025</span>
-                            </div>
-                            <div className="entry">
-                                <strong>MOTIVE</strong>
-                                <span>Product UX Designer · 2024</span>
-                            </div>
-                            <div className="entry">
-                                <strong>EDUCATIVE</strong>
-                                <span>UX Designer · 2023</span>
-                            </div>
-                            <hr />
-                            <p className="section">EDUCATION</p>
-                            <div className="entry">
-                                <strong>UT AUSTIN</strong>
-                                <span>BS Information Science · Now</span>
-                            </div>
-                            <hr />
-                            <p className="section">SKILLS</p>
-                            <p className="skills">React · Three.js · Figma · TypeScript<br />Systems Design · Interaction Design · UX Research</p>
-                        </div>
-                    </Html>
-                </group>
-            </group>
-        </>
+        // Bust centred in the left portion of the face-camera view (fov 36, tight)
+        // x=-1 shifts ~½ unit left of camera centre so the right 40vw resume panel has room
+        <group ref={opRef} position={[0, -3, 0]}>
+            <GlitchBust position={[-1, -1.5, 1.5]} scale={6} rotSpeed={0.04} />
+            <SigilModel position={[-1, -1.5, -0.4]} scale={1.8} />
+        </group>
     )
 }
 
@@ -2499,7 +2521,7 @@ function BioSection({ scrollRef }) {
 // 5. MAIN SCENE & APP EXPORT
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Cards live at SECTION_STOPS indices 3, 4, 5 → cardIndex 0, 1, 2
+// Cards live at SECTION_STOPS indices 3, 4 → cardIndex 0, 1
 function DragController({ currentSectionRef }) {
     const { gl } = useThree()
 
@@ -2545,7 +2567,7 @@ function DragController({ currentSectionRef }) {
     return null
 }
 
-function Scene({ scrollRef, currentSectionRef, onOpenProject, subtitleFont }) {
+function Scene({ scrollRef, currentSectionRef }) {
     return (
         <Selection>
             <ScrollSmoother currentSectionRef={currentSectionRef} scrollRef={scrollRef} />
@@ -2570,9 +2592,9 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject, subtitleFont }) {
             <Select enabled>
                 <InteractiveParticleField count={300} />
                 <StarField />
-                <HeroSection subtitleFont={subtitleFont} />
+                <HeroSection />
                 <EthosSection scrollRef={scrollRef} />
-                <ProjectsSection scrollRef={scrollRef} onOpenProject={onOpenProject} />
+                <ProjectsSection scrollRef={scrollRef} />
                 <BioSection scrollRef={scrollRef} />
             </Select>
 
@@ -2591,115 +2613,6 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject, subtitleFont }) {
 // ═════════════════════════════════════════════════════════════════════════════
 // PROJECT TERMINAL OVERLAY
 // ═════════════════════════════════════════════════════════════════════════════
-function ProjectTerminal({ project, onClose }) {
-    const [visible, setVisible] = useState(false)
-
-    useEffect(() => {
-        if (project) {
-            requestAnimationFrame(() => setVisible(true))
-        } else {
-            setVisible(false)
-        }
-    }, [project])
-
-    if (!project) return null
-
-    return (
-        <div
-            style={{
-                position: 'fixed',
-                top: 0, left: 0, width: '100vw', height: '100vh',
-                zIndex: 200,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: visible ? 'rgba(5, 5, 16, 0.88)' : 'rgba(5, 5, 16, 0)',
-                backdropFilter: visible ? 'blur(14px)' : 'blur(0px)',
-                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                pointerEvents: 'auto',
-                padding: '4vw',
-            }}
-            onClick={onClose}
-        >
-            <div
-                style={{
-                    position: 'relative',
-                    width: '100%', maxWidth: '1000px',
-                    background: '#030508',
-                    border: `1px solid ${project.color}`,
-                    boxShadow: visible ? `0 0 40px ${project.color}33, inset 0 0 20px ${project.color}11` : 'none',
-                    transform: visible ? 'scale(1) translateY(0)' : 'scale(0.97) translateY(24px)',
-                    opacity: visible ? 1 : 0,
-                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                    display: 'flex', flexDirection: 'column',
-                }}
-                onClick={e => e.stopPropagation()}
-            >
-                {/* HUD HEADER */}
-                <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 20px',
-                    borderBottom: `1px solid ${project.color}55`,
-                    background: `${project.color}0d`,
-                    fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '2px', color: project.color,
-                }}>
-                    <span>SYS://OVERRIDE_ACTIVE // {project.objectType.toUpperCase()}</span>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: 'none', border: 'none', color: project.color,
-                            fontFamily: 'var(--font-mono)', fontSize: '14px', cursor: 'none',
-                            padding: '4px 8px', outline: 'none', letterSpacing: '2px',
-                            transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = `${project.color}22`}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    >[ X ]</button>
-                </div>
-
-                {/* VIDEO / UI DEMO AREA */}
-                <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000', overflow: 'hidden' }}>
-                    <img
-                        src={`https://picsum.photos/seed/${project.title}/1200/675`}
-                        alt={`${project.title} UI`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }}
-                    />
-                    {/* Scanlines */}
-                    <div style={{
-                        position: 'absolute', inset: 0, pointerEvents: 'none',
-                        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.18), rgba(0,0,0,0.18) 1px, transparent 1px, transparent 2px)',
-                    }} />
-                    {/* Corner reticles */}
-                    <div style={{ position: 'absolute', top: '16px', left: '16px', width: '18px', height: '18px', borderTop: `1px solid ${project.color}`, borderLeft: `1px solid ${project.color}` }} />
-                    <div style={{ position: 'absolute', top: '16px', right: '16px', width: '18px', height: '18px', borderTop: `1px solid ${project.color}`, borderRight: `1px solid ${project.color}` }} />
-                    <div style={{ position: 'absolute', bottom: '16px', left: '16px', width: '18px', height: '18px', borderBottom: `1px solid ${project.color}`, borderLeft: `1px solid ${project.color}` }} />
-                    <div style={{ position: 'absolute', bottom: '16px', right: '16px', width: '18px', height: '18px', borderBottom: `1px solid ${project.color}`, borderRight: `1px solid ${project.color}` }} />
-                </div>
-
-                {/* FOOTER */}
-                <div style={{ padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '24px' }}>
-                    <div>
-                        <h3 style={{ margin: '0 0 8px 0', fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 'normal', color: '#fff', textTransform: 'uppercase', letterSpacing: '4px', fontFamily: 'var(--font-mono)' }}>
-                            {project.title}
-                        </h3>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#556688', letterSpacing: '2px' }}>
-                            {project.tech.join('  //  ')}
-                        </div>
-                    </div>
-                    <a
-                        href="#"
-                        style={{
-                            display: 'inline-block', padding: '10px 24px', flexShrink: 0,
-                            border: `1px solid ${project.color}`, color: project.color,
-                            fontFamily: 'var(--font-mono)', fontSize: '11px', textDecoration: 'none',
-                            letterSpacing: '2px', textTransform: 'uppercase', transition: 'background 0.2s',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = `${project.color}22`}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    >ACCESS_LIVE_BUILD</a>
-                </div>
-            </div>
-        </div>
-    )
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOADING SCREEN
@@ -2764,32 +2677,10 @@ function LoadingScreen() {
     )
 }
 
-function FontPicker({ selected, onSelect }) {
-    const [open, setOpen] = useState(false)
-    return (
-        <div style={{ position: 'fixed', bottom: '80px', left: '20px', zIndex: 999, fontFamily: 'monospace', fontSize: '11px', pointerEvents: 'auto' }}>
-            <button onClick={() => setOpen(o => !o)} style={{ background: '#0a0f2a', border: '1px solid #3366ff55', color: '#3366ff', padding: '6px 12px', letterSpacing: '2px', cursor: 'pointer', width: '100%' }}>
-                {open ? '▲ FONT PICKER' : '▼ FONT PICKER'}
-            </button>
-            {open && (
-                <div style={{ background: '#070b1e', border: '1px solid #3366ff33', borderTop: 'none', maxHeight: '260px', overflowY: 'auto' }}>
-                    {FONT_OPTIONS.map(f => (
-                        <div key={f.path} onClick={() => onSelect(f.path)}
-                            style={{ padding: '7px 12px', color: selected === f.path ? '#3366ff' : '#8899bb', borderLeft: selected === f.path ? '2px solid #3366ff' : '2px solid transparent', cursor: 'pointer', letterSpacing: '1px' }}
-                        >{f.label}</div>
-                    ))}
-                </div>
-            )}
-        </div>
-    )
-}
 
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
-    const [activeProject, setActiveProject] = useState(null)
-    const [subtitleFont, setSubtitleFont] = useState(FONT_OPTIONS[0].path)
-
     useEffect(() => {
         const onMove = (e) => {
             const overUI = e.target.tagName !== 'CANVAS'
@@ -2859,16 +2750,14 @@ export default function Portfolio() {
 
             <EthosOverlay scrollRef={scrollRef} />
             <BioOverlay scrollRef={scrollRef} />
+            <DossierOverlay scrollRef={scrollRef} />
             <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
             <Canvas camera={{ position: [0, 1, 16], fov: 70 }} dpr={[1, 1.5]}>
                 <React.Suspense fallback={null}>
-                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={setActiveProject} subtitleFont={subtitleFont} />
+                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
                 </React.Suspense>
             </Canvas>
-
-            <FontPicker selected={subtitleFont} onSelect={setSubtitleFont} />
-            <ProjectTerminal project={activeProject} onClose={() => setActiveProject(null)} />
         </div>
     )
 }
