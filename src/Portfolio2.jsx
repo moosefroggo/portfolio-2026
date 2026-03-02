@@ -42,11 +42,11 @@ const CAMERA_PATH = [
     { t: 0.76, pos: [140, 0, 9], look: [140, 0, 0], fov: 58, roll: -0.5 },
     { t: 0.80, pos: [140, 0, 6], look: [140, 0, 0], fov: 52, roll: 0 },
     // ── Bio section ──
-    { t: 0.86, pos: [140, 0, -2], look: [140, -1, -30], fov: 54, roll: 0 },
-    { t: 0.93, pos: [140, 0, -12], look: [140, -1, -30], fov: 52, roll: 0 },
-    { t: 1.00, pos: [140, 0, -20], look: [140, -1, -30], fov: 50, roll: 0 },
+    { t: 0.86, pos: [140, 0, -2], look: [140, -3.2, -30], fov: 54, roll: 0 },
+    { t: 0.93, pos: [140, 0, -12], look: [140, -3.2, -30], fov: 52, roll: 0 },
+    { t: 1.00, pos: [140, 0, -20], look: [140, -3.2, -30], fov: 50, roll: 0 },
     // ── Dossier — close-up bust left, resume panel right ──
-    { t: 1.10, pos: [140, -2.2, -24], look: [140, -2.2, -30], fov: 36, roll: 0 },
+    { t: 1.10, pos: [140, -3.2, -24], look: [140, -3.2, -30], fov: 36, roll: 0 },
 ]
 
 // Section snap stops — camera always rests at one of these t-values
@@ -181,7 +181,12 @@ function CameraController({ scrollRef }) {
         _targetLook.lerpVectors(_startLook, _endLook, easeT)
 
         const baseFov = THREE.MathUtils.lerp(start.fov, end.fov, easeT)
-        const targetFov = baseFov + velocityRef.current * 12
+        // Narrow-screen compensation — wider FOV + camera pulled back so cards don't clip sides
+        // Threshold 1.6: starts compensation earlier (covers typical laptops/tablets)
+        const narrowFactor = Math.max(0, 1.6 - camera.aspect)
+        const aspectBoost = narrowFactor * 30   // more aggressive widening
+        _targetPos.z += narrowFactor * 10        // significant depth pullback
+        const targetFov = baseFov + velocityRef.current * 12 + aspectBoost
         // Exaggerate path roll during scroll for a thrown-through-space feel
         const pathRoll = THREE.MathUtils.lerp(start.roll, end.roll, easeT) * (Math.PI / 180)
         const targetRoll = pathRoll * (1 + velocityRef.current * 3.5)
@@ -556,6 +561,7 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
             normalMap: orig.normalMap ?? null,
             roughnessMap: orig.roughnessMap ?? null,
             metalnessMap: orig.metalnessMap ?? null,
+            emissiveMap: orig.map ?? null,
             roughness: orig.roughness ?? 0.6,
             metalness: orig.metalness ?? 0.4,
             emissive: new THREE.Color(accentColor),
@@ -1120,6 +1126,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
                 ref={instancedRef}
                 args={[sourceGeometry, material, count]}
                 onPointerOver={e => { hovInstRef.current = e.instanceId ?? -1; lastEnterFrameRef.current = frameCountRef.current }}
+                onPointerMove={e => { hovInstRef.current = e.instanceId ?? -1; lastEnterFrameRef.current = frameCountRef.current }}
             />
         </group>
     )
@@ -1141,9 +1148,9 @@ const RAW_S = [v3(-1.1141, -1.3541), v3(-0.9448, -1.62), v3(-0.6933, -1.8237), v
 const RAW_T0 = [v3(0, -2), v3(0, 1.9704)]
 const RAW_T1 = [v3(-1.75, 1.9704), v3(1.75, 1.9704)]
 const RAW_A0 = [v3(-1.09, -0.7378), v3(1.09, -0.7378)]
-const RAW_A1 = [v3(1.5881, -2), v3(0.79, 0), v3(0, 2), v3(-0.79, 0), v3(-1.5881, -2)]
-const RAW_F0 = [v3(-0.803, -2), v3(-0.803, 1.9704), v3(1.2178, 1.9704)]
-const RAW_F1 = [v3(-0.803, 0.0563), v3(1.117, 0.0563)]
+const RAW_A1 = [v3(1.6, -2), v3(0.8, 0), v3(0, 2), v3(-0.8, 0), v3(-1.6, -2)]
+const RAW_F0 = [v3(-0.8, -2), v3(-0.8, 2), v3(1.2, 2)]
+const RAW_F1 = [v3(-0.8, 0.1), v3(1.1, 0.1)]
 
 const LETTER_M = withZ(RAW_M, 0.30)
 const LETTER_U = withZ(RAW_U, 0.28)
@@ -1626,7 +1633,7 @@ function ProjectsSection({ scrollRef }) {
 // ─── Bio constants ────────────────────────────────────────────────────────────
 const BIO_ENTER = 0.86
 const BIO_FULL = 0.93
-const BIO_CENTER = [140, -1, -25]
+const BIO_CENTER = [140, -3.2, -25]
 
 const PLACEHOLDER_IMAGES = [
     'https://picsum.photos/seed/bio1/600/900',
@@ -2000,8 +2007,8 @@ const DOSSIER_CSS = `
     position: fixed;
     left: 62%; top: 50%;
     transform: translate(-50%, -50%);
-    width: min(420px, 38vw);
-    height: min(580px, 76vh);
+    width: min(520px, 45vw);
+    height: min(720px, 82vh);
     background: rgba(6, 7, 20, 0.72);
     backdrop-filter: blur(22px) saturate(1.4);
     -webkit-backdrop-filter: blur(22px) saturate(1.4);
@@ -2108,24 +2115,33 @@ function DossierOverlay({ scrollRef }) {
                 <div className="dossier-header">
                     <div className="dossier-header-label">
                         <span className="dossier-header-dot" />
-                        DOSSIER // MUSTAFA AKBAR
+                        DOSSIER // MUSTAFA ALI AKBAR
                     </div>
                     <span className="dossier-header-id">UX-26</span>
                 </div>
 
                 <div className="resume-body">
-                    <div className="dossier-resume-name">MUSTAFA AKBAR</div>
-                    <div className="dossier-resume-role">SENIOR PRODUCT DESIGNER // UX ARCHITECT</div>
+                    <div className="dossier-resume-name">MUSTAFA ALI AKBAR</div>
+                    <div className="dossier-resume-role">SENIOR PRODUCT DESIGNER</div>
 
                     <div className="dossier-resume-section">EXPERIENCE</div>
+
+                    <div className="dossier-resume-entry">
+                        <div className="dossier-resume-entry-header">
+                            <span className="dossier-resume-entry-title">DELL / UT AUSTIN</span>
+                            <span className="dossier-resume-entry-date">NOW</span>
+                        </div>
+                        <div className="dossier-resume-entry-sub">AI PRODUCT DESIGN // HARDWARE DESIGN</div>
+                        <div className="dossier-resume-entry-desc">Building am AI-based leak alert system to protect Dell's PowerEdge servers.</div>
+                    </div>
 
                     <div className="dossier-resume-entry">
                         <div className="dossier-resume-entry-header">
                             <span className="dossier-resume-entry-title">CBRE</span>
                             <span className="dossier-resume-entry-date">2025</span>
                         </div>
-                        <div className="dossier-resume-entry-sub">VISUAL LANGUAGE // INTERACTION DESIGN</div>
-                        <div className="dossier-resume-entry-desc">Designing scalable visual systems and interaction patterns for enterprise real estate products.</div>
+                        <div className="dossier-resume-entry-sub">VISUAL DESIGN // INTERACTION DESIGN // FRONTEND DEVELOPMENT</div>
+                        <div className="dossier-resume-entry-desc">Revamped the visual language of SmartFM product through an immersive three.js demo </div>
                     </div>
 
                     <div className="dossier-resume-entry">
@@ -2134,7 +2150,7 @@ function DossierOverlay({ scrollRef }) {
                             <span className="dossier-resume-entry-date">2024</span>
                         </div>
                         <div className="dossier-resume-entry-sub">SENIOR PRODUCT DESIGNER // ENTERPRISE SYSTEMS</div>
-                        <div className="dossier-resume-entry-desc">Led UX for Engine Immobilizer — remote vehicle security system allowing fleet managers to immobilize vehicles in real-time.</div>
+                        <div className="dossier-resume-entry-desc">Led UX for Engine Immobilizer - remote vehicle security system allowing fleet managers to immobilize vehicles in real-time.</div>
                     </div>
 
                     <div className="dossier-resume-entry">
@@ -2144,15 +2160,6 @@ function DossierOverlay({ scrollRef }) {
                         </div>
                         <div className="dossier-resume-entry-sub">UX DESIGN & STRATEGY // LEARNING SYSTEMS</div>
                         <div className="dossier-resume-entry-desc">Designed Workflows — a central hub for project and documentation management, helping fast-moving teams optimize for outcomes.</div>
-                    </div>
-
-                    <div className="dossier-resume-entry">
-                        <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">DELL / UT AUSTIN</span>
-                            <span className="dossier-resume-entry-date">NOW</span>
-                        </div>
-                        <div className="dossier-resume-entry-sub">AI PRODUCT DESIGN // SCHOOL OF INFORMATION</div>
-                        <div className="dossier-resume-entry-desc">Building AI-based leak protection systems and developing a SaaS capstone application.</div>
                     </div>
 
                     <div className="dossier-resume-section">TOOLS & SKILLS</div>
@@ -2165,10 +2172,10 @@ function DossierOverlay({ scrollRef }) {
                     <div className="dossier-resume-section">EDUCATION</div>
                     <div className="dossier-resume-entry">
                         <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">UT AUSTIN</span>
+                            <span className="dossier-resume-entry-title">The University of Texas at Austin</span>
                             <span className="dossier-resume-entry-date">2025</span>
                         </div>
-                        <div className="dossier-resume-entry-sub">SCHOOL OF INFORMATION // CAPSTONE</div>
+                        <div className="dossier-resume-entry-sub">SCHOOL OF INFORMATION // SAAS</div>
                     </div>
                 </div>
 
@@ -2573,6 +2580,7 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
                 normalMap: orig.normalMap ?? null,
                 roughnessMap: orig.roughnessMap ?? null,
                 metalnessMap: orig.metalnessMap ?? null,
+                emissiveMap: orig.map ?? null,
                 roughness: orig.roughness ?? 0.6,
                 metalness: orig.metalness ?? 0.4,
                 emissive: new THREE.Color('#00ccff'),
@@ -2670,22 +2678,124 @@ const RESUME_CSS = `
 .dossier .skills { font-size:9px; color:#444; line-height:2; letter-spacing:0.04em }
 `
 
+// ─── Photo Ring — circular gallery of images for the Dossier section ──────────
+const PHOTO_PATHS = [
+    '/photos/DSCN3675 (1).png',
+    '/photos/E8BBA5C7-1659-4C8E-9044-9555075F11A0.png',
+    '/photos/IMG_1830.png',
+    '/photos/IMG_3979.png',
+    '/photos/IMG_7194.png',
+    '/photos/IMG_7737.png',
+    '/photos/IMG_8804.png',
+    '/photos/PXL_20250318_174316350.png',
+    '/photos/PXL_20250318_174319952 (1).png',
+    '/photos/PXL_20251026_025829577.png',
+    '/photos/exported_8647493E-CA66-4175-AA6D-9ACDC7C9E1A2.png'
+]
+
+function SinglePhoto({ path, angle, radius, center, hoveredIdx, setHoveredIdx, index, appeared }) {
+    const meshRef = useRef()
+    const tex = useTexture(path)
+    const opRef = useRef(0)
+    const scaleRef = useRef(1)
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return
+
+        const isHovered = hoveredIdx === index
+        const targetOp = appeared ? (isHovered ? 1 : 0.4) : 0
+        opRef.current = dampValue(opRef.current, targetOp, 4, delta)
+        scaleRef.current = dampValue(scaleRef.current, isHovered ? 1.4 : 1, 6, delta)
+
+        const x = center[0] + Math.cos(angle) * (radius + (isHovered ? 1.5 : 0))
+        const y = center[1] + (index % 2 === 0 ? 0.4 : -0.4) + Math.sin(state.clock.elapsedTime + index) * 0.2
+        const z = center[2] + Math.sin(angle) * (radius + (isHovered ? 1.5 : 0))
+
+        meshRef.current.position.set(x, y, z)
+        meshRef.current.lookAt(center[0], center[1], center[2])
+        meshRef.current.scale.setScalar(scaleRef.current)
+        meshRef.current.material.opacity = opRef.current
+        meshRef.current.material.emissiveIntensity = 0.15 + (isHovered ? 0.35 : 0) + Math.sin(state.clock.elapsedTime * 4 + index) * 0.05
+    })
+
+    return (
+        <mesh
+            ref={meshRef}
+            onPointerOver={e => { e.stopPropagation(); setHoveredIdx(index); document.body.style.cursor = 'pointer' }}
+            onPointerOut={() => { setHoveredIdx(-1); document.body.style.cursor = 'auto' }}
+        >
+            <planeGeometry args={[1.5, 2.2]} />
+            <meshStandardMaterial
+                map={tex}
+                emissive="#00ccff"
+                emissiveMap={tex}
+                transparent
+                opacity={0}
+                side={THREE.DoubleSide}
+                toneMapped={false}
+                depthWrite={false}
+            />
+        </mesh>
+    )
+}
+
+function PhotoRing({ appeared }) {
+    const [hoveredIdx, setHoveredIdx] = useState(-1)
+    const groupRef = useRef()
+    const radius = 5.5
+    const center = [-2, -4.5, -10]
+
+    useFrame((_, delta) => {
+        if (groupRef.current && hoveredIdx === -1) {
+            groupRef.current.rotation.y += delta * 0.12
+        }
+    })
+
+    return (
+        <group ref={groupRef}>
+            {PHOTO_PATHS.map((path, i) => {
+                const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
+                return (
+                    <SinglePhoto
+                        key={path}
+                        path={path}
+                        angle={angle}
+                        radius={radius}
+                        center={center}
+                        hoveredIdx={hoveredIdx}
+                        setHoveredIdx={setHoveredIdx}
+                        index={i}
+                        appeared={appeared}
+                    />
+                )
+            })}
+        </group>
+    )
+}
+
 function BustDiptych({ scrollRef }) {
     const opRef = useRef()
+    const [appeared, setAppeared] = useState(false)
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
         const show = t >= DIPTYCH_ENTER
-        if (opRef.current)
-            opRef.current.position.y = dampValue(opRef.current.position.y, show ? 0 : -18, 5, delta)
+        if (appeared !== show) setAppeared(show)
+        if (opRef.current) {
+            const targetScale = show ? 1 : 0
+            const s = dampValue(opRef.current.scale.x, targetScale, 4, delta)
+            opRef.current.scale.setScalar(s)
+            opRef.current.position.y = 0
+        }
     })
 
     return (
         // Bust centred in the left portion of the face-camera view (fov 36, tight)
         // x=-1 shifts ~½ unit left of camera centre so the right 40vw resume panel has room
-        <group ref={opRef} position={[0, -18, 0]}>
-            <GlitchBust position={[-2, -3.5, -10]} scale={6} rotSpeed={0.04} />
-            <SigilModel position={[-1, -3.5, -2.5]} scale={1.8} />
+        <group ref={opRef} position={[0, 0, 0]} scale={0}>
+            <GlitchBust position={[-2, -4.5, -10]} scale={6} rotSpeed={0.04} />
+            <SigilModel position={[-1, -4.5, -2.5]} scale={1.8} />
+            <PhotoRing appeared={appeared} />
         </group>
     )
 }
@@ -3033,7 +3143,7 @@ export default function Portfolio() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '13px', pointerEvents: 'auto', padding: '24px 0' }}>
                     <div style={{ fontWeight: 'bold' }}>MUSTAFA // PORTFOLIO</div>
                     <div>
-                        Building AI solutions at <a href="#" target="_blank" style={{ color: '#717fe9', textDecoration: 'none' }}>Dell</a>
+                        Open for work
                     </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', pointerEvents: 'auto', padding: '24px 0' }}>
