@@ -3070,12 +3070,27 @@ const SCROLL_HINT_CSS = `
     80% { clip-path: inset(80% 0 5% 0); transform: translate(-1px, 1px); }
     100% { clip-path: inset(30% 0 40% 0); transform: translate(1px, -1px); }
 }
+@keyframes glitch-gradient-shimmer {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
 .glitch-link {
     position: relative;
     display: inline-block;
-    transition: color 0.2s;
+    background: linear-gradient(90deg, #8899cc 0%, #ffffff 50%, #8899cc 100%);
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent !important;
+    animation: glitch-gradient-shimmer 4s linear infinite;
+    transition: opacity 0.2s;
+    text-decoration: none;
 }
-.glitch-link:hover { color: #fff !important; }
+.glitch-link:hover { 
+    color: #fff !important; 
+    background: none; 
+    -webkit-text-fill-color: #fff;
+}
 .glitch-link::before,
 .glitch-link::after {
     content: attr(data-text);
@@ -3084,6 +3099,7 @@ const SCROLL_HINT_CSS = `
     width: 100%; height: 100%;
     background: #050510;
     display: none;
+    -webkit-text-fill-color: initial;
 }
 .glitch-link:hover::before {
     display: block;
