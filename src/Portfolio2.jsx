@@ -42,7 +42,7 @@ const CAMERA_PATH = [
     { t: 0.76, pos: [140, 0, 9], look: [140, 0, 0], fov: 58, roll: -0.5 },
     { t: 0.80, pos: [140, 0, 6], look: [140, 0, 0], fov: 52, roll: 0 },
     // ── Bio section ──
-    { t: 0.86, pos: [140, 0, -2],  look: [140, -1, -30], fov: 54, roll: 0 },
+    { t: 0.86, pos: [140, 0, -2], look: [140, -1, -30], fov: 54, roll: 0 },
     { t: 0.93, pos: [140, 0, -12], look: [140, -1, -30], fov: 52, roll: 0 },
     { t: 1.00, pos: [140, 0, -20], look: [140, -1, -30], fov: 50, roll: 0 },
     // ── Dossier — close-up bust left, resume panel right ──
@@ -137,17 +137,17 @@ function ScrollSmoother({ currentSectionRef, scrollRef }) {
     return null
 }
 
-// Max horizontal rotation when mouse is at screen edge (radians, ~18°)
-const PROJ_YAW_MAX = 0.32
-// Normalized mouse X dead zone — no rotation until mouse passes this threshold
-const PROJ_YAW_DEAD = 0.30
+// Max camera strafe offset in world units — camera drifts toward mouse position
+const PROJ_NUDGE_X = 1.6   // horizontal lean (world units)
+const PROJ_NUDGE_Y = 0.9   // vertical lift (world units)
 
 function CameraController({ scrollRef }) {
     const { camera } = useThree()
     const lookAtTarget = useMemo(() => new THREE.Vector3(), [])
     const prevScroll = useRef(0)
     const velocityRef = useRef(0)
-    const yawOffsetRef = useRef(0)
+    const nudgeXRef = useRef(0)
+    const nudgeYRef = useRef(0)
 
     const _targetPos = useMemo(() => new THREE.Vector3(), [])
     const _targetLook = useMemo(() => new THREE.Vector3(), [])
@@ -186,33 +186,31 @@ function CameraController({ scrollRef }) {
         const pathRoll = THREE.MathUtils.lerp(start.roll, end.roll, easeT) * (Math.PI / 180)
         const targetRoll = pathRoll * (1 + velocityRef.current * 3.5)
 
+        // ── Mouse parallax nudge: active only in project card section ────────
+        // Blend weight — project cards AND bio/resume section
+        // ramp in: 0.38-0.44, full: 0.44-0.70, ramp in again: 0.86-0.93, full: 0.93-1.10
+        const projBlend = clamp(
+            t < 0.38 ? 0 :
+                t < 0.44 ? (t - 0.38) / 0.06 :
+                    t <= 0.70 ? 1 - (Math.max(0, t - 0.62) / 0.08) :
+                        t < 0.86 ? 0 :
+                            t < 0.93 ? (t - 0.86) / 0.07 : 1,
+            0, 1
+        )
+        const mx = uiHoveredRef.current ? 0 : clamp(state.pointer.x, -1, 1)
+        const my = uiHoveredRef.current ? 0 : clamp(state.pointer.y, -1, 1)
+
+        // Damp toward the nudge target, then bake it into the PATH target
+        // before the lerp — this way the lerp smooths toward the nudged
+        // destination instead of the nudge accumulating post-lerp each frame.
+        nudgeXRef.current = dampValue(nudgeXRef.current, mx * PROJ_NUDGE_X * projBlend, 2.5, delta)
+        nudgeYRef.current = dampValue(nudgeYRef.current, my * PROJ_NUDGE_Y * projBlend, 2.5, delta)
+        _targetPos.x += nudgeXRef.current
+        _targetPos.y += nudgeYRef.current
+
         const lerpFactor = 1 - Math.exp(-6 * delta)
         camera.position.lerp(_targetPos, lerpFactor)
         lookAtTarget.lerp(_targetLook, lerpFactor)
-
-        // ── Mouse-edge yaw: active only in project card section ──────────────
-        // Blend weight: ramp in at t=0.38, full through t=0.62, ramp out at t=0.70
-        const projBlend = clamp(
-            t < 0.38 ? 0 :
-            t < 0.44 ? (t - 0.38) / 0.06 :
-            t <= 0.62 ? 1 :
-            t < 0.70 ? 1 - (t - 0.62) / 0.08 : 0,
-            0, 1
-        )
-        const mx = uiHoveredRef.current ? 0 : state.pointer.x
-        const edgeStr = Math.max(0, (Math.abs(mx) - PROJ_YAW_DEAD) / (1 - PROJ_YAW_DEAD))
-        const targetYaw = Math.sign(mx) * smoothstep(edgeStr) * PROJ_YAW_MAX * projBlend
-        yawOffsetRef.current = dampValue(yawOffsetRef.current, targetYaw, 3.5, delta)
-
-        const yaw = yawOffsetRef.current
-        if (Math.abs(yaw) > 0.00001) {
-            // Orbit camera position around Y axis centered on lookAt target
-            const lx = lookAtTarget.x, lz = lookAtTarget.z
-            const dx = camera.position.x - lx, dz = camera.position.z - lz
-            const c = Math.cos(yaw), s = Math.sin(yaw)
-            camera.position.x = lx + dx * c - dz * s
-            camera.position.z = lz + dx * s + dz * c
-        }
 
         camera.lookAt(lookAtTarget)
         camera.fov = dampValue(camera.fov, targetFov, 6, delta)
@@ -640,9 +638,9 @@ useGLTF.preload('/Engine Immobilizer.glb')
 const wfVideoOpRef = { current: 0 }
 
 const CORNER_STYLES = [
-    { top: 6, left: 6,  borderTop: '2px solid #44ff88', borderLeft:  '2px solid #44ff88' },
+    { top: 6, left: 6, borderTop: '2px solid #44ff88', borderLeft: '2px solid #44ff88' },
     { top: 6, right: 6, borderTop: '2px solid #44ff88', borderRight: '2px solid #44ff88' },
-    { bottom: 6, left: 6,  borderBottom: '2px solid #44ff88', borderLeft:  '2px solid #44ff88' },
+    { bottom: 6, left: 6, borderBottom: '2px solid #44ff88', borderLeft: '2px solid #44ff88' },
     { bottom: 6, right: 6, borderBottom: '2px solid #44ff88', borderRight: '2px solid #44ff88' },
 ]
 
@@ -674,46 +672,54 @@ function VideoScreen() {
                         border: '1px solid rgba(68,255,136,0.35)',
                         borderBottom: 'none',
                     }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:8, letterSpacing:'0.15em', color:'#44ff88' }}>
-                            <span className="hud-dot" style={{ width:6, height:6, borderRadius:'50%', background:'#44ff88', display:'inline-block' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, letterSpacing: '0.15em', color: '#44ff88' }}>
+                            <span className="hud-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#44ff88', display: 'inline-block' }} />
                             MISSION BRIEFING
                         </div>
-                        <span style={{ fontSize:8, color:'rgba(68,255,136,0.55)', letterSpacing:'0.1em' }}>WF-2023</span>
+                        <span style={{ fontSize: 8, color: 'rgba(68,255,136,0.55)', letterSpacing: '0.1em' }}>WF-2023</span>
                     </div>
 
                     {/* ── Video feed ── */}
-                    <div style={{ position:'relative', lineHeight:0, overflow:'hidden',
-                                  border:'1px solid rgba(68,255,136,0.35)', borderTop:'none', borderBottom:'none' }}>
+                    <div style={{
+                        position: 'relative', lineHeight: 0, overflow: 'hidden',
+                        border: '1px solid rgba(68,255,136,0.35)', borderTop: 'none', borderBottom: 'none'
+                    }}>
                         <video src="/workflows-video.mp4" autoPlay loop muted playsInline
-                            style={{ width:'262px', height:'148px', objectFit:'cover', display:'block',
-                                     filter:'contrast(1.05) brightness(0.88)' }} />
+                            style={{
+                                width: '262px', height: '148px', objectFit: 'cover', display: 'block',
+                                filter: 'contrast(1.05) brightness(0.88)'
+                            }} />
 
                         {/* Scanlines */}
-                        <div style={{ position:'absolute', inset:0, pointerEvents:'none',
-                                      background:'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 3px)' }} />
+                        <div style={{
+                            position: 'absolute', inset: 0, pointerEvents: 'none',
+                            background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 3px)'
+                        }} />
                         {/* Moving sweep */}
                         <div className="hud-scan" />
 
                         {/* Corner brackets */}
                         {CORNER_STYLES.map((s, i) => (
-                            <div key={i} style={{ position:'absolute', width:12, height:12, pointerEvents:'none', ...s }} />
+                            <div key={i} style={{ position: 'absolute', width: 12, height: 12, pointerEvents: 'none', ...s }} />
                         ))}
 
                         {/* Top-right label */}
-                        <div style={{ position:'absolute', top:9, right:22, fontSize:7,
-                                      color:'rgba(68,255,136,0.65)', letterSpacing:'0.12em' }}>SIG 4/5</div>
+                        <div style={{
+                            position: 'absolute', top: 9, right: 22, fontSize: 7,
+                            color: 'rgba(68,255,136,0.65)', letterSpacing: '0.12em'
+                        }}>SIG 4/5</div>
                     </div>
 
                     {/* ── Footer ── */}
                     <div style={{
-                        display:'flex', justifyContent:'space-between', alignItems:'center',
-                        padding:'4px 9px',
-                        background:'rgba(68,255,136,0.04)',
-                        border:'1px solid rgba(68,255,136,0.35)',
-                        borderTop:'none',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '4px 9px',
+                        background: 'rgba(68,255,136,0.04)',
+                        border: '1px solid rgba(68,255,136,0.35)',
+                        borderTop: 'none',
                     }}>
-                        <span style={{ fontSize:7, color:'rgba(68,255,136,0.5)', letterSpacing:'0.1em' }}>$1M Customer Acquired</span>
-                        <span className="hud-dot" style={{ fontSize:7, color:'rgba(68,255,136,0.65)', letterSpacing:'0.1em' }}>● REC</span>
+                        <span style={{ fontSize: 7, color: 'rgba(68,255,136,0.5)', letterSpacing: '0.1em' }}>$1M Customer Acquired</span>
+                        <span className="hud-dot" style={{ fontSize: 7, color: 'rgba(68,255,136,0.65)', letterSpacing: '0.1em' }}>● REC</span>
                     </div>
                 </div>
             </Html>
@@ -1013,7 +1019,7 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
     )
 }
 
-function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0, 0], delay = 0 }) {
+function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0, 0], delay = 0, cogScale = 0.72 }) {
     const instancedRef = useRef()
     const offsetRef = useRef(0)
     const drawProgressRef = useRef(0)
@@ -1065,7 +1071,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         }
 
         const SPREAD_RADIUS = 8
-        const SPREAD_STRENGTH = 0.38
+        const SPREAD_STRENGTH = 0.85
         const hovIdx = hovInstRef.current
 
         const spacing = 1 / count
@@ -1099,7 +1105,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             if (t > drawProgressRef.current) {
                 dummyMatrix.scale.set(0, 0, 0)
             } else {
-                dummyMatrix.scale.set(1, 1, 1)
+                dummyMatrix.scale.set(cogScale, cogScale, cogScale)
             }
 
             dummyMatrix.updateMatrix()
@@ -1129,13 +1135,13 @@ function withZ(pts, amp = 0.35) {
     return pts.map((p, i) => new THREE.Vector3(p.x, p.y, Math.sin((i / Math.max(pts.length - 1, 1)) * Math.PI * 2) * amp))
 }
 
-const RAW_M = [v3(1.7244, -2), v3(1.7244, 2), v3(1.7007, 2), v3(0.0119, -1.8222), v3(-0.0119, -1.8222), v3(-1.7007, 2), v3(-1.7244, 2), v3(-1.7244, -2)]
-const RAW_U = [v3(-1.2978, 2.0296), v3(-1.2978, -0.5481), v3(-1.2044, -1.17), v3(-0.9415, -1.6252), v3(-0.5353, -1.9048), v3(-0.0119, -2), v3(0.5266, -1.9048), v3(0.9311, -1.6252), v3(1.1856, -1.17), v3(1.2741, -0.5481), v3(1.2741, 2.0296)]
+const RAW_M = [v3(1.7244, -2), v3(1.7244, 2), v3(0, -1.8222), v3(-1.7244, 2), v3(-1.7244, -2)]
+const RAW_U = [v3(-1.2978, 2.0296), v3(-1.2978, -0.5481), v3(-1.2044, -1.17), v3(-0.9415, -1.6252), v3(-0.5353, -1.9048), v3(0, -2), v3(0.5353, -1.9048), v3(0.9415, -1.6252), v3(1.2044, -1.17), v3(1.2978, -0.5481), v3(1.2978, 2.0296)]
 const RAW_S = [v3(-1.1141, -1.3541), v3(-0.9448, -1.62), v3(-0.6933, -1.8237), v3(-0.3707, -1.9541), v3(0.0119, -2), v3(0.4862, -1.9232), v3(0.8422, -1.7148), v3(1.066, -1.4075), v3(1.1437, -1.0341), v3(0.8039, -0.3555), v3(0.0563, 0.0615), v3(-0.6913, 0.4684), v3(-1.0311, 1.117), v3(-0.9624, 1.4571), v3(-0.757, 1.7489), v3(-0.4161, 1.9529), v3(0.0593, 2.0296), v3(0.4052, 1.9896), v3(0.68, 1.8785), v3(0.8859, 1.7096), v3(1.0252, 1.4963)]
 const RAW_T0 = [v3(0, -2), v3(0, 1.9704)]
-const RAW_T1 = [v3(-1.3037, 1.9704), v3(1.3037, 1.9704)]
-const RAW_A0 = [v3(-1.0844, -0.7378), v3(1.0904, -0.7378)]
-const RAW_A1 = [v3(1.5881, -2), v3(0.0237, 2), v3(0, 2), v3(-1.5881, -2)]
+const RAW_T1 = [v3(-1.75, 1.9704), v3(1.75, 1.9704)]
+const RAW_A0 = [v3(-1.09, -0.7378), v3(1.09, -0.7378)]
+const RAW_A1 = [v3(1.5881, -2), v3(0.79, 0), v3(0, 2), v3(-0.79, 0), v3(-1.5881, -2)]
 const RAW_F0 = [v3(-0.803, -2), v3(-0.803, 1.9704), v3(1.2178, 1.9704)]
 const RAW_F1 = [v3(-0.803, 0.0563), v3(1.117, 0.0563)]
 
@@ -1160,7 +1166,7 @@ const MUSTAFA_LETTERS = {
 }
 
 // WritingSpineLetter already handles a single path — wrap it for multi-stroke support
-function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], scale = 1, delay = 0 }) {
+function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], scale = 1, delay = 0, cogScale = 0.72 }) {
     const paths = MUSTAFA_LETTERS[char] || [LETTER_M]
     return (
         <group position={position} scale={scale}>
@@ -1171,6 +1177,7 @@ function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], sc
                     sourceGeometry={sourceGeometry}
                     material={material}
                     delay={delay + idx * 0.4}
+                    cogScale={cogScale}
                 />
             ))}
         </group>
@@ -1561,10 +1568,10 @@ function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
 }
 
 // ─── Main Ethos Section (3D) ──────────────────────────────────────────────────
-const ETHOS_SIGIL_POS  = [3, 0, 11]
-const ETHOS_LEFT_PIL   = [-7, 0, 11]
-const ETHOS_RIGHT_PIL  = [13, 0, 11]
-const ETHOS_CHAIN_Y    = 2.1   // height of pillar tops
+const ETHOS_SIGIL_POS = [3, 0, 11]
+const ETHOS_LEFT_PIL = [-7, 0, 11]
+const ETHOS_RIGHT_PIL = [13, 0, 11]
+const ETHOS_CHAIN_Y = 2.1   // height of pillar tops
 
 function EthosSection({ scrollRef }) {
     const groupRef = useRef()
@@ -1588,18 +1595,19 @@ function EthosSection({ scrollRef }) {
 
             {/* Spine chain connecting the two pillar tops */}
             <SpineChain
-                start={[ETHOS_LEFT_PIL[0],  ETHOS_CHAIN_Y, ETHOS_LEFT_PIL[2]]}
+                start={[ETHOS_LEFT_PIL[0], ETHOS_CHAIN_Y, ETHOS_LEFT_PIL[2]]}
                 end={[ETHOS_RIGHT_PIL[0], ETHOS_CHAIN_Y, ETHOS_RIGHT_PIL[2]]}
                 mid={[3, ETHOS_CHAIN_Y - 2.8, 11]}
                 color="#3366ff"
                 active={false}
+                interactive={false}
                 segments={30}
                 cogScale={0.52}
             />
 
-            <pointLight position={[3, 4, 6]}  intensity={180} color="#6699ff" distance={16} decay={2} />
-            <pointLight position={[-7, 2, 4]} intensity={40}  color="#3355ff" distance={10} decay={2} />
-            <pointLight position={[13, 2, 4]} intensity={40}  color="#3355ff" distance={10} decay={2} />
+            <pointLight position={[3, 4, 6]} intensity={180} color="#6699ff" distance={16} decay={2} />
+            <pointLight position={[-7, 2, 4]} intensity={40} color="#3355ff" distance={10} decay={2} />
+            <pointLight position={[13, 2, 4]} intensity={40} color="#3355ff" distance={10} decay={2} />
         </group>
     )
 }
@@ -1984,25 +1992,84 @@ export function BioOverlay() { return null }
 
 // ─── Dossier overlay — full-height resume panel, shown on final scroll stop ──
 const DOSSIER_CSS = `
+@keyframes dossier-in {
+    from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
 .dossier-panel {
     position: fixed;
-    right: 0; top: 0;
-    width: 40vw; height: 100vh;
-    background: #f0ece4;
+    left: 62%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(420px, 38vw);
+    height: min(580px, 76vh);
+    background: rgba(6, 7, 20, 0.72);
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    border: 1px solid rgba(100, 130, 220, 0.22);
+    border-radius: 4px;
     display: flex; flex-direction: column;
     pointer-events: auto;
-    border-left: 1px solid rgba(0,0,0,0.06);
-    box-shadow: -32px 0 80px rgba(0,0,0,0.42);
+    box-shadow: 0 0 0 1px rgba(60,90,200,0.08), 0 24px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06);
     z-index: 80;
-    transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.16,1,0.3,1);
+    transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16,1,0.3,1);
+    overflow: hidden;
 }
-.dossier-panel.hidden { opacity: 0; transform: translateX(30px); pointer-events: none; }
-.dossier-panel .resume-iframe { flex: 1; border: none; width: 100%; display: block; min-height: 0; }
-.dossier-panel .dl-btn-row { display: flex; flex-shrink: 0; }
-.dossier-panel .dl-btn { display: block; flex: 1; padding: 13px 0; background: #111; color: #f8f6f1; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; text-decoration: none; border: none; border-right: 1px solid #2a2a2a; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; box-sizing: border-box; }
+.dossier-panel:not(.hidden) { animation: dossier-in 0.45s cubic-bezier(0.16,1,0.3,1) both; }
+.dossier-panel.hidden { opacity: 0; transform: translate(-50%, -46%) scale(0.96); pointer-events: none; }
+.dossier-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid rgba(100,130,220,0.15);
+    flex-shrink: 0;
+}
+.dossier-header-label {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.28em;
+    color: rgba(136,160,255,0.6); text-transform: uppercase;
+    display: flex; align-items: center; gap: 7px;
+}
+.dossier-header-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #3366ff; box-shadow: 0 0 6px #3366ff;
+    animation: dossier-blink 1.4s step-end infinite;
+}
+@keyframes dossier-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.dossier-header-id { font-family: var(--font-mono); font-size: 8px; color: rgba(100,130,180,0.35); letter-spacing: 0.12em; }
+.dossier-panel .resume-body {
+    flex: 1; overflow-y: auto; padding: 18px 18px 12px;
+    scrollbar-width: thin; scrollbar-color: rgba(80,120,220,0.25) transparent;
+}
+.dossier-panel .resume-body::-webkit-scrollbar { width: 3px; }
+.dossier-panel .resume-body::-webkit-scrollbar-thumb { background: rgba(80,120,220,0.25); border-radius: 2px; }
+.dossier-resume-name { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.2em; color: #eef2ff; margin: 0 0 2px; }
+.dossier-resume-role { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.22em; color: rgba(136,160,255,0.55); margin: 0 0 14px; }
+.dossier-resume-section { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.25em; color: rgba(100,130,200,0.45); margin: 16px 0 8px; padding-bottom: 5px; border-bottom: 1px solid rgba(100,130,220,0.1); }
+.dossier-resume-entry { margin: 0 0 12px; }
+.dossier-resume-entry-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.dossier-resume-entry-title { font-family: var(--font-mono); font-size: 10px; color: #c8d8ff; letter-spacing: 0.06em; }
+.dossier-resume-entry-date { font-family: var(--font-mono); font-size: 8px; color: rgba(100,130,180,0.45); letter-spacing: 0.08em; }
+.dossier-resume-entry-sub { font-family: var(--font-mono); font-size: 8px; color: rgba(136,160,255,0.5); letter-spacing: 0.1em; margin-bottom: 3px; }
+.dossier-resume-entry-desc { font-family: 'Space Mono', monospace; font-size: 8.5px; color: rgba(180,200,240,0.5); line-height: 1.7; letter-spacing: 0.02em; }
+.dossier-resume-skills { display: flex; flex-wrap: wrap; gap: 5px; }
+.dossier-resume-skill { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.12em; color: rgba(100,140,220,0.65); padding: 2px 7px; border: 1px solid rgba(80,110,200,0.18); border-radius: 2px; }
+.dossier-panel .dl-btn-row {
+    display: flex; flex-shrink: 0;
+    border-top: 1px solid rgba(100,130,220,0.15);
+}
+.dossier-panel .dl-btn {
+    display: block; flex: 1; padding: 11px 0;
+    background: transparent;
+    color: rgba(136,160,255,0.7);
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    text-align: center; text-decoration: none;
+    border: none; border-right: 1px solid rgba(100,130,220,0.15);
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+    box-sizing: border-box;
+}
 .dossier-panel .dl-btn:last-child { border-right: none; }
-.dossier-panel .dl-btn:hover { background: #1a1a2e; color: #ffffff; }
-.dossier-panel .dl-btn.copied { background: #0a2a1a; color: #00ff88; }
+.dossier-panel .dl-btn:hover { background: rgba(50,90,220,0.14); color: #ffffff; }
+.dossier-panel .dl-btn.copied { background: rgba(0,80,40,0.22); color: #00ff88; }
 `
 
 const CONTACT_EMAIL = 'mustafa.akbar.me@gmail.com'
@@ -2038,13 +2105,75 @@ function DossierOverlay({ scrollRef }) {
         <>
             <style>{DOSSIER_CSS}</style>
             <div ref={panelRef} className="dossier-panel hidden">
-                <iframe
-                    src="/Resume%20-%20Mustafa%20Akbar.pdf#toolbar=0&navpanes=0&scrollbar=0"
-                    className="resume-iframe"
-                    title="Mustafa Akbar Resume"
-                />
+                <div className="dossier-header">
+                    <div className="dossier-header-label">
+                        <span className="dossier-header-dot" />
+                        DOSSIER // MUSTAFA AKBAR
+                    </div>
+                    <span className="dossier-header-id">UX-26</span>
+                </div>
+
+                <div className="resume-body">
+                    <div className="dossier-resume-name">MUSTAFA AKBAR</div>
+                    <div className="dossier-resume-role">SENIOR PRODUCT DESIGNER // UX ARCHITECT</div>
+
+                    <div className="dossier-resume-section">EXPERIENCE</div>
+
+                    <div className="dossier-resume-entry">
+                        <div className="dossier-resume-entry-header">
+                            <span className="dossier-resume-entry-title">CBRE</span>
+                            <span className="dossier-resume-entry-date">2025</span>
+                        </div>
+                        <div className="dossier-resume-entry-sub">VISUAL LANGUAGE // INTERACTION DESIGN</div>
+                        <div className="dossier-resume-entry-desc">Designing scalable visual systems and interaction patterns for enterprise real estate products.</div>
+                    </div>
+
+                    <div className="dossier-resume-entry">
+                        <div className="dossier-resume-entry-header">
+                            <span className="dossier-resume-entry-title">MOTIVE</span>
+                            <span className="dossier-resume-entry-date">2024</span>
+                        </div>
+                        <div className="dossier-resume-entry-sub">SENIOR PRODUCT DESIGNER // ENTERPRISE SYSTEMS</div>
+                        <div className="dossier-resume-entry-desc">Led UX for Engine Immobilizer — remote vehicle security system allowing fleet managers to immobilize vehicles in real-time.</div>
+                    </div>
+
+                    <div className="dossier-resume-entry">
+                        <div className="dossier-resume-entry-header">
+                            <span className="dossier-resume-entry-title">EDUCATIVE</span>
+                            <span className="dossier-resume-entry-date">2023</span>
+                        </div>
+                        <div className="dossier-resume-entry-sub">UX DESIGN & STRATEGY // LEARNING SYSTEMS</div>
+                        <div className="dossier-resume-entry-desc">Designed Workflows — a central hub for project and documentation management, helping fast-moving teams optimize for outcomes.</div>
+                    </div>
+
+                    <div className="dossier-resume-entry">
+                        <div className="dossier-resume-entry-header">
+                            <span className="dossier-resume-entry-title">DELL / UT AUSTIN</span>
+                            <span className="dossier-resume-entry-date">NOW</span>
+                        </div>
+                        <div className="dossier-resume-entry-sub">AI PRODUCT DESIGN // SCHOOL OF INFORMATION</div>
+                        <div className="dossier-resume-entry-desc">Building AI-based leak protection systems and developing a SaaS capstone application.</div>
+                    </div>
+
+                    <div className="dossier-resume-section">TOOLS & SKILLS</div>
+                    <div className="dossier-resume-skills">
+                        {['Figma', 'Blender', 'Rive', 'Origami Studio', 'Miro', 'React', 'Three.js', 'Framer', 'Prototyping', 'Systems Design', 'Motion Design', 'User Research'].map(s => (
+                            <span key={s} className="dossier-resume-skill">{s}</span>
+                        ))}
+                    </div>
+
+                    <div className="dossier-resume-section">EDUCATION</div>
+                    <div className="dossier-resume-entry">
+                        <div className="dossier-resume-entry-header">
+                            <span className="dossier-resume-entry-title">UT AUSTIN</span>
+                            <span className="dossier-resume-entry-date">2025</span>
+                        </div>
+                        <div className="dossier-resume-entry-sub">SCHOOL OF INFORMATION // CAPSTONE</div>
+                    </div>
+                </div>
+
                 <div className="dl-btn-row">
-                    <a href="/Resume%20-%20Mustafa%20Akbar.pdf" download="Resume - Mustafa Akbar.pdf" className="dl-btn">↓ Resume</a>
+                    <a href="/Resume%20-%20Mustafa%20Akbar.pdf" download="Resume - Mustafa Akbar.pdf" className="dl-btn">↓ Download PDF</a>
                     <button onClick={copyEmail} className={`dl-btn${copied ? ' copied' : ''}`}>{copied ? 'Copied ✓' : '@ Email'}</button>
                 </div>
             </div>
@@ -2125,19 +2254,28 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
 }
 
 // Central resume hub — glowing icosahedron with orbiting ring
-function ResumeHub() {
+function ResumeHub({ currentSectionRef }) {
     const meshRef = useRef()
     const ringRef = useRef()
+    const [hovered, setHovered] = useState(false)
     useFrame((_, delta) => {
         if (meshRef.current) meshRef.current.rotation.y += delta * 0.4
         if (ringRef.current) ringRef.current.rotation.z -= delta * 0.6
     })
+    const goToDossier = (e) => {
+        e.stopPropagation()
+        if (currentSectionRef) currentSectionRef.current = SECTION_STOPS.length - 1
+    }
     return (
         <group position={HUB_POS}>
-            <mesh ref={meshRef}>
+            <mesh ref={meshRef}
+                onClick={goToDossier}
+                onPointerEnter={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
+                onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'auto' }}
+            >
                 <icosahedronGeometry args={[0.7, 1]} />
                 <meshStandardMaterial
-                    color="#eef2ff" emissive="#3366ff" emissiveIntensity={0.6}
+                    color="#eef2ff" emissive="#3366ff" emissiveIntensity={hovered ? 1.2 : 0.6}
                     metalness={0.8} roughness={0.1} toneMapped={false}
                 />
             </mesh>
@@ -2240,7 +2378,7 @@ function LockedCube({ clicked, onCubeClick, onHover, onHoverOut }) {
 useGLTF.preload('/spine.glb')
 
 // Samples a quadratic bezier, orients each spine cog along the tangent
-function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpeed = 1.5, paused = false, cogScale = 0.28 }) {
+function SpineChain({ start, end, mid, color, active, interactive = true, segments = 20, rotationSpeed = 1.5, paused = false, cogScale = 0.28 }) {
     const { scene } = useGLTF('/spine.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
@@ -2257,19 +2395,19 @@ function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpe
         const m = new THREE.Vector3(...mid)
         const e = new THREE.Vector3(...end)
         return Array.from({ length: segments }, (_, i) => {
-            const t  = i / segments
+            const t = i / segments
             const tm = (i + 0.5) / segments   // midpoint t for tangent
             const mt = 1 - t, mtm = 1 - tm
             const pos = new THREE.Vector3(
-                mt*mt*s.x + 2*mt*t*m.x + t*t*e.x,
-                mt*mt*s.y + 2*mt*t*m.y + t*t*e.y,
-                mt*mt*s.z + 2*mt*t*m.z + t*t*e.z,
+                mt * mt * s.x + 2 * mt * t * m.x + t * t * e.x,
+                mt * mt * s.y + 2 * mt * t * m.y + t * t * e.y,
+                mt * mt * s.z + 2 * mt * t * m.z + t * t * e.z,
             )
             // Quadratic bezier derivative (tangent)
             const tan = new THREE.Vector3(
-                2*mtm*(m.x - s.x) + 2*tm*(e.x - m.x),
-                2*mtm*(m.y - s.y) + 2*tm*(e.y - m.y),
-                2*mtm*(m.z - s.z) + 2*tm*(e.z - m.z),
+                2 * mtm * (m.x - s.x) + 2 * tm * (e.x - m.x),
+                2 * mtm * (m.y - s.y) + 2 * tm * (e.y - m.y),
+                2 * mtm * (m.z - s.z) + 2 * tm * (e.z - m.z),
             ).normalize()
             const quat = new THREE.Quaternion().setFromUnitVectors(_up, tan)
             return { pos: pos.toArray(), quat }
@@ -2297,9 +2435,10 @@ function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpe
     }, [active, color, clones])
 
     useFrame((_, delta) => {
-        // Clear hover if no cog reported a pointer-over in the last 2 frames
+        // Clear hover if no cog refreshed the frame counter in the last 8 frames
+        // (2 was too tight — edge-on cogs miss pointerOver intermittently, causing snapping)
         frameCountRef.current++
-        if (frameCountRef.current - lastEnterFrameRef.current > 2) hoveredIdxRef.current = -1
+        if (frameCountRef.current - lastEnterFrameRef.current > 8) hoveredIdxRef.current = -1
 
         // Spin each cog — smoothly decelerates/accelerates on pause/resume
         speedRef.current = dampValue(speedRef.current, paused ? 0 : 1, 5, delta)
@@ -2330,7 +2469,8 @@ function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpe
                     ref={el => { if (el) posRefs.current[i] = el }}
                     position={t.pos}
                     quaternion={t.quat}
-                    onPointerOver={e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }}>
+                    onPointerOver={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}
+                    onPointerMove={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}>
                     <group ref={el => { if (el) { el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
                         <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
                     </group>
@@ -2340,7 +2480,7 @@ function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpe
     )
 }
 
-function ModularResumePatch({ visible }) {
+function ModularResumePatch({ visible, currentSectionRef }) {
     const groupRef = useRef()
     const [activeId, setActiveId] = useState(null)
     const [cubeClicked, setCubeClicked] = useState(false)
@@ -2406,7 +2546,7 @@ function ModularResumePatch({ visible }) {
                 />
             ))}
 
-            <ResumeHub />
+            <ResumeHub currentSectionRef={currentSectionRef} />
             <LockedCube
                 clicked={cubeClicked}
                 onCubeClick={() => setCubeClicked(true)}
@@ -2446,16 +2586,26 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
         return c
     }, [robotScene])
 
-    const spinRef  = useRef()   // shared rotation group
+    const spinRef = useRef()   // shared rotation group
     const humanRef = useRef()
     const robotRef = useRef()
     const jitterRef = useRef()
     // state machine: 'human' | 'to_robot' | 'robot' | 'to_human'
     const g = useRef({ phase: 'human', timer: 0, ft: 0, next: 3 + Math.random() * 4 })
 
+    const wander = useRef({ target: 0, timer: 0, next: 2 + Math.random() * 3 })
+
     useFrame((state, delta) => {
-        // shared rotation — both busts stay in sync
-        if (spinRef.current) spinRef.current.rotation.y += delta * rotSpeed
+        // Lazy wander — drifts to a new angle every few seconds, always face-forward
+        const w = wander.current
+        w.timer += delta
+        if (w.timer >= w.next) {
+            w.target = (Math.random() - 0.5) * 0.55   // random within ±0.275 rad (~16°)
+            w.timer = 0
+            w.next = 2.5 + Math.random() * 4.0
+        }
+        if (spinRef.current)
+            spinRef.current.rotation.y = dampValue(spinRef.current.rotation.y, w.target, 0.6, delta)
 
         const s = g.current
         s.timer += delta
@@ -2540,7 +2690,7 @@ function BustDiptych({ scrollRef }) {
     )
 }
 
-function BioSection({ scrollRef }) {
+function BioSection({ scrollRef, currentSectionRef }) {
     const groupRef = useRef()
     const [phase, setPhase] = useState('idle')
     const phaseRef = useRef('idle')
@@ -2571,7 +2721,7 @@ function BioSection({ scrollRef }) {
             <CollapseFlash active={flashActive} />
             <RaveAfterglowLights active={patchVisible} />
             <BioGrid active={patchVisible} />
-            <ModularResumePatch visible={patchVisible} />
+            <ModularResumePatch visible={patchVisible} currentSectionRef={currentSectionRef} />
             <BustDiptych scrollRef={scrollRef} />
         </group>
     )
@@ -2655,7 +2805,7 @@ function Scene({ scrollRef, currentSectionRef }) {
                 <HeroSection />
                 <EthosSection scrollRef={scrollRef} />
                 <ProjectsSection scrollRef={scrollRef} />
-                <BioSection scrollRef={scrollRef} />
+                <BioSection scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
             </Select>
 
             {/* VideoScreen rendered outside Select enabled — no bloom bleed */}
@@ -2748,8 +2898,8 @@ function CopyEmailHud() {
     }
     return (
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-             onMouseEnter={() => setHovered(true)}
-             onMouseLeave={() => setHovered(false)}>
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}>
             <button onClick={copy} title="Copy email" style={{
                 position: 'absolute', right: '100%', marginRight: 8,
                 opacity: hovered ? 1 : 0, pointerEvents: hovered ? 'auto' : 'none',
