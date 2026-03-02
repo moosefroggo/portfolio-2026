@@ -107,7 +107,7 @@ const HERO_CONFIG = {
     groupY: 2.8,             // vertical offset of the whole hero group
     targetFraction: 0.62,    // fraction of viewport width that MUSTAFA fills
 
-    subtitleText: 'An endlessly curios product designer working on creating delightful experiences, currently designing AI-based leak protection system at Dell, and developing a SaaS capstone application at School of Information.',
+    subtitleText: 'An endlessly curios product designer currently building AI-based leak protection system at Dell, and developing a SaaS capstone application at School of Information.',
     subtitleYOffset: -5.8,   // Y below letter baseline (pre-scale)
     subtitleFontSize: 0.6,   // font size (pre-scale)
     subtitleLetterSpacing: 0.15,
@@ -1945,7 +1945,7 @@ const DOSSIER_CSS = `
 .dossier-panel .dl-btn.copied { background: #0a2a1a; color: #00ff88; }
 `
 
-const CONTACT_EMAIL = 'hello@mustafaaleem.com'
+const CONTACT_EMAIL = 'mustafa.akbar.me@gmail.com'
 
 function DossierOverlay({ scrollRef }) {
     const panelRef = useRef()
@@ -2700,28 +2700,29 @@ function CopyEmailHud() {
         setTimeout(() => setCopied(false), 1600)
     }
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
              onMouseEnter={() => setHovered(true)}
              onMouseLeave={() => setHovered(false)}>
+            <button onClick={copy} title="Copy email" style={{
+                position: 'absolute', right: '100%', marginRight: 8,
+                opacity: hovered ? 1 : 0, pointerEvents: hovered ? 'auto' : 'none',
+                background: 'none',
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: copied ? '#00ff88' : '#aabbdd',
+                cursor: 'pointer',
+                padding: '2px 8px',
+                fontSize: 10,
+                letterSpacing: '0.12em',
+                fontFamily: 'var(--font-mono)',
+                lineHeight: '18px',
+                transition: 'opacity 0.15s, color 0.2s',
+                whiteSpace: 'nowrap',
+            }}>
+                {copied ? '✓' : '⧉'}
+            </button>
             <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#fff', textDecoration: 'none' }}>
                 {CONTACT_EMAIL.toUpperCase()}
             </a>
-            {hovered && (
-                <button onClick={copy} title="Copy email" style={{
-                    background: 'none',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    color: copied ? '#00ff88' : '#aabbdd',
-                    cursor: 'pointer',
-                    padding: '2px 8px',
-                    fontSize: 10,
-                    letterSpacing: '0.12em',
-                    fontFamily: 'var(--font-mono)',
-                    lineHeight: '18px',
-                    transition: 'color 0.2s',
-                }}>
-                    {copied ? '✓' : '⧉'}
-                </button>
-            )}
         </div>
     )
 }
@@ -2786,9 +2787,9 @@ export default function Portfolio() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', pointerEvents: 'auto', padding: '24px 0' }}>
                     <div style={{ display: 'flex', gap: '20px' }}>
-                        <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
-                        <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>TWITTER</a>
-                        <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
+                        <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
+                        <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
+                        <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
                     </div>
                     <div>
                         <CopyEmailHud />

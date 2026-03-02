@@ -21,6 +21,13 @@ body.ui-hovered * {
   cursor: auto !important;
 }
 
+body.ui-hovered a,
+body.ui-hovered button,
+body.ui-hovered [role="button"],
+body.ui-hovered [style*="cursor: pointer"] {
+  cursor: pointer !important;
+}
+
 html,
 body,
 #root {
