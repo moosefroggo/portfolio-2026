@@ -621,15 +621,17 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
                 <pointLight color="#ffaa22" intensity={appeared ? 2.5 : 0} distance={4} decay={2} />
             </group>
 
-            {/* Signal line immobilizer → truck */}
+            {/* Signal spine link immobilizer → truck */}
             {appeared && (
-                <Line
-                    points={[[1.6, 0.9, 0.3], [-0.4, -0.3, 0]]}
+                <SpineChain
+                    start={[1.6, 0.9, 0.3]}
+                    end={[-0.4, -0.3, 0]}
+                    mid={[0.6, -0.2, 0.15]}
                     color="#ffaa22"
-                    lineWidth={1}
-                    transparent
-                    opacity={hovered ? 0.75 : 0.35}
-                    toneMapped={false}
+                    active={hovered}
+                    interactive={false}
+                    segments={12}
+                    cogScale={0.15}
                 />
             )}
         </group>
