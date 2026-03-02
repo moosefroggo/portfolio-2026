@@ -3028,9 +3028,9 @@ function CopyEmailHud() {
             }}>
                 {copied ? '✓' : '⧉'}
             </button>
-            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#fff', textDecoration: 'none' }}>
+            <GlitchLink href={`mailto:${CONTACT_EMAIL}`}>
                 {CONTACT_EMAIL.toUpperCase()}
-            </a>
+            </GlitchLink>
         </div>
     )
 }
