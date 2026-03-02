@@ -103,9 +103,9 @@ const HERO_CONFIG = {
         { char: 'F', yOffset: 0, zOffset: 0 },
         { char: 'A', yOffset: 0, zOffset: 0 },
     ],
-    spacing: 3.6,            // units between letter centers (pre-scale)
+    spacing: 4.2,            // units between letter centers (pre-scale)
     groupY: 2.8,             // vertical offset of the whole hero group
-    targetFraction: 0.62,    // fraction of viewport width that MUSTAFA fills
+    targetFraction: 0.72,    // fraction of viewport width that MUSTAFA fills
 
     subtitleText: 'An endlessly curios product designer currently building AI-based leak protection system at Dell, and developing a SaaS capstone application at School of Information.',
     subtitleYOffset: -5.8,   // Y below letter baseline (pre-scale)
@@ -137,11 +137,17 @@ function ScrollSmoother({ currentSectionRef, scrollRef }) {
     return null
 }
 
+// Max horizontal rotation when mouse is at screen edge (radians, ~18°)
+const PROJ_YAW_MAX = 0.32
+// Normalized mouse X dead zone — no rotation until mouse passes this threshold
+const PROJ_YAW_DEAD = 0.30
+
 function CameraController({ scrollRef }) {
     const { camera } = useThree()
     const lookAtTarget = useMemo(() => new THREE.Vector3(), [])
     const prevScroll = useRef(0)
     const velocityRef = useRef(0)
+    const yawOffsetRef = useRef(0)
 
     const _targetPos = useMemo(() => new THREE.Vector3(), [])
     const _targetLook = useMemo(() => new THREE.Vector3(), [])
@@ -150,7 +156,7 @@ function CameraController({ scrollRef }) {
     const _startLook = useMemo(() => new THREE.Vector3(), [])
     const _endLook = useMemo(() => new THREE.Vector3(), [])
 
-    useFrame((_, delta) => {
+    useFrame((state, delta) => {
         const t = scrollRef.current || 0
 
         const rawVelocity = Math.abs(t - prevScroll.current) / Math.max(delta, 0.001)
@@ -183,6 +189,31 @@ function CameraController({ scrollRef }) {
         const lerpFactor = 1 - Math.exp(-6 * delta)
         camera.position.lerp(_targetPos, lerpFactor)
         lookAtTarget.lerp(_targetLook, lerpFactor)
+
+        // ── Mouse-edge yaw: active only in project card section ──────────────
+        // Blend weight: ramp in at t=0.38, full through t=0.62, ramp out at t=0.70
+        const projBlend = clamp(
+            t < 0.38 ? 0 :
+            t < 0.44 ? (t - 0.38) / 0.06 :
+            t <= 0.62 ? 1 :
+            t < 0.70 ? 1 - (t - 0.62) / 0.08 : 0,
+            0, 1
+        )
+        const mx = uiHoveredRef.current ? 0 : state.pointer.x
+        const edgeStr = Math.max(0, (Math.abs(mx) - PROJ_YAW_DEAD) / (1 - PROJ_YAW_DEAD))
+        const targetYaw = Math.sign(mx) * smoothstep(edgeStr) * PROJ_YAW_MAX * projBlend
+        yawOffsetRef.current = dampValue(yawOffsetRef.current, targetYaw, 3.5, delta)
+
+        const yaw = yawOffsetRef.current
+        if (Math.abs(yaw) > 0.00001) {
+            // Orbit camera position around Y axis centered on lookAt target
+            const lx = lookAtTarget.x, lz = lookAtTarget.z
+            const dx = camera.position.x - lx, dz = camera.position.z - lz
+            const c = Math.cos(yaw), s = Math.sin(yaw)
+            camera.position.x = lx + dx * c - dz * s
+            camera.position.z = lz + dx * s + dz * c
+        }
+
         camera.lookAt(lookAtTarget)
         camera.fov = dampValue(camera.fov, targetFov, 6, delta)
         camera.rotation.z = dampValue(camera.rotation.z, targetRoll, 6, delta)
@@ -987,6 +1018,10 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     const offsetRef = useRef(0)
     const drawProgressRef = useRef(0)
     const dummyMatrix = useMemo(() => new THREE.Object3D(), [])
+    const hovInstRef = useRef(-1)
+    const spreadOffsetsRef = useRef([])
+    const frameCountRef = useRef(0)
+    const lastEnterFrameRef = useRef(-100)
     const CACHE_STEPS = 128
 
     const { count, posCache, tanCache } = useMemo(() => {
@@ -1012,13 +1047,26 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         const instanced = instancedRef.current
         if (!instanced || count === 0) return
 
+        // Clear hover if no instance reported pointer-over in the last 2 frames
+        frameCountRef.current++
+        if (frameCountRef.current - lastEnterFrameRef.current > 2) hovInstRef.current = -1
+
         if (state.clock.elapsedTime > delay) {
             drawProgressRef.current = dampValue(drawProgressRef.current, 1, 5, delta)
         }
 
-        // Speed decelerates naturally as drawing progresses, stops at 1.0
-        const movementSpeed = 0.5 * Math.max(0, 1 - drawProgressRef.current)
-        offsetRef.current = (offsetRef.current + delta * movementSpeed) % 1
+        if (drawProgressRef.current > 0.99) {
+            // Converge all instances of the same letter to offset 0 so they look identical at rest
+            offsetRef.current = dampValue(offsetRef.current, 0, 8, delta)
+        } else {
+            // Speed decelerates naturally as drawing progresses
+            const movementSpeed = 0.5 * Math.max(0, 1 - drawProgressRef.current)
+            offsetRef.current = (offsetRef.current + delta * movementSpeed) % 1
+        }
+
+        const SPREAD_RADIUS = 8
+        const SPREAD_STRENGTH = 0.38
+        const hovIdx = hovInstRef.current
 
         const spacing = 1 / count
         for (let i = 0; i < count; i++) {
@@ -1036,8 +1084,15 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             const ty = tan0.y + (tan1.y - tan0.y) * frac
             const tz = tan0.z + (tan1.z - tan0.z) * frac
 
-            dummyMatrix.position.set(px, py, pz)
-            dummyMatrix.lookAt(px + tx, py + ty, pz + tz)
+            // Soft-selection spread — same Blender proportional edit style
+            if (!spreadOffsetsRef.current[i]) spreadOffsetsRef.current[i] = 0
+            const dist = hovIdx >= 0 ? Math.abs(i - hovIdx) : SPREAD_RADIUS
+            const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
+            spreadOffsetsRef.current[i] = dampValue(spreadOffsetsRef.current[i], SPREAD_STRENGTH * falloff, 10, delta)
+            const spr = spreadOffsetsRef.current[i]
+
+            dummyMatrix.position.set(px, py + spr, pz)
+            dummyMatrix.lookAt(px + tx, py + spr + ty, pz + tz)
 
             dummyMatrix.rotateZ(t * Math.PI * 8 + state.clock.elapsedTime * HERO_CONFIG.spineRotationSpeed)
 
@@ -1055,7 +1110,11 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
 
     return (
         <group position={position}>
-            <instancedMesh ref={instancedRef} args={[sourceGeometry, material, count]} />
+            <instancedMesh
+                ref={instancedRef}
+                args={[sourceGeometry, material, count]}
+                onPointerOver={e => { hovInstRef.current = e.instanceId ?? -1; lastEnterFrameRef.current = frameCountRef.current }}
+            />
         </group>
     )
 }
@@ -1810,10 +1869,17 @@ function BioGrid({ active }) {
     )
 }
 
+// ScrollBar shows all sections except the last (DOSSIER lives outside the progress arc)
+const SCROLLBAR_STOPS = SECTION_STOPS.slice(0, -1)
+const SCROLLBAR_LABELS = SECTION_LABELS.slice(0, -1)
+const SCROLLBAR_HIDE_T = SECTION_STOPS[SECTION_STOPS.length - 2] + 0.05  // starts fading just past BIO
+
 function ScrollBar({ scrollRef, currentSectionRef }) {
     const fillRef = useRef()
     const dotRefs = useRef([])
     const lblRefs = useRef([])
+    const wrapRef = useRef()
+    const opacityRef = useRef(1)
 
     useEffect(() => {
         let raf
@@ -1825,12 +1891,17 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
             const t = scrollRef.current ?? 0
             const active = currentSectionRef.current ?? 0
 
-            if (fillRef.current) fillRef.current.style.width = `${Math.min(t / 0.96, 1) * 100}%`
+            // Fade out when entering dossier section
+            const targetOp = t >= SCROLLBAR_HIDE_T ? 0 : 1
+            opacityRef.current += (targetOp - opacityRef.current) * 0.08
+            if (wrapRef.current) wrapRef.current.style.opacity = opacityRef.current
+
+            if (fillRef.current) fillRef.current.style.width = `${Math.min(t / SCROLLBAR_STOPS[SCROLLBAR_STOPS.length - 1], 1) * 100}%`
 
             dotRefs.current.forEach((dot, i) => {
                 if (!dot) return
                 const isActive = i === active
-                const isPast = SECTION_STOPS[i] < t + 0.01
+                const isPast = SCROLLBAR_STOPS[i] < t + 0.01
                 dot.style.background = isActive ? ACCENT : isPast ? PAST : IDLE
                 dot.style.borderColor = isActive ? ACCENT : isPast ? '#2a4a88' : '#182440'
                 dot.style.boxShadow = isActive ? `0 0 10px ${ACCENT}, 0 0 22px ${ACCENT}55` : isPast ? `0 0 5px #1e3a6688` : 'none'
@@ -1851,10 +1922,10 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
     }, [scrollRef, currentSectionRef])
 
     return (
-        <div style={{
+        <div ref={wrapRef} style={{
             position: 'absolute', bottom: '36px', left: '50%',
             transform: 'translateX(-50%)', width: 'min(396px, 40.8vw)',
-            zIndex: 100, pointerEvents: 'none',
+            zIndex: 100, pointerEvents: 'none', transition: 'none',
         }}>
             {/* End-cap left */}
             <div style={{ position: 'absolute', left: 0, top: '-5px', width: '1px', height: '11px', background: 'rgba(60,90,160,0.4)' }} />
@@ -1917,12 +1988,8 @@ const DOSSIER_CSS = `
     position: fixed;
     right: 0; top: 0;
     width: 40vw; height: 100vh;
-    background: #f8f6f1;
-    color: #111;
-    font-family: 'Georgia', serif;
-    overflow-y: auto;
-    padding: 52px 44px;
-    box-sizing: border-box;
+    background: #f0ece4;
+    display: flex; flex-direction: column;
     pointer-events: auto;
     border-left: 1px solid rgba(0,0,0,0.06);
     box-shadow: -32px 0 80px rgba(0,0,0,0.42);
@@ -1930,17 +1997,10 @@ const DOSSIER_CSS = `
     transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.16,1,0.3,1);
 }
 .dossier-panel.hidden { opacity: 0; transform: translateX(30px); pointer-events: none; }
-.dossier-panel h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; margin: 0 0 4px; }
-.dossier-panel .role { font-size: 8px; letter-spacing: 0.26em; color: #666; margin: 0 0 22px; font-family: 'Courier New', monospace; text-transform: uppercase; }
-.dossier-panel hr { border: none; border-top: 1px solid #d8d4cc; margin: 0 0 18px; }
-.dossier-panel .section-label { font-size: 7px; letter-spacing: 0.28em; color: #999; margin: 0 0 10px; font-family: 'Courier New', monospace; text-transform: uppercase; }
-.dossier-panel .entry { margin: 0 0 14px; }
-.dossier-panel .entry strong { display: block; font-size: 11px; font-weight: 700; margin-bottom: 2px; }
-.dossier-panel .entry span { font-size: 9.5px; color: #666; line-height: 1.6; }
-.dossier-panel .skills-list { font-size: 9.5px; color: #444; line-height: 2.1; letter-spacing: 0.04em; }
-.dossier-panel .contact-line { font-size: 9px; color: #666; font-family: 'Courier New', monospace; margin: 6px 0; letter-spacing: 0.06em; }
-.dossier-panel .dl-btn-row { display: flex; gap: 8px; margin-top: 28px; }
-.dossier-panel .dl-btn { display: block; flex: 1; padding: 13px 0; background: #111; color: #f8f6f1; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; text-decoration: none; border: none; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; box-sizing: border-box; }
+.dossier-panel .resume-iframe { flex: 1; border: none; width: 100%; display: block; min-height: 0; }
+.dossier-panel .dl-btn-row { display: flex; flex-shrink: 0; }
+.dossier-panel .dl-btn { display: block; flex: 1; padding: 13px 0; background: #111; color: #f8f6f1; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; text-decoration: none; border: none; border-right: 1px solid #2a2a2a; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; box-sizing: border-box; }
+.dossier-panel .dl-btn:last-child { border-right: none; }
 .dossier-panel .dl-btn:hover { background: #1a1a2e; color: #ffffff; }
 .dossier-panel .dl-btn.copied { background: #0a2a1a; color: #00ff88; }
 `
@@ -1978,50 +2038,11 @@ function DossierOverlay({ scrollRef }) {
         <>
             <style>{DOSSIER_CSS}</style>
             <div ref={panelRef} className="dossier-panel hidden">
-                <h1>Open for opportunities</h1>
-                <p className="role">UX Designer &nbsp;·&nbsp; Spatial Dev &nbsp;·&nbsp; Systems Thinker</p>
-                <hr />
-
-                <p className="section-label">Experience</p>
-                <div className="entry">
-                    <strong>CBRE</strong>
-                    <span>Visual Systems Designer &nbsp;·&nbsp; 2025</span>
-                </div>
-                <div className="entry">
-                    <strong>Motive</strong>
-                    <span>Senior Product Designer &nbsp;·&nbsp; 2024</span>
-                </div>
-                <div className="entry">
-                    <strong>Educative</strong>
-                    <span>UX Designer &nbsp;·&nbsp; 2023</span>
-                </div>
-                <hr />
-
-                <p className="section-label">Education</p>
-                <div className="entry">
-                    <strong>UT Austin &nbsp;— School of Information</strong>
-                    <span>BS Information Science &nbsp;·&nbsp; In Progress</span>
-                </div>
-                <div className="entry">
-                    <strong>UT Austin &nbsp;— McCombs School of Business</strong>
-                    <span>Business Foundations Certificate &nbsp;·&nbsp; 2024</span>
-                </div>
-                <hr />
-
-                <p className="section-label">Skills</p>
-                <p className="skills-list">
-                    Figma &nbsp;·&nbsp; Framer &nbsp;·&nbsp; Origami Studio<br />
-                    React &nbsp;·&nbsp; TypeScript &nbsp;·&nbsp; Three.js<br />
-                    Systems Design &nbsp;·&nbsp; Interaction Design<br />
-                    UX Research &nbsp;·&nbsp; Visual Language
-                </p>
-                <hr />
-
-                <p className="section-label">Contact</p>
-                <p className="contact-line">hello@mustafaaleem.com</p>
-                <p className="contact-line">github.com/mustafaaleem</p>
-                <p className="contact-line">linkedin.com/in/mustafaaleem</p>
-
+                <iframe
+                    src="/Resume%20-%20Mustafa%20Akbar.pdf#toolbar=0&navpanes=0&scrollbar=0"
+                    className="resume-iframe"
+                    title="Mustafa Akbar Resume"
+                />
                 <div className="dl-btn-row">
                     <a href="/Resume%20-%20Mustafa%20Akbar.pdf" download="Resume - Mustafa Akbar.pdf" className="dl-btn">↓ Resume</a>
                     <button onClick={copyEmail} className={`dl-btn${copied ? ' copied' : ''}`}>{copied ? 'Copied ✓' : '@ Email'}</button>
@@ -2223,6 +2244,11 @@ function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpe
     const { scene } = useGLTF('/spine.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
+    const posRefs = useRef([])
+    const hoveredIdxRef = useRef(-1)
+    const spreadOffsets = useRef([])
+    const frameCountRef = useRef(0)
+    const lastEnterFrameRef = useRef(-100)
     const directions = useMemo(() => Array.from({ length: segments }, () => Math.random() < 0.5 ? 1 : -1), [segments])
     const speedRef = useRef(1)
 
@@ -2270,20 +2296,41 @@ function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpe
         }))
     }, [active, color, clones])
 
-    // Spin each cog with damped speed — smoothly decelerates/accelerates on pause/resume
     useFrame((_, delta) => {
+        // Clear hover if no cog reported a pointer-over in the last 2 frames
+        frameCountRef.current++
+        if (frameCountRef.current - lastEnterFrameRef.current > 2) hoveredIdxRef.current = -1
+
+        // Spin each cog — smoothly decelerates/accelerates on pause/resume
         speedRef.current = dampValue(speedRef.current, paused ? 0 : 1, 5, delta)
         spinRefs.current.forEach((ref, i) => {
             if (ref) ref.rotation.z += delta * rotationSpeed * directions[i] * speedRef.current
+        })
+
+        // Soft-selection spread — Blender proportional edit style
+        const SPREAD_RADIUS = 7   // influence in index units
+        const SPREAD_STRENGTH = 0.85  // world-unit max lift
+        const hovIdx = hoveredIdxRef.current
+        transforms.forEach((t, i) => {
+            const posRef = posRefs.current[i]
+            if (!posRef) return
+            if (!spreadOffsets.current[i]) spreadOffsets.current[i] = 0
+            const dist = hovIdx >= 0 ? Math.abs(i - hovIdx) : SPREAD_RADIUS
+            const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
+            spreadOffsets.current[i] = dampValue(spreadOffsets.current[i], SPREAD_STRENGTH * falloff, 10, delta)
+            posRef.position.set(t.pos[0], t.pos[1] + spreadOffsets.current[i], t.pos[2])
         })
     })
 
     return (
         <group>
             {transforms.map((t, i) => (
-                // outer group: orient cog along bezier tangent
-                // inner group: spin around that tangent axis (local Y)
-                <group key={i} position={t.pos} quaternion={t.quat}>
+                // outer group: orient cog along bezier tangent; inner group: spin
+                <group key={i}
+                    ref={el => { if (el) posRefs.current[i] = el }}
+                    position={t.pos}
+                    quaternion={t.quat}
+                    onPointerOver={e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }}>
                     <group ref={el => { if (el) { el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
                         <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
                     </group>
@@ -2487,7 +2534,7 @@ function BustDiptych({ scrollRef }) {
         // Bust centred in the left portion of the face-camera view (fov 36, tight)
         // x=-1 shifts ~½ unit left of camera centre so the right 40vw resume panel has room
         <group ref={opRef} position={[0, -18, 0]}>
-            <GlitchBust position={[-1, -3.5, -1]} scale={6} rotSpeed={0.04} />
+            <GlitchBust position={[-2, -3.5, -10]} scale={6} rotSpeed={0.04} />
             <SigilModel position={[-1, -3.5, -2.5]} scale={1.8} />
         </group>
     )
@@ -2669,7 +2716,7 @@ function LoadingScreen() {
 
             <div className="loader-center">
                 <div className="loader-eyebrow">SYS://PORTFOLIO_2026 · IDENTITY_UNRESOLVED</div>
-                <div className="loader-title" data-text="MUSTAFA">MUSTAFA</div>
+                <div className="loader-title" data-text="PORTFOLIO">PORTFOLIO</div>
                 <div className="loader-rule" />
                 <div className="loader-bar-wrap">
                     {Array.from({ length: SEGMENTS }, (_, i) => (
@@ -2723,6 +2770,60 @@ function CopyEmailHud() {
             <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#fff', textDecoration: 'none' }}>
                 {CONTACT_EMAIL.toUpperCase()}
             </a>
+        </div>
+    )
+}
+
+const SCROLL_HINT_CSS = `
+@keyframes scrollWheelDrop {
+    0%   { transform: translateY(0); opacity: 1; }
+    60%  { transform: translateY(8px); opacity: 0; }
+    61%  { transform: translateY(0); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+.scroll-hint {
+    position: absolute; bottom: 72px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    pointer-events: none;
+}
+.scroll-hint-mouse {
+    width: 20px; height: 32px;
+    border: 1.5px solid rgba(136,153,204,0.45); border-radius: 10px;
+    display: flex; justify-content: center; padding-top: 5px; box-sizing: border-box;
+}
+.scroll-hint-wheel {
+    width: 2px; height: 6px;
+    background: rgba(136,153,204,0.7); border-radius: 2px;
+    animation: scrollWheelDrop 1.8s ease-in-out infinite;
+}
+.scroll-hint-label {
+    font-size: 8px; letter-spacing: 0.3em; color: rgba(136,153,204,0.4);
+    font-family: 'Courier New', monospace; text-transform: uppercase;
+}
+`
+
+function ScrollHint({ scrollRef }) {
+    const elRef = useRef(null)
+    useEffect(() => {
+        let raf
+        const tick = () => {
+            if (elRef.current) {
+                const t = scrollRef.current
+                const opacity = Math.max(0, 1 - t / 0.07)
+                elRef.current.style.opacity = opacity
+            }
+            raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [scrollRef])
+    return (
+        <div ref={elRef} className="scroll-hint">
+            <style>{SCROLL_HINT_CSS}</style>
+            <div className="scroll-hint-mouse">
+                <div className="scroll-hint-wheel" />
+            </div>
+            <div className="scroll-hint-label">SCROLL</div>
         </div>
     )
 }
@@ -2797,6 +2898,7 @@ export default function Portfolio() {
                 </div>
             </div>
 
+            <ScrollHint scrollRef={scrollRef} />
             <EthosOverlay scrollRef={scrollRef} />
             <BioOverlay scrollRef={scrollRef} />
             <DossierOverlay scrollRef={scrollRef} />
