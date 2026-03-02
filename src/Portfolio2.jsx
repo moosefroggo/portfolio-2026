@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, Text, useGLTF, Stats, Line, useTexture, useProgress } from '@react-three/drei'
-import { EffectComposer, Bloom, ChromaticAberration, Vignette } from '@react-three/postprocessing'
+import { Environment, Text, useGLTF, Stats, Line, useTexture, useProgress, Html } from '@react-three/drei'
+import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 // 🟢 Global warp offset for velocity-driven chromatic aberration
@@ -24,27 +24,31 @@ const dragRotState = {
 const ETHOS_POS = [70, 0, -15]
 
 const CAMERA_PATH = [
-    { t: 0.00, pos: [0, 1, 16],    look: [0, 0, 0],        fov: 70, roll: 0 },
+    { t: 0.00, pos: [0, 1, 16], look: [0, 0, 0], fov: 70, roll: 0 },
     // ── Ethos: camera travels to X≈65, looks toward busts at X=70 ──
-    { t: 0.08, pos: [40, 0.3, 14], look: ETHOS_POS,        fov: 64, roll: 0 },
-    { t: 0.24, pos: [65, 0, 12],   look: ETHOS_POS,        fov: 60, roll: 0 },
+    { t: 0.08, pos: [40, 0.3, 14], look: ETHOS_POS, fov: 64, roll: 0 },
+    { t: 0.24, pos: [65, 0, 12], look: ETHOS_POS, fov: 60, roll: 0 },
     // ── Transition to project rail (30-unit gap: ethos X=70 → cards X=100) ──
-    { t: 0.30, pos: [80, 0.5, 12], look: [80, 0, 0],       fov: 68, roll: 0 },
+    { t: 0.30, pos: [80, 0.5, 12], look: [80, 0, 0], fov: 68, roll: 0 },
     // ── Card 1 — X=100 ──
-    { t: 0.38, pos: [100, 0, 9],   look: [100, 0, 0],      fov: 62, roll: -1 },
-    { t: 0.44, pos: [100, 0, 6],   look: [100, 0, 0],      fov: 52, roll: 0 },
+    { t: 0.38, pos: [100, 0, 9], look: [100, 0, 0], fov: 62, roll: -1 },
+    { t: 0.44, pos: [100, 0, 6], look: [100, 0, 0], fov: 52, roll: 0 },
     // ── Card 2 — X=120 ──
-    { t: 0.52, pos: [110, 0.3, 10], look: [110, 0, 0],     fov: 60, roll: 1 },
-    { t: 0.58, pos: [120, 0, 9],   look: [120, 0, 0],      fov: 58, roll: -0.5 },
-    { t: 0.62, pos: [120, 0, 6],   look: [120, 0, 0],      fov: 52, roll: 0 },
+    { t: 0.52, pos: [110, 0.3, 10], look: [110, 0, 0], fov: 60, roll: 1 },
+    { t: 0.58, pos: [120, 0, 9], look: [120, 0, 0], fov: 58, roll: -0.5 },
+    { t: 0.62, pos: [120, 0, 6], look: [120, 0, 0], fov: 52, roll: 0 },
     // ── Card 3 — X=140 ──
-    { t: 0.70, pos: [130, 0.3, 10], look: [130, 0, 0],     fov: 60, roll: 0.5 },
-    { t: 0.76, pos: [140, 0, 9],   look: [140, 0, 0],      fov: 58, roll: -0.5 },
-    { t: 0.80, pos: [140, 0, 6],   look: [140, 0, 0],      fov: 52, roll: 0 },
+    { t: 0.70, pos: [130, 0.3, 10], look: [130, 0, 0], fov: 60, roll: 0.5 },
+    { t: 0.76, pos: [140, 0, 9], look: [140, 0, 0], fov: 58, roll: -0.5 },
+    { t: 0.80, pos: [140, 0, 6], look: [140, 0, 0], fov: 52, roll: 0 },
     // ── Bio section ──
-    { t: 0.86, pos: [140, 0, 0],   look: [140, -1, -20],   fov: 42, roll: 0 },
-    { t: 0.93, pos: [140, 0, -15], look: [140, -1, -35],   fov: 42, roll: 0 },
-    { t: 1.00, pos: [140, 0, -25], look: [140, -1, -45],   fov: 42, roll: 0 },
+    { t: 0.86, pos: [140, 0, 0],   look: [140, -1, -30], fov: 48, roll: 0 },
+    { t: 0.93, pos: [140, 0, -10], look: [140, -1, -30], fov: 48, roll: 0 },
+    { t: 1.00, pos: [140, 0, -18], look: [140, -1, -34], fov: 48, roll: 0 },
+    // ── Bio — bust reveal ──
+    { t: 1.10, pos: [140, -2.2, -24], look: [140, -2.2, -30], fov: 36, roll: 0 },
+    // ── Bio — diptych zoom-out ──
+    { t: 1.20, pos: [140, 0.5, -11], look: [140, 0, -30], fov: 64, roll: 0 },
 ]
 
 // Section snap stops — camera always rests at one of these t-values
@@ -54,10 +58,41 @@ const SECTION_STOPS = [
     0.44,   // card 1 park
     0.62,   // card 2 park
     0.80,   // card 3 park
-    0.96,   // bio
+    0.96,   // bio patch
+    1.10,   // bio bust face
+    1.20,   // bio diptych
 ]
 const WHEEL_THRESHOLD = 60   // deltaY pixels to trigger a section advance
-const SECTION_LABELS  = ['HERO', 'ETHOS', 'NEXUS', 'AURA', 'ECHO', 'BIO']
+const SECTION_LABELS = ['HERO', 'ETHOS', 'NEXUS', 'Workflows', 'ECHO', 'BIO', 'FACE', 'DOSSIER']
+// Visual positions in the nav bar (independent of scroll stops)
+const SECTION_BAR_POSITIONS = [0.00, 0.13, 0.30, 0.47, 0.63, 0.75, 0.87, 1.00]
+
+// Shared flag: true when mouse is over an HTML UI element (not the canvas)
+const uiHoveredRef = { current: false }
+
+// ─── Font options for subtitle testing ────────────────────────────────────────
+const FONT_OPTIONS = [
+    { label: 'Rocket Command', path: '/fonts/ALL%20FONTS%20FLAT/rocketcommandexpand.ttf' },
+    { label: 'Rocket Cmd Cond', path: '/fonts/ALL%20FONTS%20FLAT/rocketcommandcond.ttf' },
+    { label: 'Rocket Cmd Regular', path: '/fonts/ALL%20FONTS%20FLAT/rocketcommand.ttf' },
+    { label: 'Nodulus', path: '/fonts/ALL%20FONTS%20FLAT/nodulus.ttf' },
+    { label: 'Nodulus Cond', path: '/fonts/ALL%20FONTS%20FLAT/noduluscond.ttf' },
+    { label: 'Nodulus Expand', path: '/fonts/ALL%20FONTS%20FLAT/nodulusexpand.ttf' },
+    { label: 'Nodulus Engrave', path: '/fonts/ALL%20FONTS%20FLAT/nodulusengrave.ttf' },
+    { label: 'Nodulus Chrome', path: '/fonts/ALL%20FONTS%20FLAT/noduluschrome.ttf' },
+    { label: 'Neutra', path: '/fonts/ALL%20FONTS%20FLAT/Neutra.otf' },
+    { label: 'Eastback', path: '/fonts/ALL%20FONTS%20FLAT/Eastback-Regular.ttf' },
+    { label: 'Grafmassa', path: '/fonts/ALL%20FONTS%20FLAT/Grafmassa-Regular.ttf' },
+    { label: 'Avianz', path: '/fonts/ALL%20FONTS%20FLAT/Avianz%20Trial.otf' },
+    { label: 'Ortland', path: '/fonts/ALL%20FONTS%20FLAT/Ortland.otf' },
+    { label: 'Sparkster One', path: '/fonts/ALL%20FONTS%20FLAT/Sparkster-One.ttf' },
+    { label: 'Sparkster Two', path: '/fonts/ALL%20FONTS%20FLAT/Sparkster-Two.ttf' },
+    { label: 'Beyond 2025', path: '/fonts/ALL%20FONTS%20FLAT/Beyond%202025.ttf' },
+    { label: 'Gamma 1500', path: '/fonts/ALL%20FONTS%20FLAT/gamma1500.ttf' },
+    { label: 'Balisong', path: '/fonts/ALL%20FONTS%20FLAT/Balisong-Ultra.ttf' },
+    { label: 'Cyber Display', path: '/fonts/ALL%20FONTS%20FLAT/Cyber%20Display.ttf' },
+    { label: 'ParaAminobenzoic', path: '/fonts/ALL%20FONTS%20FLAT/ParaAminobenzoic.otf' },
+]
 
 const PROJECT_CARDS = [
     {
@@ -69,9 +104,9 @@ const PROJECT_CARDS = [
         objectType: 'truck_immobilizer',
     },
     {
-        pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#ff3366', appear: 0.62,
-        title: 'AURA', subtitle: '02 // HEALTH OS',
-        desc: 'Minimalist patient management system with biometric integrations. Built for speed and accessibility across clinical environments.',
+        pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
+        title: 'Workflows', subtitle: '02 // Educative',
+        desc: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         tech: ['Next.js', 'Tailwind', 'Prisma'],
         stats: { role: 'FULLSTACK', year: '2023', client: 'AURA HLTH' },
         objectType: 'workflows',
@@ -93,21 +128,21 @@ const PROJECT_CARDS = [
 const HERO_CONFIG = {
     // Per-letter tweaks: yOffset and zOffset are in world units (pre-scale)
     letters: [
-        { char: 'M', yOffset: 0,    zOffset: 0 },
-        { char: 'U', yOffset: 0,    zOffset: 0 },
-        { char: 'S', yOffset: 0,    zOffset: 0 },
-        { char: 'T', yOffset: 0,    zOffset: 0 },
-        { char: 'A', yOffset: 0,    zOffset: 0 },
-        { char: 'F', yOffset: 0,    zOffset: 0 },
-        { char: 'A', yOffset: 0,    zOffset: 0 },
+        { char: 'M', yOffset: 0, zOffset: 0 },
+        { char: 'U', yOffset: 0, zOffset: 0 },
+        { char: 'S', yOffset: 0, zOffset: 0 },
+        { char: 'T', yOffset: 0, zOffset: 0 },
+        { char: 'A', yOffset: 0, zOffset: 0 },
+        { char: 'F', yOffset: 0, zOffset: 0 },
+        { char: 'A', yOffset: 0, zOffset: 0 },
     ],
     spacing: 3.6,            // units between letter centers (pre-scale)
     groupY: 1.2,             // vertical offset of the whole hero group
     targetFraction: 0.72,    // fraction of viewport width that MUSTAFA fills
 
-    subtitleText: 'PRODUCT DESIGNER & CREATIVE ENGINEER',
-    subtitleYOffset: -3.8,   // Y below letter baseline (pre-scale)
-    subtitleFontSize: 0.9,   // font size (pre-scale)
+    subtitleText: 'An endlessly curios product designer working on creating delightful experiences, currently working with Dell, School of Information, and McCombs School of Business. ',
+    subtitleYOffset: -6.8,   // Y below letter baseline (pre-scale)
+    subtitleFontSize: 0.6,   // font size (pre-scale)
     subtitleLetterSpacing: 0.15,
     spineRotationSpeed: 1.5,     // radians/sec — spin of individual spine pieces around their tangent axis
 }
@@ -193,12 +228,12 @@ function CameraController({ scrollRef }) {
 }
 
 function CursorFX() {
-    const orbRef     = useRef()
-    const illumRef   = useRef()
-    const rimRef     = useRef()
+    const orbRef = useRef()
+    const illumRef = useRef()
+    const rimRef = useRef()
 
-    const _dir      = useMemo(() => new THREE.Vector3(), [])
-    const _orbPos   = useMemo(() => new THREE.Vector3(), [])
+    const _dir = useMemo(() => new THREE.Vector3(), [])
+    const _orbPos = useMemo(() => new THREE.Vector3(), [])
     const _illumPos = useMemo(() => new THREE.Vector3(), [])
 
     useFrame((state, delta) => {
@@ -217,60 +252,82 @@ function CursorFX() {
         _illumPos.copy(state.camera.position).addScaledVector(_dir, 14)
         if (illumRef.current) illumRef.current.position.lerp(_illumPos, 0.10)
 
+        const overUI = uiHoveredRef.current
+        if (orbRef.current) orbRef.current.visible = !overUI
+        if (rimRef.current) rimRef.current.visible = !overUI
+        if (illumRef.current) illumRef.current.visible = !overUI
+
         const breathe = 1 + Math.sin(state.clock.elapsedTime * 2.2) * 0.04
-        if (orbRef.current) orbRef.current.scale.setScalar(breathe)
+        if (orbRef.current) orbRef.current.scale.setScalar(breathe * 0.65)
     })
 
     return (
         <>
             <group ref={orbRef}>
-                {/* Glass shell — reflective crystal, lit from inside */}
-                <mesh>
+                {/* BackSide pass — darkened inner shell gives depth/curvature illusion */}
+                <mesh renderOrder={98}>
                     <sphereGeometry args={[0.22, 32, 32]} />
                     <meshStandardMaterial
-                        color="#cce4ff"
-                        emissive="#2244aa"
-                        emissiveIntensity={0.18}
+                        color="#0a1a44"
+                        emissive="#112266"
+                        emissiveIntensity={0.6}
                         roughness={0.0}
-                        metalness={0.1}
-                        envMapIntensity={3.5}
+                        metalness={0.95}
                         transparent
-                        opacity={0.22}
+                        opacity={0.55}
+                        toneMapped={false}
+                        side={THREE.BackSide}
+                        depthTest={false}
+                    />
+                </mesh>
+                {/* FrontSide glass shell — high metalness for specular highlight */}
+                <mesh renderOrder={100}>
+                    <sphereGeometry args={[0.22, 32, 32]} />
+                    <meshStandardMaterial
+                        color="#ddeeff"
+                        emissive="#3355cc"
+                        emissiveIntensity={0.55}
+                        roughness={0.0}
+                        metalness={0.85}
+                        envMapIntensity={4.0}
+                        transparent
+                        opacity={0.45}
                         toneMapped={false}
                         side={THREE.FrontSide}
+                        depthTest={false}
                     />
                 </mesh>
                 {/* Inner glow core */}
-                <mesh scale={0.55}>
+                <mesh scale={0.52} renderOrder={101}>
                     <sphereGeometry args={[0.22, 16, 16]} />
-                    <meshBasicMaterial color="#99ccff" transparent opacity={0.82} toneMapped={false} />
+                    <meshBasicMaterial color="#88bbff" transparent opacity={0.7} toneMapped={false} depthTest={false} />
                 </mesh>
                 {/* Hot nucleus for bloom */}
-                <mesh scale={0.22}>
+                <mesh scale={0.20} renderOrder={102}>
                     <sphereGeometry args={[0.22, 16, 16]} />
-                    <meshBasicMaterial color="#ffffff" transparent opacity={0.95} toneMapped={false} />
+                    <meshBasicMaterial color="#ffffff" transparent opacity={1.0} toneMapped={false} depthTest={false} />
                 </mesh>
                 {/* Inner light — illuminates the glass shell from inside */}
-                <pointLight intensity={18} color="#88aaff" distance={3} decay={2} />
+                <pointLight intensity={32} color="#aaccff" distance={2.5} decay={2} />
             </group>
 
             <group ref={rimRef}>
                 {/* Spike left — tip points away from centre */}
-                <mesh position={[-0.58, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                    <coneGeometry args={[0.042, 0.32, 6]} />
+                <mesh position={[-0.36, 0, 0]} rotation={[0, 0, Math.PI / 2]} renderOrder={100}>
+                    <coneGeometry args={[0.026, 0.18, 6]} />
                     <meshStandardMaterial
                         color="#aaccff" emissive="#6688cc" emissiveIntensity={1.2}
                         roughness={0} metalness={0.2}
-                        transparent opacity={0.85} toneMapped={false}
+                        transparent opacity={0.85} toneMapped={false} depthTest={false}
                     />
                 </mesh>
                 {/* Spike right */}
-                <mesh position={[0.58, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-                    <coneGeometry args={[0.042, 0.32, 6]} />
+                <mesh position={[0.36, 0, 0]} rotation={[0, 0, -Math.PI / 2]} renderOrder={100}>
+                    <coneGeometry args={[0.026, 0.18, 6]} />
                     <meshStandardMaterial
                         color="#aaccff" emissive="#6688cc" emissiveIntensity={1.2}
                         roughness={0} metalness={0.2}
-                        transparent opacity={0.85} toneMapped={false}
+                        transparent opacity={0.85} toneMapped={false} depthTest={false}
                     />
                 </mesh>
             </group>
@@ -376,7 +433,7 @@ const SIGIL_VARIANTS = [
     () => [makePoly(64, 1.3), makeTri(1.0), makeTri(1.0, true)],                          // hexagram + ring
     () => [makePoly(64, 1.3), makeStar(5, 1.0, 0.38)],                                    // pentagram + ring
     () => [makePoly(64, 1.3), makeStar(4, 0.95, 0.38), makePoly(4, 0.5)],                 // octagram + square + ring
-    () => [makePoly(64, 1.3), makePoly(6, 0.85), new Float32Array([-1.1,0,0, 1.1,0,0]), new Float32Array([0,-1.1,0, 0,1.1,0])], // hexagon + cross + ring
+    () => [makePoly(64, 1.3), makePoly(6, 0.85), new Float32Array([-1.1, 0, 0, 1.1, 0, 0]), new Float32Array([0, -1.1, 0, 0, 1.1, 0])], // hexagon + cross + ring
     () => [makePoly(64, 1.3), makeTri(0.9), makeTri(0.9, true), makePoly(4, 0.45)],       // hexagram + inner square + ring
 ]
 
@@ -406,12 +463,12 @@ function Sigil({ variant = 0, position, scale = 1, rotSpeeds = [0.1, 0.15, 0.08]
 }
 
 // 8 sigils, equal spacing, starting just behind the hero text, receding into fog
-const CORRIDOR_COUNT  = 8
+const CORRIDOR_COUNT = 8
 const CORRIDOR_ZSTART = -8
-const CORRIDOR_ZSTEP  = 16
+const CORRIDOR_ZSTEP = 16
 // Staggered X/Y for depth impact — equal spacing on Z is the constant
-const CORRIDOR_X = [0, -4, 4, -2,  2, -4,  4,  0]
-const CORRIDOR_Y = [0,  1, -1, 1.5, -0.5, 0.5, -1.2, 0]
+const CORRIDOR_X = [0, -4, 4, -2, 2, -4, 4, 0]
+const CORRIDOR_Y = [0, 1, -1, 1.5, -0.5, 0.5, -1.2, 0]
 const CORRIDOR_COLORS = ['#4477ff', '#5544ff', '#3366ee', '#6644ff', '#2255dd', '#5566ff', '#4433ee', '#3355ff']
 
 function SigilCorridor() {
@@ -450,7 +507,7 @@ function buildEdgesGroup(node, color, mats) {
     g.matrixAutoUpdate = false
     if (node.isMesh) {
         const edges = new THREE.EdgesGeometry(node.geometry, 20)
-        const mat   = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0, toneMapped: false, depthWrite: false })
+        const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0, toneMapped: false, depthWrite: false })
         g.add(new THREE.LineSegments(edges, mat))
         mats.push(mat)
     }
@@ -459,10 +516,10 @@ function buildEdgesGroup(node, color, mats) {
 }
 
 function makeHologramClones(scene, color, targetSize) {
-    const box    = new THREE.Box3().setFromObject(scene)
-    const size   = box.getSize(new THREE.Vector3())
+    const box = new THREE.Box3().setFromObject(scene)
+    const size = box.getSize(new THREE.Vector3())
     const center = box.getCenter(new THREE.Vector3())
-    const s      = targetSize / Math.max(size.x, size.y, size.z, 0.001)
+    const s = targetSize / Math.max(size.x, size.y, size.z, 0.001)
 
     // Clean edge lines — no triangle mesh noise
     const wireMats = []
@@ -485,10 +542,10 @@ function makeHologramClones(scene, color, targetSize) {
 
 // Preserves original GLB textures, adds holographic emissive tint + transparency.
 function makeTexturedHologramClone(scene, accentColor, targetSize) {
-    const box    = new THREE.Box3().setFromObject(scene)
-    const size   = box.getSize(new THREE.Vector3())
+    const box = new THREE.Box3().setFromObject(scene)
+    const size = box.getSize(new THREE.Vector3())
     const center = box.getCenter(new THREE.Vector3())
-    const s      = targetSize / Math.max(size.x, size.y, size.z, 0.001)
+    const s = targetSize / Math.max(size.x, size.y, size.z, 0.001)
 
     const clone = scene.clone(true)
     clone.scale.setScalar(s)
@@ -499,17 +556,17 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
         if (!c.isMesh || !c.material) return
         const orig = Array.isArray(c.material) ? c.material[0] : c.material
         const m = new THREE.MeshStandardMaterial({
-            map:          orig.map          ?? null,
-            normalMap:    orig.normalMap    ?? null,
+            map: orig.map ?? null,
+            normalMap: orig.normalMap ?? null,
             roughnessMap: orig.roughnessMap ?? null,
             metalnessMap: orig.metalnessMap ?? null,
-            roughness:    orig.roughness    ?? 0.6,
-            metalness:    orig.metalness    ?? 0.4,
-            emissive:     new THREE.Color(accentColor),
+            roughness: orig.roughness ?? 0.6,
+            metalness: orig.metalness ?? 0.4,
+            emissive: new THREE.Color(accentColor),
             emissiveIntensity: 0.3,
-            transparent:  true,
-            opacity:      0,
-            toneMapped:   false,
+            transparent: true,
+            opacity: 0,
+            toneMapped: false,
         })
         c.material = m
         mats.push(m)
@@ -519,13 +576,13 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
 
 function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
     const { scene: truckScene } = useGLTF('/Truck.glb')
-    const { scene: immScene }   = useGLTF('/Engine Immobilizer.glb')
+    const { scene: immScene } = useGLTF('/Engine Immobilizer.glb')
 
     const truckGroupRef = useRef()
-    const immGroupRef   = useRef()
-    const truckOpRef    = useRef(0)
-    const immOpRef      = useRef(0)
-    const autoRotY      = useRef(0)
+    const immGroupRef = useRef()
+    const truckOpRef = useRef(0)
+    const immOpRef = useRef(0)
+    const autoRotY = useRef(0)
 
     const { clone: truckClone, mats: truckMats } =
         useMemo(() => makeTexturedHologramClone(truckScene, '#00aaff', 2.2), [truckScene])
@@ -580,18 +637,105 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
 useGLTF.preload('/Truck.glb')
 useGLTF.preload('/Engine Immobilizer.glb')
 
+// Module-level ref so VideoScreen can be lifted outside <Select enabled>
+// and WorkflowsScene can still drive its opacity.
+const wfVideoOpRef = { current: 0 }
+
+const CORNER_STYLES = [
+    { top: 6, left: 6,  borderTop: '2px solid #44ff88', borderLeft:  '2px solid #44ff88' },
+    { top: 6, right: 6, borderTop: '2px solid #44ff88', borderRight: '2px solid #44ff88' },
+    { bottom: 6, left: 6,  borderBottom: '2px solid #44ff88', borderLeft:  '2px solid #44ff88' },
+    { bottom: 6, right: 6, borderBottom: '2px solid #44ff88', borderRight: '2px solid #44ff88' },
+]
+
+function VideoScreen() {
+    const containerRef = useRef()
+
+    useFrame(() => {
+        if (containerRef.current) containerRef.current.style.opacity = wfVideoOpRef.current
+    })
+
+    return (
+        <group position={[3.4, 0.15, 0.9]} rotation={[0, -0.42, 0]}>
+            <Html transform occlude={false} style={{ pointerEvents: 'none' }} distanceFactor={3.5}>
+                <div ref={containerRef} style={{ opacity: 0, fontFamily: "'Courier New', monospace", userSelect: 'none', width: '262px' }}>
+                    <style>{`
+                        @keyframes hud-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+                        @keyframes hud-scan  { 0%{top:-15%} 100%{top:115%} }
+                        .hud-dot  { animation: hud-blink 1.1s step-end infinite }
+                        .hud-scan { position:absolute;left:0;right:0;height:20%;
+                                    background:linear-gradient(to bottom,transparent,rgba(68,255,136,0.05),transparent);
+                                    animation:hud-scan 2.8s linear infinite;pointer-events:none }
+                    `}</style>
+
+                    {/* ── Header ── */}
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '5px 9px',
+                        background: 'rgba(68,255,136,0.07)',
+                        border: '1px solid rgba(68,255,136,0.35)',
+                        borderBottom: 'none',
+                    }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:8, letterSpacing:'0.15em', color:'#44ff88' }}>
+                            <span className="hud-dot" style={{ width:6, height:6, borderRadius:'50%', background:'#44ff88', display:'inline-block' }} />
+                            MISSION BRIEFING
+                        </div>
+                        <span style={{ fontSize:8, color:'rgba(68,255,136,0.55)', letterSpacing:'0.1em' }}>WF-2023</span>
+                    </div>
+
+                    {/* ── Video feed ── */}
+                    <div style={{ position:'relative', lineHeight:0, overflow:'hidden',
+                                  border:'1px solid rgba(68,255,136,0.35)', borderTop:'none', borderBottom:'none' }}>
+                        <video src="/workflows-video.mp4" autoPlay loop muted playsInline
+                            style={{ width:'262px', height:'148px', objectFit:'cover', display:'block',
+                                     filter:'contrast(1.05) brightness(0.88)' }} />
+
+                        {/* Scanlines */}
+                        <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+                                      background:'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 3px)' }} />
+                        {/* Moving sweep */}
+                        <div className="hud-scan" />
+
+                        {/* Corner brackets */}
+                        {CORNER_STYLES.map((s, i) => (
+                            <div key={i} style={{ position:'absolute', width:12, height:12, pointerEvents:'none', ...s }} />
+                        ))}
+
+                        {/* Top-right label */}
+                        <div style={{ position:'absolute', top:9, right:22, fontSize:7,
+                                      color:'rgba(68,255,136,0.65)', letterSpacing:'0.12em' }}>SIG 4/5</div>
+                    </div>
+
+                    {/* ── Footer ── */}
+                    <div style={{
+                        display:'flex', justifyContent:'space-between', alignItems:'center',
+                        padding:'4px 9px',
+                        background:'rgba(68,255,136,0.04)',
+                        border:'1px solid rgba(68,255,136,0.35)',
+                        borderTop:'none',
+                    }}>
+                        <span style={{ fontSize:7, color:'rgba(68,255,136,0.5)', letterSpacing:'0.1em' }}>AURA HLTH // FULLSTACK</span>
+                        <span className="hud-dot" style={{ fontSize:7, color:'rgba(68,255,136,0.65)', letterSpacing:'0.1em' }}>● REC</span>
+                    </div>
+                </div>
+            </Html>
+        </group>
+    )
+}
+
 function WorkflowsScene({ hovered, appeared, cardIndex }) {
     const { scene: wfScene } = useGLTF('/workflows.glb')
 
     const groupRef = useRef()
-    const opRef    = useRef(0)
+    const opRef = useRef(0)
     const autoRotY = useRef(0)
 
     const { clone: wfClone, mats: wfMats } =
-        useMemo(() => makeTexturedHologramClone(wfScene, '#ff3366', 2.8), [wfScene])
+        useMemo(() => makeTexturedHologramClone(wfScene, '#44ff88', 2.8), [wfScene])
 
     useFrame((_, delta) => {
         opRef.current = dampValue(opRef.current, appeared ? 0.9 : 0, 5, delta)
+        wfVideoOpRef.current = opRef.current
         wfMats.forEach(m => { m.opacity = opRef.current })
         if (groupRef.current) {
             if (!dragRotState.isDragging || dragRotState.cardIndex !== cardIndex)
@@ -603,9 +747,9 @@ function WorkflowsScene({ hovered, appeared, cardIndex }) {
 
     return (
         <group>
-            <group ref={groupRef} position={[0, 0, 0]}>
+            <group ref={groupRef}>
                 <primitive object={wfClone} />
-                <pointLight color="#ff3366" intensity={appeared ? 3 : 0} distance={8} decay={2} />
+                <pointLight color="#44ff88" intensity={appeared ? 1.2 : 0} distance={8} decay={2} />
             </group>
         </group>
     )
@@ -624,10 +768,10 @@ function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex }) {
 
     const geometry = useMemo(() => {
         switch (objectType) {
-            case 'octahedron':  return new THREE.OctahedronGeometry(1.4, 0)
-            case 'torus':       return new THREE.TorusGeometry(1.1, 0.38, 16, 48)
+            case 'octahedron': return new THREE.OctahedronGeometry(1.4, 0)
+            case 'torus': return new THREE.TorusGeometry(1.1, 0.38, 16, 48)
             case 'icosahedron': return new THREE.IcosahedronGeometry(1.3, 1)
-            default:            return new THREE.OctahedronGeometry(1.4, 0)
+            default: return new THREE.OctahedronGeometry(1.4, 0)
         }
     }, [objectType])
 
@@ -646,7 +790,7 @@ function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex }) {
         wireRef.current.rotation.y = finalY
 
         solidOpacityRef.current = dampValue(solidOpacityRef.current, hovered ? 0.72 : 0.0, 5, delta)
-        wireOpacityRef.current  = dampValue(wireOpacityRef.current,  hovered ? 0.25 : (appeared ? 0.85 : 0.0), 5, delta)
+        wireOpacityRef.current = dampValue(wireOpacityRef.current, hovered ? 0.25 : (appeared ? 0.85 : 0.0), 5, delta)
 
         meshRef.current.material.opacity = solidOpacityRef.current
         meshRef.current.visible = solidOpacityRef.current > 0.01
@@ -709,18 +853,18 @@ function HudPanel({ stats, tech, color, appeared, side = 'left' }) {
         matsRef.current.forEach(m => { m.opacity = op })
     })
 
-    const xPos = (side === 'left' ? -1 : 1) * 2.8
-    const anchor = side === 'left' ? 'right' : 'left'
+    const xPos = (side === 'left' ? -1 : 1) * 4
+    const anchor = side === 'left' ? 'left' : 'right'
 
     return (
         <group ref={groupRef} position={[xPos, 0, 0.1]}>
             <Text position={[0, 0.65, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>ROLE ──────────────────</Text>
-            <Text position={[0, 0.48, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.role}</Text>
+            <Text position={[0, 0.48, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.role}</Text>
             <Text position={[0, 0.18, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>YEAR ──────────────────</Text>
-            <Text position={[0, 0.02, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.year}</Text>
+            <Text position={[0, 0.02, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.year}</Text>
             <Text position={[0, -0.28, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>Company ─────────────────</Text>
-            <Text position={[0, -0.44, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color}    anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.client}</Text>
-            <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1}  material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')} {blink ? '|' : ' '}</Text>
+            <Text position={[0, -0.44, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.client}</Text>
+            <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1} material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')} {blink ? '|' : ' '}</Text>
         </group>
     )
 }
@@ -731,8 +875,8 @@ function LBracket({ position, flipX, flipY, color }) {
     const sy = flipY ? -1 : 1
     return (
         <group position={position}>
-            <HudLine x1={0} y1={0} z1={0} x2={sx * 0.35} y2={0}          z2={0} color={color} />
-            <HudLine x1={0} y1={0} z1={0} x2={0}          y2={sy * 0.35} z2={0} color={color} />
+            <HudLine x1={0} y1={0} z1={0} x2={sx * 0.35} y2={0} z2={0} color={color} />
+            <HudLine x1={0} y1={0} z1={0} x2={0} y2={sy * 0.35} z2={0} color={color} />
         </group>
     )
 }
@@ -747,7 +891,7 @@ function TargetingReticle({ hovered, appeared, color, radius = 2.0 }) {
         if (!groupRef.current) return
         if (matsRef.current.length === 0)
             groupRef.current.traverse(child => { if (child.material) matsRef.current.push(child.material) })
-        scaleRef.current  = dampValue(scaleRef.current,  hovered ? 1.0 : 1.6, 7, delta)
+        scaleRef.current = dampValue(scaleRef.current, hovered ? 1.0 : 1.6, 7, delta)
         opacityRef.current = dampValue(opacityRef.current, appeared ? (hovered ? 1.0 : 0.35) : 0.0, 5, delta)
         groupRef.current.scale.setScalar(scaleRef.current)
         const op = opacityRef.current
@@ -757,14 +901,14 @@ function TargetingReticle({ hovered, appeared, color, radius = 2.0 }) {
     const r = radius
     return (
         <group ref={groupRef}>
-            <LBracket position={[-r,  r, 0.1]} flipX={false} flipY={false} color={color} />
-            <LBracket position={[ r,  r, 0.1]} flipX={true}  flipY={false} color={color} />
-            <LBracket position={[-r, -r, 0.1]} flipX={false} flipY={true}  color={color} />
-            <LBracket position={[ r, -r, 0.1]} flipX={true}  flipY={true}  color={color} />
+            <LBracket position={[-r, r, 0.1]} flipX={false} flipY={false} color={color} />
+            <LBracket position={[r, r, 0.1]} flipX={true} flipY={false} color={color} />
+            <LBracket position={[-r, -r, 0.1]} flipX={false} flipY={true} color={color} />
+            <LBracket position={[r, -r, 0.1]} flipX={true} flipY={true} color={color} />
             <HudLine x1={-0.08} y1={0} z1={0.1} x2={-0.02} y2={0} z2={0.1} color={color} />
-            <HudLine x1={0.02}  y1={0} z1={0.1} x2={0.08}  y2={0} z2={0.1} color={color} />
+            <HudLine x1={0.02} y1={0} z1={0.1} x2={0.08} y2={0} z2={0.1} color={color} />
             <HudLine x1={0} y1={-0.08} z1={0.1} x2={0} y2={-0.02} z2={0.1} color={color} />
-            <HudLine x1={0} y1={0.02}  z1={0.1} x2={0} y2={0.08}  z2={0.1} color={color} />
+            <HudLine x1={0} y1={0.02} z1={0.1} x2={0} y2={0.08} z2={0.1} color={color} />
         </group>
     )
 }
@@ -863,8 +1007,8 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
 
             <Text position={[0, 1.95, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
-            <Text position={[0, 1.55, 0.1]} fontSize={0.1}  color="#445577"      anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
-            <Text position={[0, -1.8, 0.1]} fontSize={0.13} color="#667799"      anchorX="center" anchorY="top"    maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
+            <Text position={[0, 1.55, 0.1]} fontSize={0.1} color="#445577" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
+            <Text position={[0, -1.55, 0.1]} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
 
             {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
         </group>
@@ -949,30 +1093,44 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     )
 }
 
-// ─── Letter paths for MUSTAFA (manually designed 3-D waypoints) ───────────────
-//  Each path is an array of THREE.Vector3 control points tracing the letter stroke.
-//  Coordinate space: x=[-1.5, 1.5], y=[-2, 2], z varies for depth twist.
+// ─── Letter paths for MUSTAFA — extracted from ReliefSingleLineSVG-Regular ───
+//  Coordinate space normalised to font cap height 675 → world height ±2.
+//  A subtle z sine-wave is added so spines have depth as they flow along the glyph.
 const v3 = (x, y, z = 0) => new THREE.Vector3(x, y, z)
 
-const LETTER_M = [v3(-1.5, -2), v3(-1.5, 2, 0.4), v3(0, 0.2, -0.4), v3(1.5, 2, 0.4), v3(1.5, -2)]
-const LETTER_U = [v3(-1.3, 2), v3(-1.3, -1.2, 0.3), v3(-0.5, -2.2, -0.3), v3(0.5, -2.2, 0.3), v3(1.3, -1.2, -0.3), v3(1.3, 2)]
-const LETTER_S = [v3(1.3, 1.8, -0.3), v3(0.3, 2.2, 0.2), v3(-1.1, 1.8, 0.3), v3(-1.3, 0.8, -0.2), v3(-0.2, 0.1, 0), v3(0.2, -0.1, 0), v3(1.3, -0.8, 0.2), v3(1.1, -1.8, -0.3), v3(-0.3, -2.2, 0.2), v3(-1.3, -1.8, 0.3)]
-const LETTER_T_CROSS = [v3(-1.5, 2, 0.2), v3(0, 2, -0.2), v3(1.5, 2, 0.2)]
-const LETTER_T_STEM = [v3(0, 2, -0.2), v3(0, 0, 0.3), v3(0, -2, -0.3)]
-const LETTER_A = [v3(-1.4, -2, 0.2), v3(-0.7, 0, -0.3), v3(0, 2, 0.3), v3(0.7, 0, -0.3), v3(1.4, -2, 0.2)]
-const LETTER_A_CROSS = [v3(-0.7, 0, -0.2), v3(0, 0, 0.2), v3(0.7, 0, -0.2)]
-const LETTER_F_VERT = [v3(-1.2, -2, 0.2), v3(-1.2, 0, -0.2), v3(-1.2, 2, 0.3)]
-const LETTER_F_TOP = [v3(-1.2, 2, 0.3), v3(0, 2, -0.2), v3(1.3, 2, 0.3)]
-const LETTER_F_MID = [v3(-1.2, 0.2, -0.2), v3(0, 0.2, 0.2), v3(0.9, 0.2, -0.2)]
+// Helper: add z-depth wave along a point list so the spines twist in 3-D
+function withZ(pts, amp = 0.35) {
+    return pts.map((p, i) => new THREE.Vector3(p.x, p.y, Math.sin((i / Math.max(pts.length - 1, 1)) * Math.PI * 2) * amp))
+}
+
+const RAW_M = [v3(1.7244, -2), v3(1.7244, 2), v3(1.7007, 2), v3(0.0119, -1.8222), v3(-0.0119, -1.8222), v3(-1.7007, 2), v3(-1.7244, 2), v3(-1.7244, -2)]
+const RAW_U = [v3(-1.2978, 2.0296), v3(-1.2978, -0.5481), v3(-1.2044, -1.17), v3(-0.9415, -1.6252), v3(-0.5353, -1.9048), v3(-0.0119, -2), v3(0.5266, -1.9048), v3(0.9311, -1.6252), v3(1.1856, -1.17), v3(1.2741, -0.5481), v3(1.2741, 2.0296)]
+const RAW_S = [v3(-1.1141, -1.3541), v3(-0.9448, -1.62), v3(-0.6933, -1.8237), v3(-0.3707, -1.9541), v3(0.0119, -2), v3(0.4862, -1.9232), v3(0.8422, -1.7148), v3(1.066, -1.4075), v3(1.1437, -1.0341), v3(0.8039, -0.3555), v3(0.0563, 0.0615), v3(-0.6913, 0.4684), v3(-1.0311, 1.117), v3(-0.9624, 1.4571), v3(-0.757, 1.7489), v3(-0.4161, 1.9529), v3(0.0593, 2.0296), v3(0.4052, 1.9896), v3(0.68, 1.8785), v3(0.8859, 1.7096), v3(1.0252, 1.4963)]
+const RAW_T0 = [v3(0, -2), v3(0, 1.9704)]
+const RAW_T1 = [v3(-1.3037, 1.9704), v3(1.3037, 1.9704)]
+const RAW_A0 = [v3(-1.0844, -0.7378), v3(1.0904, -0.7378)]
+const RAW_A1 = [v3(1.5881, -2), v3(0.0237, 2), v3(0, 2), v3(-1.5881, -2)]
+const RAW_F0 = [v3(-0.803, -2), v3(-0.803, 1.9704), v3(1.2178, 1.9704)]
+const RAW_F1 = [v3(-0.803, 0.0563), v3(1.117, 0.0563)]
+
+const LETTER_M = withZ(RAW_M, 0.30)
+const LETTER_U = withZ(RAW_U, 0.28)
+const LETTER_S = withZ(RAW_S, 0.22)
+const LETTER_T_0 = withZ(RAW_T0, 0.35)
+const LETTER_T_1 = withZ(RAW_T1, 0.20)
+const LETTER_A_0 = withZ(RAW_A0, 0.18)
+const LETTER_A_1 = withZ(RAW_A1, 0.30)
+const LETTER_F_0 = withZ(RAW_F0, 0.30)
+const LETTER_F_1 = withZ(RAW_F1, 0.18)
 
 // Multi-stroke letters use an array of paths rendered as separate SpinePaths
 const MUSTAFA_LETTERS = {
     M: [LETTER_M],
     U: [LETTER_U],
     S: [LETTER_S],
-    T: [LETTER_T_CROSS, LETTER_T_STEM],
-    A: [LETTER_A, LETTER_A_CROSS],
-    F: [LETTER_F_VERT, LETTER_F_TOP, LETTER_F_MID],
+    T: [LETTER_T_0, LETTER_T_1],
+    A: [LETTER_A_0, LETTER_A_1],
+    F: [LETTER_F_0, LETTER_F_1],
 }
 
 // WritingSpineLetter already handles a single path — wrap it for multi-stroke support
@@ -993,7 +1151,89 @@ function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], sc
     )
 }
 
-function HeroSection() {
+// ─── Star field — slowly emerges after hero loads ─────────────────────────────
+const STAR_COUNT = 220
+const STARS_PER_SEC = 30      // how many stars start fading in per second
+const STAR_FADE = 0.5    // seconds each star takes to fully appear
+const STAR_DELAY = 0    // seconds after mount before first star appears
+
+function StarField() {
+    const pointsRef = useRef()
+    const groupRef = useRef()
+
+    const { positions, targets, colors, delays } = useMemo(() => {
+        const positions = new Float32Array(STAR_COUNT * 3)
+        const targets = new Float32Array(STAR_COUNT * 3)
+        const colors = new Float32Array(STAR_COUNT * 3) // starts black
+        const delays = new Float32Array(STAR_COUNT)
+
+        // Shuffle so stars don't appear in a predictable spatial order
+        const order = Array.from({ length: STAR_COUNT }, (_, i) => i)
+        for (let i = order.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [order[i], order[j]] = [order[j], order[i]]
+        }
+
+        for (let i = 0; i < STAR_COUNT; i++) {
+            const theta = Math.random() * Math.PI * 2
+            const phi = Math.acos(2 * Math.random() - 1)
+            const r = 20 + Math.random() * 35
+
+            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta)
+            positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.55
+            positions[i * 3 + 2] = r * Math.cos(phi)
+
+            const b = 0.55 + Math.random() * 0.45
+            targets[i * 3] = b * (Math.random() > 0.6 ? 0.78 : 1.0)
+            targets[i * 3 + 1] = b * 0.88
+            targets[i * 3 + 2] = b
+
+            delays[order[i]] = STAR_DELAY + i / STARS_PER_SEC
+        }
+
+        return { positions, targets, colors, delays }
+    }, [])
+
+    useFrame((state) => {
+        if (!pointsRef.current) return
+        // Keep stars centered on camera so they appear everywhere
+        if (groupRef.current) groupRef.current.position.copy(state.camera.position)
+        const t = state.clock.elapsedTime
+        let dirty = false
+
+        for (let i = 0; i < STAR_COUNT; i++) {
+            const elapsed = t - delays[i]
+            if (elapsed <= 0) continue
+            const p = Math.min(elapsed / STAR_FADE, 1)
+            const ci = i * 3
+            const nr = targets[ci] * p
+            const ng = targets[ci + 1] * p
+            const nb = targets[ci + 2] * p
+            if (Math.abs(colors[ci] - nr) > 0.002) {
+                colors[ci] = nr
+                colors[ci + 1] = ng
+                colors[ci + 2] = nb
+                dirty = true
+            }
+        }
+
+        if (dirty) pointsRef.current.geometry.attributes.color.needsUpdate = true
+    })
+
+    return (
+        <group ref={groupRef}>
+            <points ref={pointsRef}>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" array={positions} count={STAR_COUNT} itemSize={3} />
+                    <bufferAttribute attach="attributes-color" array={colors} count={STAR_COUNT} itemSize={3} />
+                </bufferGeometry>
+                <pointsMaterial vertexColors size={1.4} sizeAttenuation={false} toneMapped={false} />
+            </points>
+        </group>
+    )
+}
+
+function HeroSection({ subtitleFont }) {
     const { size } = useThree()
     const { scene: spineScene } = useGLTF('/spine.glb')
 
@@ -1048,7 +1288,7 @@ function HeroSection() {
                 />
             ))}
 
-            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0.08} color="#8899cc" material-toneMapped={false}>{cfg.subtitleText}</Text>
+            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font={subtitleFont ?? FONT_OPTIONS[0].path} fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0} color="#8899cc" material-toneMapped={false} maxWidth={(cfg.letters.length - 1) * actualSpacing} textAlign="center" lineHeight={1.5}>{cfg.subtitleText}</Text>
         </group>
     )
 }
@@ -1079,45 +1319,8 @@ const ETHOS_CHECKPOINTS = [
     },
 ]
 
-// ─── Typing text hook ─────────────────────────────────────────────────────────
-function useTypingEffect(text, active, speed = 30) {
-    const [displayed, setDisplayed] = useState('')
-    const indexRef = useRef(0)
-    const prevActive = useRef(false)
-
-    useEffect(() => {
-        // Reset when becoming inactive
-        if (!active) {
-            indexRef.current = 0
-            setDisplayed('')
-            prevActive.current = false
-            return
-        }
-
-        // Already fully typed
-        if (prevActive.current && indexRef.current >= text.length) return
-        prevActive.current = true
-
-        const interval = setInterval(() => {
-            indexRef.current++
-            if (indexRef.current > text.length) {
-                clearInterval(interval)
-                return
-            }
-            setDisplayed(text.slice(0, indexRef.current))
-        }, speed)
-
-        return () => clearInterval(interval)
-    }, [active, text, speed])
-
-    return displayed
-}
-
 // ─── Single checkpoint row ────────────────────────────────────────────────────
-function EthosCheckpoint({ checkpoint, active, index }) {
-    const typedText = useTypingEffect(checkpoint.text, active, 25)
-    const isComplete = typedText.length === checkpoint.text.length
-
+function EthosCheckpoint({ checkpoint, active }) {
     return (
         <div className={`ethos-checkpoint ${active ? 'active' : ''}`}>
             <div className="ethos-bullet-wrap">
@@ -1140,53 +1343,77 @@ function EthosCheckpoint({ checkpoint, active, index }) {
                         </span>
                     ))}
                 </div>
-                <p className="ethos-text">
-                    {typedText}
-                    {active && !isComplete && <span className="ethos-cursor">|</span>}
-                </p>
+                <p className="ethos-text">{checkpoint.text}</p>
             </div>
         </div>
     )
 }
 
 // ─── Ethos Overlay (fixed HTML outside Canvas) ───────────────────────────────
-// Reads scrollRef via requestAnimationFrame — no Canvas/useFrame needed.
+// Bullet 1 fires on scroll entry. Bullets 2 & 3 auto-sequence via timers.
 function EthosOverlay({ scrollRef }) {
     const wrapperRef = useRef()
     const lineRef = useRef()
     const [activeCount, setActiveCount] = useState(0)
-    const prevCountRef = useRef(0)
-
-    // Thresholds: fraction of ethos progress at which each checkpoint fires
-    const THRESHOLDS = [0.12, 0.48, 0.80]
+    const activeRef = useRef(0)   // ref mirror so RAF sees latest value
+    const timersRef = useRef([])
+    const scheduledRef = useRef(false)
 
     useEffect(() => {
         let rafId
+
+        const clearTimers = () => {
+            timersRef.current.forEach(clearTimeout)
+            timersRef.current = []
+            scheduledRef.current = false
+        }
+
+        const bump = (n) => {
+            activeRef.current = n
+            setActiveCount(n)
+            // Grow line to match active count
+            if (lineRef.current)
+                lineRef.current.style.height = `${(n / ETHOS_CHECKPOINTS.length) * 100}%`
+        }
+
         const tick = () => {
             const t = scrollRef.current ?? 0
-            const raw = (t - ETHOS_ENTER) / (ETHOS_EXIT - ETHOS_ENTER)
-            const progress = Math.max(0, Math.min(1, raw))
 
             // Fade panel in/out at section edges
-            const fadeIn  = Math.min(1, Math.max(0, (t - ETHOS_ENTER) / 0.025))
-            const fadeOut = Math.min(1, Math.max(0, (ETHOS_EXIT  - t) / 0.025))
-            const opacity = Math.min(fadeIn, fadeOut)
-            if (wrapperRef.current) wrapperRef.current.style.opacity = opacity
+            const fadeIn = Math.min(1, Math.max(0, (t - ETHOS_ENTER) / 0.025))
+            const fadeOut = Math.min(1, Math.max(0, (ETHOS_EXIT - t) / 0.025))
+            if (wrapperRef.current) wrapperRef.current.style.opacity = Math.min(fadeIn, fadeOut)
 
-            // Grow the vertical line
-            if (lineRef.current) lineRef.current.style.height = `${progress * 100}%`
+            const raw = (t - ETHOS_ENTER) / (ETHOS_EXIT - ETHOS_ENTER)
+            const progress = Math.max(0, Math.min(1, raw))
+            const inSection = progress >= 0.12
 
-            // Activate checkpoints discretely (only triggers a setState on change)
-            const newCount = THRESHOLDS.filter(th => progress >= th).length
-            if (newCount !== prevCountRef.current) {
-                prevCountRef.current = newCount
-                setActiveCount(newCount)
+            if (!inSection) {
+                // User scrolled away — reset for next visit
+                if (activeRef.current > 0) {
+                    clearTimers()
+                    bump(0)
+                }
+            } else if (activeRef.current === 0) {
+                // Just entered — fire bullet 1 immediately, schedule 2 & 3
+                bump(1)
+                if (!scheduledRef.current) {
+                    scheduledRef.current = true
+                    // bullet 1 types ~107 chars × 25 ms ≈ 2.7 s → give 3.2 s
+                    timersRef.current[0] = setTimeout(() => bump(2), 3200)
+                    // bullet 2 types ~120 chars × 25 ms ≈ 3.0 s → 3.2 + 3.5 = 6.7 s
+                    timersRef.current[1] = setTimeout(() => bump(3), 6700)
+                }
             }
 
             rafId = requestAnimationFrame(tick)
         }
+
         rafId = requestAnimationFrame(tick)
-        return () => cancelAnimationFrame(rafId)
+        return () => {
+            cancelAnimationFrame(rafId)
+            clearTimers()
+        }
     }, [scrollRef])
 
     return (
@@ -1237,7 +1464,82 @@ function RotatingBust({ url, position, tiltAxis, rotSpeed = 0.3, scale = 1 }) {
     )
 }
 
-// ─── Main Ethos Section (3D) — busts + accent lights only ────────────────────
+// ─── Sigil model ──────────────────────────────────────────────────────────────
+// Geometry is offset from origin in Blender export — centroid at ~[−0.448, 0.567, 112.808]
+const SIGIL2_OFFSET = [0.448, -0.567, -112.808]
+
+function SigilModel({ position, scale = 1 }) {
+    const { scene } = useGLTF('/sigil2.glb')
+    const cloned = useMemo(() => {
+        const c = scene.clone(true)
+        c.traverse(child => {
+            if (!child.isMesh) return
+            // Replace material — original has alpha=0 (invisible) and wrong color
+            child.material = new THREE.MeshStandardMaterial({
+                color: '#6699ff',
+                emissive: '#6699ff',
+                emissiveIntensity: 1.4,
+                side: THREE.DoubleSide,
+                toneMapped: false,
+            })
+        })
+        return c
+    }, [scene])
+    const spinRef = useRef()
+
+    useFrame((_, delta) => {
+        if (spinRef.current) spinRef.current.rotation.y += delta * 0.08
+    })
+
+    return (
+        <group position={position} scale={scale}>
+            <group ref={spinRef}>
+                <primitive object={cloned} position={SIGIL2_OFFSET} />
+            </group>
+        </group>
+    )
+}
+
+useGLTF.preload('/sigil2.glb')
+
+// ─── Pillar with bust on top ───────────────────────────────────────────────────
+function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
+    const MAT = { color: '#080812', emissive: '#1a2d55', emissiveIntensity: 0.5, metalness: 0.85, roughness: 0.25, toneMapped: false }
+    return (
+        <group position={position}>
+            {/* Base slab */}
+            <mesh position={[0, -2.0, 0]}>
+                <boxGeometry args={[0.9, 0.18, 0.9]} />
+                <meshStandardMaterial {...MAT} />
+            </mesh>
+            {/* Column */}
+            <mesh>
+                <cylinderGeometry args={[0.13, 0.16, 4, 8]} />
+                <meshStandardMaterial {...MAT} />
+            </mesh>
+            {/* Top cap */}
+            <mesh position={[0, 2.1, 0]}>
+                <boxGeometry args={[0.8, 0.16, 0.8]} />
+                <meshStandardMaterial {...MAT} emissive="#3355cc" emissiveIntensity={0.8} />
+            </mesh>
+            {/* Bust */}
+            <RotatingBust
+                url={bustUrl}
+                position={[0, 2.6, 0]}
+                tiltAxis={[0, 0, 0]}
+                rotSpeed={bustRotSpeed}
+                scale={bustScale}
+            />
+        </group>
+    )
+}
+
+// ─── Main Ethos Section (3D) ──────────────────────────────────────────────────
+const ETHOS_SIGIL_POS  = [3, 0, 4]
+const ETHOS_LEFT_PIL   = [-7, 0, 4]
+const ETHOS_RIGHT_PIL  = [13, 0, 4]
+const ETHOS_CHAIN_Y    = 2.1   // height of pillar tops
+
 function EthosSection({ scrollRef }) {
     const groupRef = useRef()
 
@@ -1249,22 +1551,28 @@ function EthosSection({ scrollRef }) {
 
     return (
         <group ref={groupRef} position={ETHOS_POS}>
-            <RotatingBust
-                url="/me.glb"
-                position={[6, 1.8, 1]}
-                tiltAxis={[0.2, 0, 0.1]}
-                rotSpeed={0.28}
-                scale={4}
+            {/* Sigil — centred between the pillars */}
+            <SigilModel position={ETHOS_SIGIL_POS} scale={3} />
+
+            {/* Left pillar — me */}
+            <Pillar position={ETHOS_LEFT_PIL} bustUrl="/me.glb" bustRotSpeed={0.05} bustScale={3} />
+
+            {/* Right pillar — robot me */}
+            <Pillar position={ETHOS_RIGHT_PIL} bustUrl="/also-me.glb" bustRotSpeed={-0.04} bustScale={3} />
+
+            {/* Spine chain connecting the two pillar tops */}
+            <SpineChain
+                start={[ETHOS_LEFT_PIL[0],  ETHOS_CHAIN_Y, ETHOS_LEFT_PIL[2]]}
+                end={[ETHOS_RIGHT_PIL[0], ETHOS_CHAIN_Y, ETHOS_RIGHT_PIL[2]]}
+                mid={[3, ETHOS_CHAIN_Y - 2.8, 4]}
+                color="#3366ff"
+                active={false}
+                segments={30}
             />
-            <RotatingBust
-                url="/also-me.glb"
-                position={[5.5, -1.6, -2.5]}
-                tiltAxis={[-1, 0, -0.08]}
-                rotSpeed={-0.2}
-                scale={4}
-            />
-            <pointLight position={[7, 2, 2]} intensity={205} color="#6699ff" distance={12} decay={2} />
-            <pointLight position={[4, -2, -1]} intensity={1.8} color="#ff3366" distance={9} decay={2} />
+
+            <pointLight position={[3, 4, 6]}  intensity={180} color="#6699ff" distance={16} decay={2} />
+            <pointLight position={[-7, 2, 4]} intensity={40}  color="#3355ff" distance={10} decay={2} />
+            <pointLight position={[13, 2, 4]} intensity={40}  color="#3355ff" distance={10} decay={2} />
         </group>
     )
 }
@@ -1281,9 +1589,9 @@ function ProjectsSection({ scrollRef, onOpenProject }) {
 }
 
 // ─── Bio constants ────────────────────────────────────────────────────────────
-const BIO_ENTER  = 0.86
-const BIO_FULL   = 0.93
-const BIO_CENTER = [140, 0, -35]
+const BIO_ENTER = 0.86
+const BIO_FULL = 0.93
+const BIO_CENTER = [140, 0, -30]
 
 const PLACEHOLDER_IMAGES = [
     'https://picsum.photos/seed/bio1/600/900',
@@ -1292,23 +1600,23 @@ const PLACEHOLDER_IMAGES = [
 ]
 
 const DEBRIS_PIECES = [
-    { startPos: [-20, 2, 8],   geo: 'oct', color: '#3366ff', speed: 2.8 },
-    { startPos: [10, -3, 6],   geo: 'ico', color: '#2244cc', speed: 3.2 },
-    { startPos: [30, 1, -4],   geo: 'box', color: '#1133aa', speed: 2.5 },
-    { startPos: [70, 3, 10],   geo: 'oct', color: '#4455ff', speed: 3.8 },
-    { startPos: [75, -2, -6],  geo: 'ico', color: '#3344ee', speed: 2.9 },
-    { startPos: [100, 0, 4],   geo: 'oct', color: '#00aaff', speed: 4.2 },
-    { startPos: [120, -1, 3],  geo: 'tor', color: '#ff3366', speed: 3.6 },
-    { startPos: [140, 1, 5],   geo: 'ico', color: '#44ff88', speed: 4.8 },
-    { startPos: [50, 4, -8],   geo: 'box', color: '#2255dd', speed: 3.1 },
-    { startPos: [90, -4, 7],   geo: 'oct', color: '#1144bb', speed: 3.4 },
-    { startPos: [110, 2, -5],  geo: 'ico', color: '#3355cc', speed: 2.7 },
-    { startPos: [130, -3, 6],  geo: 'tor', color: '#0099ee', speed: 3.9 },
+    { startPos: [-20, 2, 8], geo: 'oct', color: '#3366ff', speed: 2.8 },
+    { startPos: [10, -3, 6], geo: 'ico', color: '#2244cc', speed: 3.2 },
+    { startPos: [30, 1, -4], geo: 'box', color: '#1133aa', speed: 2.5 },
+    { startPos: [70, 3, 10], geo: 'oct', color: '#4455ff', speed: 3.8 },
+    { startPos: [75, -2, -6], geo: 'ico', color: '#3344ee', speed: 2.9 },
+    { startPos: [100, 0, 4], geo: 'oct', color: '#00aaff', speed: 4.2 },
+    { startPos: [120, -1, 3], geo: 'tor', color: '#ff3366', speed: 3.6 },
+    { startPos: [140, 1, 5], geo: 'ico', color: '#44ff88', speed: 4.8 },
+    { startPos: [50, 4, -8], geo: 'box', color: '#2255dd', speed: 3.1 },
+    { startPos: [90, -4, 7], geo: 'oct', color: '#1144bb', speed: 3.4 },
+    { startPos: [110, 2, -5], geo: 'ico', color: '#3355cc', speed: 2.7 },
+    { startPos: [130, -3, 6], geo: 'tor', color: '#0099ee', speed: 3.9 },
 ]
 
 function DebrisPiece({ piece, progress, exploded }) {
     const meshRef = useRef()
-    const posRef  = useRef(new THREE.Vector3(...piece.startPos))
+    const posRef = useRef(new THREE.Vector3(...piece.startPos))
     const scaleRef = useRef(0)
 
     const geometry = useMemo(() => {
@@ -1317,7 +1625,7 @@ function DebrisPiece({ piece, progress, exploded }) {
             case 'ico': return new THREE.IcosahedronGeometry(0.15, 0)
             case 'tor': return new THREE.TorusGeometry(0.14, 0.05, 6, 12)
             case 'box': return new THREE.BoxGeometry(0.22, 0.22, 0.22)
-            default:    return new THREE.OctahedronGeometry(0.18, 0)
+            default: return new THREE.OctahedronGeometry(0.18, 0)
         }
     }, [piece.geo])
 
@@ -1376,9 +1684,9 @@ function CollapseFlash({ active }) {
 }
 
 function GlassShard({ index, totalShards, uvOffset, uvSize, worldPos, worldSize, rotation, texture, exploded, appeared }) {
-    const groupRef  = useRef()
-    const photoRef  = useRef()
-    const glassRef  = useRef()
+    const groupRef = useRef()
+    const photoRef = useRef()
+    const glassRef = useRef()
 
     const explodeOffset = useMemo(() => {
         const angle = (index / totalShards) * Math.PI * 2 + Math.random() * 0.8
@@ -1391,9 +1699,9 @@ function GlassShard({ index, totalShards, uvOffset, uvSize, worldPos, worldSize,
     }, [index, totalShards])
 
     const currentPos = useRef(new THREE.Vector3(...worldPos).add(explodeOffset))
-    const targetPos  = useMemo(() => new THREE.Vector3(...worldPos), [worldPos])
+    const targetPos = useMemo(() => new THREE.Vector3(...worldPos), [worldPos])
     const opacityRef = useRef(0)
-    const scaleRef   = useRef(0.3)
+    const scaleRef = useRef(0.3)
 
     // UV-remapped photo geometry
     const photoGeo = useMemo(() => {
@@ -1401,7 +1709,7 @@ function GlassShard({ index, totalShards, uvOffset, uvSize, worldPos, worldSize,
         const uvAttr = geo.attributes.uv
         const [u0, v0] = uvOffset
         const [uw, uh] = uvSize
-        const uvMap = [[u0, v0+uh], [u0+uw, v0+uh], [u0, v0], [u0+uw, v0]]
+        const uvMap = [[u0, v0 + uh], [u0 + uw, v0 + uh], [u0, v0], [u0 + uw, v0]]
         for (let i = 0; i < 4; i++) uvAttr.setXY(i, uvMap[i][0], uvMap[i][1])
         uvAttr.needsUpdate = true
         return geo
@@ -1415,7 +1723,7 @@ function GlassShard({ index, totalShards, uvOffset, uvSize, worldPos, worldSize,
         if (appeared) {
             currentPos.current.lerp(targetPos, delta * 4.5)
             opacityRef.current = dampValue(opacityRef.current, 1.0, 5, delta)
-            scaleRef.current   = dampValue(scaleRef.current, 1.0, 5, delta)
+            scaleRef.current = dampValue(scaleRef.current, 1.0, 5, delta)
         } else if (exploded) {
             currentPos.current.lerp(targetPos.clone().add(explodeOffset.clone().multiplyScalar(2)), delta * 6)
             opacityRef.current = dampValue(opacityRef.current, 0, 10, delta)
@@ -1461,10 +1769,10 @@ function FragmentedPortrait({ appeared, exploded }) {
                 result.push({
                     index, texIndex,
                     uvOffset: [col / COLS, 1 - (row + 1) / ROWS],
-                    uvSize:   [1 / COLS, 1 / ROWS],
+                    uvSize: [1 / COLS, 1 / ROWS],
                     worldPos: [(col + 0.5) * (SHARD_W + GAP) - totalW / 2, (ROWS - row - 0.5) * (SHARD_H + GAP) - totalH / 2, (Math.random() - 0.5) * 1.2],
                     worldSize: [SHARD_W, SHARD_H],
-                    rotation: [(Math.random()-0.5)*0.12, (Math.random()-0.5)*0.08, (Math.random()-0.5)*0.06],
+                    rotation: [(Math.random() - 0.5) * 0.12, (Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.06],
                 })
             }
         }
@@ -1489,17 +1797,17 @@ function RaveAfterglowLights({ active }) {
         hueRef.current = (hueRef.current + delta * 0.012) % 1
         const h = hueRef.current
         const t = state.clock.elapsedTime
-        if (light1Ref.current) { light1Ref.current.color.setHSL(h, 0.8, 0.5);              light1Ref.current.intensity = 8 + Math.sin(t * 0.7) * 3 }
-        if (light2Ref.current) { light2Ref.current.color.setHSL((h+0.33)%1, 0.7, 0.4);    light2Ref.current.intensity = 6 + Math.sin(t * 0.5 + 1.2) * 2.5 }
-        if (light3Ref.current) { light3Ref.current.color.setHSL((h+0.66)%1, 0.6, 0.35);   light3Ref.current.intensity = 4 + Math.sin(t * 0.9 + 2.4) * 2 }
+        if (light1Ref.current) { light1Ref.current.color.setHSL(h, 0.8, 0.5); light1Ref.current.intensity = 8 + Math.sin(t * 0.7) * 3 }
+        if (light2Ref.current) { light2Ref.current.color.setHSL((h + 0.33) % 1, 0.7, 0.4); light2Ref.current.intensity = 6 + Math.sin(t * 0.5 + 1.2) * 2.5 }
+        if (light3Ref.current) { light3Ref.current.color.setHSL((h + 0.66) % 1, 0.6, 0.35); light3Ref.current.intensity = 4 + Math.sin(t * 0.9 + 2.4) * 2 }
     })
 
     if (!active) return null
     return (
         <>
-            <pointLight ref={light1Ref} position={[-4, 3, 3]}  intensity={0} distance={14} decay={2} />
-            <pointLight ref={light2Ref} position={[4, -2, 2]}  intensity={0} distance={12} decay={2} />
-            <pointLight ref={light3Ref} position={[0, 0, -4]}  intensity={0} distance={10} decay={2} />
+            <pointLight ref={light1Ref} position={[-4, 3, 3]} intensity={0} distance={14} decay={2} />
+            <pointLight ref={light2Ref} position={[4, -2, 2]} intensity={0} distance={12} decay={2} />
+            <pointLight ref={light3Ref} position={[0, 0, -4]} intensity={0} distance={10} decay={2} />
         </>
     )
 }
@@ -1535,36 +1843,36 @@ function BioGrid({ active }) {
 }
 
 function ScrollBar({ scrollRef, currentSectionRef }) {
-    const fillRef  = useRef()
-    const dotRefs  = useRef([])
-    const lblRefs  = useRef([])
+    const fillRef = useRef()
+    const dotRefs = useRef([])
+    const lblRefs = useRef([])
 
     useEffect(() => {
         let raf
         const ACCENT = '#00aaff'
-        const PAST   = '#1e3a66'
-        const IDLE   = '#08111f'
+        const PAST = '#1e3a66'
+        const IDLE = '#08111f'
 
         function loop() {
-            const t      = scrollRef.current ?? 0
+            const t = scrollRef.current ?? 0
             const active = currentSectionRef.current ?? 0
 
-            if (fillRef.current) fillRef.current.style.width = `${t * 100}%`
+            if (fillRef.current) fillRef.current.style.width = `${Math.min(t / 0.96, 1) * 100}%`
 
             dotRefs.current.forEach((dot, i) => {
                 if (!dot) return
                 const isActive = i === active
-                const isPast   = SECTION_STOPS[i] < t + 0.01
-                dot.style.background  = isActive ? ACCENT : isPast ? PAST : IDLE
+                const isPast = SECTION_STOPS[i] < t + 0.01
+                dot.style.background = isActive ? ACCENT : isPast ? PAST : IDLE
                 dot.style.borderColor = isActive ? ACCENT : isPast ? '#2a4a88' : '#182440'
-                dot.style.boxShadow   = isActive ? `0 0 10px ${ACCENT}, 0 0 22px ${ACCENT}55` : isPast ? `0 0 5px #1e3a6688` : 'none'
-                dot.style.transform   = `translate(-50%,-50%) rotate(45deg) scale(${isActive ? 1.6 : 1})`
+                dot.style.boxShadow = isActive ? `0 0 10px ${ACCENT}, 0 0 22px ${ACCENT}55` : isPast ? `0 0 5px #1e3a6688` : 'none'
+                dot.style.transform = `translate(-50%,-50%) rotate(45deg) scale(${isActive ? 1.6 : 1})`
             })
 
             lblRefs.current.forEach((lbl, i) => {
                 if (!lbl) return
                 const isActive = i === active
-                lbl.style.color   = isActive ? ACCENT : '#2d4070'
+                lbl.style.color = isActive ? ACCENT : '#2d4070'
                 lbl.style.opacity = isActive ? '1' : '0.55'
             })
 
@@ -1577,13 +1885,13 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
     return (
         <div style={{
             position: 'absolute', bottom: '36px', left: '50%',
-            transform: 'translateX(-50%)', width: 'min(660px, 68vw)',
+            transform: 'translateX(-50%)', width: 'min(396px, 40.8vw)',
             zIndex: 100, pointerEvents: 'none',
         }}>
             {/* End-cap left */}
             <div style={{ position: 'absolute', left: 0, top: '-5px', width: '1px', height: '11px', background: 'rgba(60,90,160,0.4)' }} />
             {/* End-cap right */}
-            <div style={{ position: 'absolute', right: 0, top: '-5px', width: '1px', height: '11px', background: 'rgba(60,90,160,0.4)' }} />
+            {/* <div style={{ position: 'absolute', right: 0, top: '-5px', width: '1px', height: '11px', background: 'rgba(60,90,160,0.4)' }} /> */}
 
             {/* Track */}
             <div style={{ position: 'relative', height: '1px', background: 'rgba(40,70,140,0.3)' }}>
@@ -1596,9 +1904,9 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                 }} />
 
                 {/* Checkpoints */}
-                {SECTION_STOPS.map((stop, i) => (
+                {SECTION_STOPS.map((_, i) => (
                     <div key={i} style={{
-                        position: 'absolute', left: `${stop * 100}%`, top: 0,
+                        position: 'absolute', left: `${SECTION_BAR_POSITIONS[i] * 100}%`, top: 0,
                         pointerEvents: 'auto', cursor: 'pointer',
                     }} onClick={() => { currentSectionRef.current = i }}>
                         {/* Tick above track */}
@@ -1632,45 +1940,521 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
     )
 }
 
-export function BioOverlay({ scrollRef }) {
-    const wrapperRef = useRef()
-    const [visible, setVisible] = useState(false)
+// BioOverlay replaced by in-scene ModularResumePatch
+export function BioOverlay() { return null }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MODULAR RESUME PATCH BAY
+// ═════════════════════════════════════════════════════════════════════════════
+
+const COMPANY_NODES = [
+    { id: 'cbre', pos: [-5.5, 2.4, 0], title: 'CBRE', desc: 'VISUAL LANG // 2025\nINTERACTION DESIGN', color: '#ff3366' },
+    { id: 'motive', pos: [-5.5, 0.8, 0], title: 'MOTIVE', desc: 'PRODUCT UX // 2024\nENTERPRISE SYSTEMS', color: '#ffaa22' },
+    { id: 'educative', pos: [-5.5, -0.8, 0], title: 'EDUCATIVE', desc: 'UX DESIGN // 2023\nLEARNING SYSTEMS', color: '#00aaff' },
+    { id: 'dell', pos: [-5.5, -2.4, 0], title: 'DELL', desc: 'CAPSTONE // NOW\nSCHOOL OF INFO', color: '#44ff88' },
+]
+const HUB_POS = [0, 0, 0]
+const CUBE_POS = [5.5, 0, 0]
+
+// Company jack — hex bolt shape, label to the left, data readout to the right
+function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
+    const meshRef = useRef()
+    const [hovered, setHovered] = useState(false)
+
+    useFrame((_, delta) => {
+        if (meshRef.current) meshRef.current.rotation.z += delta * (hovered ? 1.5 : 0.2)
+    })
+
+    return (
+        <group position={config.pos}>
+            <mesh
+                ref={meshRef}
+                rotation={[Math.PI / 2, 0, 0]}
+                onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
+                onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
+                onClick={e => { e.stopPropagation(); onClick() }}
+            >
+                <cylinderGeometry args={[0.45, 0.55, 0.35, 6]} />
+                <meshStandardMaterial
+                    color={isActive ? config.color : '#111118'}
+                    metalness={0.9} roughness={0.2}
+                    emissive={config.color}
+                    emissiveIntensity={isActive ? 0.5 : (hovered ? 0.2 : 0)}
+                    toneMapped={false}
+                />
+            </mesh>
+            <mesh position={[0, 0, 0.18]}>
+                <circleGeometry args={[0.17, 16]} />
+                <meshBasicMaterial color="#000" />
+            </mesh>
+            <pointLight color={config.color} intensity={isActive ? 1.5 : 0} distance={3} />
+
+            {/* Label — to the left of the jack */}
+            <Text
+                position={[-0.7, 0, 0]}
+                font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                fontSize={0.2} letterSpacing={0.08} anchorX="right" anchorY="middle"
+                color={hovered || isActive ? config.color : '#2a3d55'}
+                material-toneMapped={false}
+            >{config.title}</Text>
+
+            {/* Data readout — to the right, toward the resume hub */}
+            {(isActive || hovered) && (
+                <group>
+                    <Line points={[[0.5, 0, 0], [1.0, 0.5, 0], [1.5, 0.5, 0]]}
+                        color={config.color} lineWidth={0.7} transparent opacity={0.5} />
+                    <Text
+                        position={[1.6, 0.5, 0]}
+                        font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                        fontSize={0.14} lineHeight={1.5} anchorX="left" anchorY="middle"
+                        color="#aabbcc" material-toneMapped={false} material-transparent={true}
+                    >{config.desc}</Text>
+                </group>
+            )}
+        </group>
+    )
+}
+
+// Central resume hub — glowing icosahedron with orbiting ring
+function ResumeHub() {
+    const meshRef = useRef()
+    const ringRef = useRef()
+    useFrame((_, delta) => {
+        if (meshRef.current) meshRef.current.rotation.y += delta * 0.4
+        if (ringRef.current) ringRef.current.rotation.z -= delta * 0.6
+    })
+    return (
+        <group position={HUB_POS}>
+            <mesh ref={meshRef}>
+                <icosahedronGeometry args={[0.7, 1]} />
+                <meshStandardMaterial
+                    color="#eef2ff" emissive="#3366ff" emissiveIntensity={0.6}
+                    metalness={0.8} roughness={0.1} toneMapped={false}
+                />
+            </mesh>
+            <mesh ref={ringRef}>
+                <torusGeometry args={[1.1, 0.02, 8, 64]} />
+                <meshBasicMaterial color="#3366ff" transparent opacity={0.45} toneMapped={false} />
+            </mesh>
+            <pointLight color="#3366ff" intensity={2.5} distance={7} />
+            <Text position={[0, -1.1, 0]}
+                font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                fontSize={0.22} letterSpacing={0.1} anchorX="center" anchorY="middle"
+                color="#ffffff" material-toneMapped={false}
+            >RESUME.SYS</Text>
+            <Text position={[0, -1.45, 0]}
+                font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                fontSize={0.13} letterSpacing={0.05} anchorX="center" anchorY="middle"
+                color="#3a5080" material-toneMapped={false}
+            >MUSTAFA ALEEM // UX ARCHITECT</Text>
+        </group>
+    )
+}
+
+// Locked cube — represents the next role; click to reveal message
+function LockedCube({ clicked, onCubeClick, onHover, onHoverOut }) {
+    const meshRef = useRef()
+    const wireRef = useRef()
+    const [hovered, setHovered] = useState(false)
+
+    useFrame((_, delta) => {
+        const speed = hovered ? 1.2 : 0.35
+        if (meshRef.current) {
+            meshRef.current.rotation.y += delta * speed
+            meshRef.current.rotation.x += delta * speed * 0.4
+        }
+        if (wireRef.current) {
+            wireRef.current.rotation.copy(meshRef.current.rotation)
+        }
+    })
+
+    return (
+        <group
+            position={CUBE_POS}
+            onPointerEnter={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
+            onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
+        >
+            <mesh
+                ref={meshRef}
+                onClick={e => { e.stopPropagation(); onCubeClick() }}
+            >
+                <boxGeometry args={[1.1, 1.1, 1.1]} />
+                <meshStandardMaterial
+                    color="#06060f"
+                    emissive={clicked ? '#3366ff' : (hovered ? '#112244' : '#000011')}
+                    emissiveIntensity={clicked ? 0.8 : (hovered ? 0.4 : 0.15)}
+                    metalness={0.9} roughness={0.15} toneMapped={false}
+                />
+            </mesh>
+            <mesh ref={wireRef}>
+                <boxGeometry args={[1.16, 1.16, 1.16]} />
+                <meshBasicMaterial
+                    color={clicked ? '#3366ff' : (hovered ? '#334466' : '#1a2233')}
+                    wireframe transparent
+                    opacity={clicked ? 0.9 : (hovered ? 0.55 : 0.28)}
+                    toneMapped={false}
+                />
+            </mesh>
+
+            {clicked && <pointLight color="#3366ff" intensity={3} distance={6} />}
+
+            {/* Label below */}
+            <Text position={[0, -0.9, 0]}
+                font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                fontSize={0.22} letterSpacing={0.1} anchorX="center" anchorY="middle"
+                color={clicked ? '#3366ff' : (hovered ? '#334466' : '#1a2233')}
+                material-toneMapped={false}
+            >{clicked ? 'NEXT_ROLE' : '???'}</Text>
+
+            {/* "Hire me" reveal text */}
+            {clicked && (
+                <Text position={[0, 1.3, 0]}
+                    font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                    fontSize={0.21} lineHeight={1.5} anchorX="center" anchorY="bottom"
+                    color="#00ff88" maxWidth={4}
+                    material-toneMapped={false} material-transparent={true}
+                >{'HIRE ME TO\nUNLOCK THIS'}</Text>
+            )}
+
+            {/* Hover hint */}
+            {!clicked && hovered && (
+                <Text position={[0, 1.0, 0]}
+                    font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                    fontSize={0.15} anchorX="center" anchorY="bottom"
+                    color="#334466" material-toneMapped={false}
+                >[ CLICK ]</Text>
+            )}
+        </group>
+    )
+}
+
+useGLTF.preload('/spine.glb')
+
+// Samples a quadratic bezier, orients each spine cog along the tangent
+function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpeed = 1.5, paused = false }) {
+    const { scene } = useGLTF('/spine.glb')
+    const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
+    const spinRefs = useRef([])
+    const directions = useMemo(() => Array.from({ length: segments }, () => Math.random() < 0.5 ? 1 : -1), [segments])
+    const speedRef = useRef(1)
+
+    const transforms = useMemo(() => {
+        const s = new THREE.Vector3(...start)
+        const m = new THREE.Vector3(...mid)
+        const e = new THREE.Vector3(...end)
+        return Array.from({ length: segments }, (_, i) => {
+            const t  = i / segments
+            const tm = (i + 0.5) / segments   // midpoint t for tangent
+            const mt = 1 - t, mtm = 1 - tm
+            const pos = new THREE.Vector3(
+                mt*mt*s.x + 2*mt*t*m.x + t*t*e.x,
+                mt*mt*s.y + 2*mt*t*m.y + t*t*e.y,
+                mt*mt*s.z + 2*mt*t*m.z + t*t*e.z,
+            )
+            // Quadratic bezier derivative (tangent)
+            const tan = new THREE.Vector3(
+                2*mtm*(m.x - s.x) + 2*tm*(e.x - m.x),
+                2*mtm*(m.y - s.y) + 2*tm*(e.y - m.y),
+                2*mtm*(m.z - s.z) + 2*tm*(e.z - m.z),
+            ).normalize()
+            const quat = new THREE.Quaternion().setFromUnitVectors(_up, tan)
+            return { pos: pos.toArray(), quat }
+        })
+    }, [start, end, mid, segments, _up])
+
+    const clones = useMemo(
+        () => transforms.map(() => {
+            const c = scene.clone(true)
+            c.traverse(child => { if (child.isMesh) child.material = child.material.clone() })
+            return c
+        }),
+        // only rebuild if segment count or base scene changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [scene, segments]
+    )
 
     useEffect(() => {
-        let rafId
-        const tick = () => {
-            const t = scrollRef.current ?? 0
-            const progress = Math.max(0, Math.min(1, (t - BIO_FULL) / 0.05))
-            if (wrapperRef.current) wrapperRef.current.style.opacity = progress
-            setVisible(t >= BIO_ENTER)
-            rafId = requestAnimationFrame(tick)
+        clones.forEach(c => c.traverse(child => {
+            if (!child.isMesh) return
+            child.material.emissive?.set(color)
+            child.material.emissiveIntensity = active ? 0.9 : 0.08
+            child.material.toneMapped = false
+        }))
+    }, [active, color, clones])
+
+    // Spin each cog with damped speed — smoothly decelerates/accelerates on pause/resume
+    useFrame((_, delta) => {
+        speedRef.current = dampValue(speedRef.current, paused ? 0 : 1, 5, delta)
+        spinRefs.current.forEach((ref, i) => {
+            if (ref) ref.rotation.z += delta * rotationSpeed * directions[i] * speedRef.current
+        })
+    })
+
+    return (
+        <group>
+            {transforms.map((t, i) => (
+                // outer group: orient cog along bezier tangent
+                // inner group: spin around that tangent axis (local Y)
+                <group key={i} position={t.pos} quaternion={t.quat}>
+                    <group ref={el => { if (el) { el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
+                        <primitive object={clones[i]} scale={0.28} rotation={[Math.PI, 0, 0]} />
+                    </group>
+                </group>
+            ))}
+        </group>
+    )
+}
+
+function ModularResumePatch({ visible }) {
+    const groupRef = useRef()
+    const [activeId, setActiveId] = useState(null)
+    const [cubeClicked, setCubeClicked] = useState(false)
+    const [hoveredNodeId, setHoveredNodeId] = useState(null)
+    const [cubeHovered, setCubeHovered] = useState(false)
+    const [companyPaused, setCompanyPaused] = useState(() => COMPANY_NODES.map(() => false))
+    const staggerTimers = useRef([])
+
+    // When cube is hovered, stagger-pause each company chain; resume all on hover out
+    useEffect(() => {
+        staggerTimers.current.forEach(clearTimeout)
+        staggerTimers.current = []
+        if (cubeHovered) {
+            COMPANY_NODES.forEach((_, i) => {
+                const delay = 60 + Math.random() * 380
+                staggerTimers.current[i] = setTimeout(
+                    () => setCompanyPaused(prev => { const n = [...prev]; n[i] = true; return n }),
+                    delay
+                )
+            })
+        } else {
+            setCompanyPaused(COMPANY_NODES.map(() => false))
         }
-        rafId = requestAnimationFrame(tick)
-        return () => cancelAnimationFrame(rafId)
-    }, [scrollRef])
+        return () => staggerTimers.current.forEach(clearTimeout)
+    }, [cubeHovered])
+
+    useFrame((_, delta) => {
+        if (!groupRef.current) return
+        groupRef.current.position.y = dampValue(groupRef.current.position.y, visible ? 0 : 10, 4, delta)
+    })
 
     if (!visible) return null
 
     return (
-        <div ref={wrapperRef} style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 40, opacity: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 8vw', boxSizing: 'border-box' }}>
-            <div style={{ maxWidth: '340px', color: '#fff' }}>
-                <div style={{ fontSize: '10px', letterSpacing: '4px', color: '#3366ff', marginBottom: '20px', fontFamily: 'monospace' }}>SYS://IDENTITY_RESOLVED</div>
-                <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, letterSpacing: '6px', margin: '0 0 8px 0', textTransform: 'uppercase', lineHeight: 1 }}>MUSTAFA</h2>
-                <div style={{ fontSize: '11px', letterSpacing: '3px', color: '#445577', marginBottom: '32px', fontFamily: 'monospace' }}>I am an endlessly curious Designer and Developer</div>
-                <p style={{ fontSize: '14px', lineHeight: 1.8, color: '#8899bb', margin: '0 0 40px 0', fontFamily: 'monospace' }}>
-                    I design systems that think and interfaces that feel inevitable. Five years building products at the intersection of craft and engineering — where the seams between form and function disappear.
-                </p>
-                <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, #3366ff, transparent)', marginBottom: '32px', opacity: 0.4 }} />
-                <div style={{ display: 'flex', gap: '32px', pointerEvents: 'auto' }}>
-                    {['RESUME', 'GITHUB', 'CONTACT'].map(label => (
-                        <a key={label} href="#" style={{ fontSize: '11px', letterSpacing: '3px', color: '#fff', textDecoration: 'none', fontFamily: 'monospace', borderBottom: '1px solid #3366ff', paddingBottom: '3px', transition: 'color 0.2s' }}
-                            onMouseEnter={e => e.target.style.color = '#3366ff'}
-                            onMouseLeave={e => e.target.style.color = '#fff'}
-                        >{label}</a>
-                    ))}
-                </div>
-            </div>
-        </div>
+        <group ref={groupRef}>
+            {/* Company → Resume spine chains */}
+            {COMPANY_NODES.map((node, i) => (
+                <SpineChain
+                    key={node.id}
+                    start={node.pos} end={HUB_POS}
+                    mid={[(node.pos[0] + HUB_POS[0]) / 2, node.pos[1] - 1.8, 0]}
+                    color={node.color}
+                    active={activeId === node.id}
+                    paused={companyPaused[i] || hoveredNodeId === node.id}
+                />
+            ))}
+
+            {/* Resume → Cube spine chain */}
+            <SpineChain
+                start={HUB_POS} end={CUBE_POS} mid={[2.75, -2.0, 0]}
+                color="#3366ff"
+                active={cubeClicked}
+                paused={cubeHovered}
+            />
+
+            {COMPANY_NODES.map(node => (
+                <SynthNode
+                    key={node.id} config={node}
+                    isActive={activeId === node.id}
+                    onClick={() => setActiveId(id => id === node.id ? null : node.id)}
+                    onHover={() => setHoveredNodeId(node.id)}
+                    onHoverOut={() => setHoveredNodeId(null)}
+                />
+            ))}
+
+            <ResumeHub />
+            <LockedCube
+                clicked={cubeClicked}
+                onCubeClick={() => setCubeClicked(true)}
+                onHover={() => setCubeHovered(true)}
+                onHoverOut={() => setCubeHovered(false)}
+            />
+        </group>
+    )
+}
+
+// ─── Glitch bust — me flickers into robot-hologram every few seconds ──────────
+function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
+    const { scene: humanScene } = useGLTF('/me.glb')
+    const { scene: robotScene } = useGLTF('/also-me.glb')
+
+    const humanClone = useMemo(() => humanScene.clone(true), [humanScene])
+    const robotClone = useMemo(() => {
+        const c = robotScene.clone(true)
+        c.traverse(child => {
+            if (!child.isMesh) return
+            child.material = new THREE.MeshStandardMaterial({
+                color: '#001a33',
+                emissive: '#00ccff',
+                emissiveIntensity: 2.2,
+                transparent: true,
+                opacity: 0.88,
+                side: THREE.DoubleSide,
+                toneMapped: false,
+            })
+        })
+        return c
+    }, [robotScene])
+
+    const spinRef  = useRef()   // shared rotation group
+    const humanRef = useRef()
+    const robotRef = useRef()
+    const jitterRef = useRef()
+    // state machine: 'human' | 'to_robot' | 'robot' | 'to_human'
+    const g = useRef({ phase: 'human', timer: 0, ft: 0, next: 3 + Math.random() * 4 })
+
+    useFrame((state, delta) => {
+        // shared rotation — both busts stay in sync
+        if (spinRef.current) spinRef.current.rotation.y += delta * rotSpeed
+
+        const s = g.current
+        s.timer += delta
+
+        if (s.phase === 'human') {
+            if (s.timer > s.next) { s.phase = 'to_robot'; s.ft = 0; s.timer = 0 }
+
+        } else if (s.phase === 'to_robot' || s.phase === 'to_human') {
+            s.ft += delta
+            // rapid alternation at ~80Hz for 0.28s
+            const show = Math.floor(s.ft * 80) % 2 === 0
+            if (humanRef.current) humanRef.current.visible = s.phase === 'to_robot' ? show : !show
+            if (robotRef.current) robotRef.current.visible = s.phase === 'to_robot' ? !show : show
+            // positional jitter during glitch
+            if (jitterRef.current) {
+                jitterRef.current.position.x = (Math.random() - 0.5) * 0.09
+                jitterRef.current.position.y = (Math.random() - 0.5) * 0.06
+            }
+            if (s.ft > 0.28) {
+                const landing = s.phase === 'to_robot' ? 'robot' : 'human'
+                s.phase = landing; s.timer = 0
+                if (humanRef.current) humanRef.current.visible = landing === 'human'
+                if (robotRef.current) robotRef.current.visible = landing === 'robot'
+                if (jitterRef.current) { jitterRef.current.position.x = 0; jitterRef.current.position.y = 0 }
+                if (landing === 'human') s.next = 3 + Math.random() * 5
+            }
+
+        } else if (s.phase === 'robot') {
+            // pulse the hologram emissive
+            robotClone.traverse(child => {
+                if (child.isMesh) child.material.emissiveIntensity = 2.0 + Math.sin(state.clock.elapsedTime * 8) * 0.4
+            })
+            if (s.timer > 1.0 + Math.random() * 0.8) { s.phase = 'to_human'; s.ft = 0 }
+        }
+    })
+
+    return (
+        <group position={position} scale={scale}>
+            <group ref={jitterRef}>
+                <group ref={spinRef}>
+                    <group ref={humanRef}><primitive object={humanClone} /></group>
+                    <group ref={robotRef} visible={false}><primitive object={robotClone} /></group>
+                </group>
+            </group>
+        </group>
+    )
+}
+
+// ─── Diptych — bust + resume side-by-side revealed on final scroll ────────────
+const DIPTYCH_ENTER = 1.12   // starts sliding in just after face stop
+
+const RESUME_CSS = `
+.dossier { width:240px; background:#f7f6f2; color:#111; font-family:'Georgia',serif;
+           padding:28px 24px; box-shadow:0 4px 32px rgba(0,0,0,0.22); user-select:none }
+.dossier h1 { font-size:17px; font-weight:700; letter-spacing:0.06em; margin:0 0 3px }
+.dossier .role { font-size:8.5px; letter-spacing:0.22em; color:#555; margin:0 0 16px; font-family:'Courier New',monospace }
+.dossier hr { border:none; border-top:1px solid #ccc; margin:0 0 14px }
+.dossier .section { font-size:7.5px; letter-spacing:0.2em; color:#888; margin:0 0 6px; font-family:'Courier New',monospace }
+.dossier .entry { font-size:10px; line-height:1.7; margin:0 0 10px; color:#222 }
+.dossier .entry strong { display:block; font-size:10px; font-weight:700 }
+.dossier .entry span { font-size:9px; color:#666 }
+.dossier .skills { font-size:9px; color:#444; line-height:2; letter-spacing:0.04em }
+`
+
+function BustDiptych({ scrollRef }) {
+    const groupRef = useRef()
+    const faceBustRef = useRef()
+
+    useFrame((_, delta) => {
+        const t = scrollRef.current ?? 0
+        const show = t >= DIPTYCH_ENTER
+        if (groupRef.current)
+            groupRef.current.position.y = dampValue(groupRef.current.position.y, show ? 0 : -22, 4.5, delta)
+        // face bust slides down as diptych rises
+        if (faceBustRef.current)
+            faceBustRef.current.position.y = dampValue(faceBustRef.current.position.y, show ? -18 : -5, 4.5, delta)
+    })
+
+    return (
+        <>
+            {/* Face-close-up bust — glitch bust, slides away when diptych enters */}
+            <group ref={faceBustRef} position={[0, -5, 0]}>
+                <GlitchBust position={[0, 0, 0]} scale={4} rotSpeed={0.06} />
+            </group>
+
+            {/* Diptych group — slides up from below */}
+            <group ref={groupRef} position={[0, -22, 0]}>
+                {/* ── Left half: front bust + sigil + back bust ── */}
+                <group position={[-5, 0, 0]}>
+                    {/* Front bust — glitch bust, faces camera */}
+                    <GlitchBust position={[0, 0, 1.5]} scale={6} rotSpeed={0.04} />
+                    {/* Sigil separator */}
+                    <SigilModel position={[0, 0, -0.2]} scale={1.8} />
+                    {/* Back bust — wrapped 180° so it faces away */}
+                    <group rotation={[0, Math.PI, 0]}>
+                        <RotatingBust url="/also-me.glb" position={[0, 0, 1.5]} tiltAxis={[0, 0, 0]} rotSpeed={0.04} scale={6} />
+                    </group>
+                </group>
+
+                {/* Thin vertical centre divider */}
+                <mesh position={[0, 0, 0]}>
+                    <planeGeometry args={[0.018, 9]} />
+                    <meshBasicMaterial color="#1a2d55" transparent opacity={0.5} toneMapped={false} />
+                </mesh>
+
+                {/* ── Right half: plain resume ── */}
+                <group position={[5, 0, 0]}>
+                    <Html transform occlude={false} distanceFactor={4.2} style={{ pointerEvents: 'none' }}>
+                        <style>{RESUME_CSS}</style>
+                        <div className="dossier">
+                            <h1>MUSTAFA ALEEM</h1>
+                            <p className="role">UX ARCHITECT · SPATIAL DEV · SYSTEMS THINKER</p>
+                            <hr />
+                            <p className="section">EXPERIENCE</p>
+                            <div className="entry">
+                                <strong>CBRE</strong>
+                                <span>Visual Systems Designer · 2025</span>
+                            </div>
+                            <div className="entry">
+                                <strong>MOTIVE</strong>
+                                <span>Product UX Designer · 2024</span>
+                            </div>
+                            <div className="entry">
+                                <strong>EDUCATIVE</strong>
+                                <span>UX Designer · 2023</span>
+                            </div>
+                            <hr />
+                            <p className="section">EDUCATION</p>
+                            <div className="entry">
+                                <strong>UT AUSTIN</strong>
+                                <span>BS Information Science · Now</span>
+                            </div>
+                            <hr />
+                            <p className="section">SKILLS</p>
+                            <p className="skills">React · Three.js · Figma · TypeScript<br />Systems Design · Interaction Design · UX Research</p>
+                        </div>
+                    </Html>
+                </group>
+            </group>
+        </>
     )
 }
 
@@ -1691,39 +2475,22 @@ function BioSection({ scrollRef }) {
         }
 
         timerRef.current += delta
-        if (phaseRef.current === 'idle'     && t >= BIO_ENTER)          { phaseRef.current = 'debris';    setPhase('debris');    timerRef.current = 0 }
-        if (phaseRef.current === 'debris'   && timerRef.current > 1.4)   { phaseRef.current = 'collapse';  setPhase('collapse');  timerRef.current = 0 }
-        if (phaseRef.current === 'collapse' && timerRef.current > 0.4)   { phaseRef.current = 'appeared';  setPhase('appeared');  timerRef.current = 0 }
-        if (phaseRef.current === 'appeared' && timerRef.current > 0.6)   { phaseRef.current = 'afterglow'; setPhase('afterglow') }
+        if (phaseRef.current === 'idle' && t >= BIO_ENTER) { phaseRef.current = 'debris'; setPhase('debris'); timerRef.current = 0 }
+        if (phaseRef.current === 'debris' && timerRef.current > 1.4) { phaseRef.current = 'collapse'; setPhase('collapse'); timerRef.current = 0 }
+        if (phaseRef.current === 'collapse' && timerRef.current > 0.4) { phaseRef.current = 'appeared'; setPhase('appeared'); timerRef.current = 0 }
+        if (phaseRef.current === 'appeared' && timerRef.current > 0.6) { phaseRef.current = 'afterglow'; setPhase('afterglow') }
     })
 
-    const debrisActive = ['debris', 'collapse'].includes(phase)
-    const exploded     = ['appeared', 'afterglow'].includes(phase)
-    const portraitOn   = ['appeared', 'afterglow'].includes(phase)
-    const afterglowOn  = phase === 'afterglow'
-    const flashActive  = phase === 'collapse'
+    const flashActive = phase === 'collapse'
+    const patchVisible = ['appeared', 'afterglow'].includes(phase)
 
     return (
         <group ref={groupRef} position={BIO_CENTER} visible={false}>
-            {DEBRIS_PIECES.map((piece, i) => (
-                <DebrisPiece key={i}
-                    piece={{ ...piece, startPos: [piece.startPos[0]-BIO_CENTER[0], piece.startPos[1]-BIO_CENTER[1], piece.startPos[2]-BIO_CENTER[2]] }}
-                    progress={debrisActive ? 1 : 0}
-                    exploded={exploded}
-                />
-            ))}
             <CollapseFlash active={flashActive} />
-            <group position={[-2.2, 0, 0]}>
-                <FragmentedPortrait appeared={portraitOn} exploded={phase === 'collapse'} />
-            </group>
-            <RaveAfterglowLights active={afterglowOn} />
-            <BioGrid active={afterglowOn} />
-            {portraitOn && (
-                <mesh position={[-2.2, 0, -0.5]}>
-                    <planeGeometry args={[4, 7]} />
-                    <meshBasicMaterial color="#0a0a20" transparent opacity={0.6} toneMapped={false} side={THREE.DoubleSide} />
-                </mesh>
-            )}
+            <RaveAfterglowLights active={patchVisible} />
+            <BioGrid active={patchVisible} />
+            <ModularResumePatch visible={patchVisible} />
+            <BustDiptych scrollRef={scrollRef} />
         </group>
     )
 }
@@ -1743,7 +2510,7 @@ function DragController({ currentSectionRef }) {
             const ci = currentSectionRef.current - 2
             if (ci < 0 || ci > 2) return
             dragRotState.isDragging = true
-            dragRotState.cardIndex  = ci
+            dragRotState.cardIndex = ci
             dragRotState.lastX = e.clientX
             dragRotState.lastY = e.clientY
             el.setPointerCapture(e.pointerId)
@@ -1762,7 +2529,7 @@ function DragController({ currentSectionRef }) {
         const onUp = (e) => {
             if (!dragRotState.isDragging) return
             dragRotState.isDragging = false
-            try { el.releasePointerCapture(e.pointerId) } catch (_) {}
+            try { el.releasePointerCapture(e.pointerId) } catch (_) { }
         }
 
         el.addEventListener('pointerdown', onDown)
@@ -1778,9 +2545,9 @@ function DragController({ currentSectionRef }) {
     return null
 }
 
-function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
+function Scene({ scrollRef, currentSectionRef, onOpenProject, subtitleFont }) {
     return (
-        <>
+        <Selection>
             <ScrollSmoother currentSectionRef={currentSectionRef} scrollRef={scrollRef} />
             <CameraController scrollRef={scrollRef} />
             <DragController currentSectionRef={currentSectionRef} />
@@ -1791,7 +2558,7 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <Environment preset="night" />
 
             <EffectComposer disableNormalPass>
-                <Bloom luminanceThreshold={0.5} intensity={1.2} levels={4} />
+                <SelectiveBloom luminanceThreshold={0.5} intensity={1.2} levels={4} />
                 <ChromaticAberration offset={warpOffset} />
                 <Vignette eskil={false} offset={0.1} darkness={1.1} />
             </EffectComposer>
@@ -1800,16 +2567,22 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <fog attach="fog" args={['#050510', 25, 60]} />
 
             <CursorFX />
-            <InteractiveParticleField count={300} />
+            <Select enabled>
+                <InteractiveParticleField count={300} />
+                <StarField />
+                <HeroSection subtitleFont={subtitleFont} />
+                <EthosSection scrollRef={scrollRef} />
+                <ProjectsSection scrollRef={scrollRef} onOpenProject={onOpenProject} />
+                <BioSection scrollRef={scrollRef} />
+            </Select>
 
-            <HeroSection />
-            <SigilCorridor />
-            <EthosSection scrollRef={scrollRef} />
-            <ProjectsSection scrollRef={scrollRef} onOpenProject={onOpenProject} />
-            <BioSection scrollRef={scrollRef} />
-            
+            {/* VideoScreen rendered outside Select enabled — no bloom bleed */}
+            <group position={[120, -0.5, 0]} rotation={[0, 0.2, 0]}>
+                <VideoScreen />
+            </group>
+
             <Stats />
-        </>
+        </Selection>
     )
 }
 
@@ -1944,12 +2717,12 @@ const SEGMENTS = 22
 
 function LoadingScreen() {
     const { progress, active } = useProgress()
-    const [gone, setGone]   = useState(false)
-    const [exit, setExit]   = useState(false)
+    const [gone, setGone] = useState(false)
+    const [exit, setExit] = useState(false)
 
     useEffect(() => {
         if (progress >= 100 && !active) {
-            const t1 = setTimeout(() => setExit(true),  350)
+            const t1 = setTimeout(() => setExit(true), 350)
             const t2 = setTimeout(() => setGone(true), 1300)
             return () => { clearTimeout(t1); clearTimeout(t2) }
         }
@@ -1957,8 +2730,8 @@ function LoadingScreen() {
 
     if (gone) return null
 
-    const filled  = Math.round((progress / 100) * SEGMENTS)
-    const msgIdx  = Math.min(Math.floor((progress / 100) * LOAD_STATUSES.length), LOAD_STATUSES.length - 1)
+    const filled = Math.round((progress / 100) * SEGMENTS)
+    const msgIdx = Math.min(Math.floor((progress / 100) * LOAD_STATUSES.length), LOAD_STATUSES.length - 1)
 
     return (
         <div className="loader-root" style={{ opacity: exit ? 0 : 1 }}>
@@ -1991,13 +2764,43 @@ function LoadingScreen() {
     )
 }
 
+function FontPicker({ selected, onSelect }) {
+    const [open, setOpen] = useState(false)
+    return (
+        <div style={{ position: 'fixed', bottom: '80px', left: '20px', zIndex: 999, fontFamily: 'monospace', fontSize: '11px', pointerEvents: 'auto' }}>
+            <button onClick={() => setOpen(o => !o)} style={{ background: '#0a0f2a', border: '1px solid #3366ff55', color: '#3366ff', padding: '6px 12px', letterSpacing: '2px', cursor: 'pointer', width: '100%' }}>
+                {open ? '▲ FONT PICKER' : '▼ FONT PICKER'}
+            </button>
+            {open && (
+                <div style={{ background: '#070b1e', border: '1px solid #3366ff33', borderTop: 'none', maxHeight: '260px', overflowY: 'auto' }}>
+                    {FONT_OPTIONS.map(f => (
+                        <div key={f.path} onClick={() => onSelect(f.path)}
+                            style={{ padding: '7px 12px', color: selected === f.path ? '#3366ff' : '#8899bb', borderLeft: selected === f.path ? '2px solid #3366ff' : '2px solid transparent', cursor: 'pointer', letterSpacing: '1px' }}
+                        >{f.label}</div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
     const [activeProject, setActiveProject] = useState(null)
+    const [subtitleFont, setSubtitleFont] = useState(FONT_OPTIONS[0].path)
 
     useEffect(() => {
-        return () => { document.body.style.cursor = 'auto' }
+        const onMove = (e) => {
+            const overUI = e.target.tagName !== 'CANVAS'
+            uiHoveredRef.current = overUI
+            document.body.classList.toggle('ui-hovered', overUI)
+        }
+        window.addEventListener('mousemove', onMove)
+        return () => {
+            window.removeEventListener('mousemove', onMove)
+            document.body.classList.remove('ui-hovered')
+        }
     }, [])
 
     // Wheel-to-section snapping — one section per gesture, locked until settled
@@ -2035,20 +2838,20 @@ export default function Portfolio() {
             <LoadingScreen />
 
             {/* GLOBAL HUD */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '12px' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0 40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '13px', pointerEvents: 'auto', padding: '24px 0' }}>
                     <div style={{ fontWeight: 'bold' }}>MUSTAFA // PORTFOLIO</div>
-                    <div style={{ pointerEvents: 'auto' }}>
-                        Building at <a href="#" target="_blank" style={{ color: '#ff3366', textDecoration: 'none' }}>YOUR COMPANY</a>
+                    <div>
+                        Building AI solutions at <a href="#" target="_blank" style={{ color: '#717fe9', textDecoration: 'none' }}>Dell</a>
                     </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', color: '#8899cc', fontSize: '12px', letterSpacing: '1px' }}>
-                    <div style={{ display: 'flex', gap: '20px', pointerEvents: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', pointerEvents: 'auto', padding: '24px 0' }}>
+                    <div style={{ display: 'flex', gap: '20px' }}>
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>TWITTER</a>
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
                     </div>
-                    <div style={{ pointerEvents: 'auto' }}>
+                    <div>
                         <a href="mailto:hello@mustafa.com" style={{ color: '#fff', textDecoration: 'none' }}>HELLO@MUSTAFA.COM</a>
                     </div>
                 </div>
@@ -2060,10 +2863,11 @@ export default function Portfolio() {
 
             <Canvas camera={{ position: [0, 1, 16], fov: 70 }} dpr={[1, 1.5]}>
                 <React.Suspense fallback={null}>
-                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={setActiveProject} />
+                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={setActiveProject} subtitleFont={subtitleFont} />
                 </React.Suspense>
             </Canvas>
 
+            <FontPicker selected={subtitleFont} onSelect={setSubtitleFont} />
             <ProjectTerminal project={activeProject} onClose={() => setActiveProject(null)} />
         </div>
     )

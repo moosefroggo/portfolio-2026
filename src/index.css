@@ -15,6 +15,12 @@
   /* Hide default cursor globally */
 }
 
+/* Restore system cursor when hovering over HTML UI elements */
+body.ui-hovered,
+body.ui-hovered * {
+  cursor: auto !important;
+}
+
 html,
 body,
 #root {
@@ -720,7 +726,7 @@ button:hover~.precision-crosshair .cross-center,
   }
 }
 
-/* Typing text */
+/* Body text — slides up and fades in when checkpoint becomes active */
 .ethos-text {
   font-family: var(--font-body);
   font-size: 13px;
@@ -728,13 +734,14 @@ button:hover~.precision-crosshair .cross-center,
   line-height: 1.8;
   min-height: 48px;
   max-width: 340px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.6s ease 0.18s, transform 0.6s ease 0.18s;
 }
 
-/* Blinking cursor */
-.ethos-cursor {
-  color: #ff3366;
-  font-weight: 300;
-  animation: ethos-blink 0.6s step-end infinite;
+.ethos-checkpoint.active .ethos-text {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @keyframes ethos-blink {
@@ -923,8 +930,8 @@ button:hover~.precision-crosshair .cross-center,
   gap: 3px;
 }
 .loader-seg {
-  width: 20px;
-  height: 8px;
+  width: 10px;
+  height: 4px;
   background: #070f1e;
   border: 1px solid #0d1f3a;
   transition: background 0.1s, box-shadow 0.1s, border-color 0.1s;
