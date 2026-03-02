@@ -42,9 +42,9 @@ const CAMERA_PATH = [
     { t: 0.76, pos: [140, 0, 9], look: [140, 0, 0], fov: 58, roll: -0.5 },
     { t: 0.80, pos: [140, 0, 6], look: [140, 0, 0], fov: 52, roll: 0 },
     // ── Bio section ──
-    { t: 0.86, pos: [140, 0, 0],   look: [140, -1, -30], fov: 48, roll: 0 },
-    { t: 0.93, pos: [140, 0, -10], look: [140, -1, -30], fov: 48, roll: 0 },
-    { t: 1.00, pos: [140, 0, -18], look: [140, -1, -34], fov: 48, roll: 0 },
+    { t: 0.86, pos: [140, 0, -2],  look: [140, -1, -30], fov: 54, roll: 0 },
+    { t: 0.93, pos: [140, 0, -12], look: [140, -1, -30], fov: 52, roll: 0 },
+    { t: 1.00, pos: [140, 0, -20], look: [140, -1, -30], fov: 50, roll: 0 },
     // ── Dossier — close-up bust left, resume panel right ──
     { t: 1.10, pos: [140, -2.2, -24], look: [140, -2.2, -30], fov: 36, roll: 0 },
 ]
@@ -681,7 +681,7 @@ function VideoScreen() {
                         border:'1px solid rgba(68,255,136,0.35)',
                         borderTop:'none',
                     }}>
-                        <span style={{ fontSize:7, color:'rgba(68,255,136,0.5)', letterSpacing:'0.1em' }}>AURA HLTH // FULLSTACK</span>
+                        <span style={{ fontSize:7, color:'rgba(68,255,136,0.5)', letterSpacing:'0.1em' }}>$1M Customer Acquired</span>
                         <span className="hud-dot" style={{ fontSize:7, color:'rgba(68,255,136,0.65)', letterSpacing:'0.1em' }}>● REC</span>
                     </div>
                 </div>
@@ -830,7 +830,7 @@ function HudPanel({ stats, tech, color, appeared, side = 'left' }) {
             <Text position={[0, 0.18, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>YEAR ──────────────────</Text>
             <Text position={[0, 0.02, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.year}</Text>
             <Text position={[0, -0.28, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>Company ─────────────────</Text>
-            <Text position={[0, -0.44, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.client}</Text>
+            <Text position={[0, -0.44, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.company}</Text>
             <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1} material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')} {blink ? '|' : ' '}</Text>
         </group>
     )
@@ -975,7 +975,7 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
 
             <Text position={[0, 1.95, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
             <Text position={[0, 1.55, 0.1]} fontSize={0.1} color="#445577" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
-            <Text position={[0, -1.55, 0.1]} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
+            <Text position={[0, -1.55, 0.1]} font={SUBTITLE_FONT} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
 
             {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
         </group>
@@ -1535,6 +1535,7 @@ function EthosSection({ scrollRef }) {
                 color="#3366ff"
                 active={false}
                 segments={30}
+                cogScale={0.52}
             />
 
             <pointLight position={[3, 4, 6]}  intensity={180} color="#6699ff" distance={16} decay={2} />
@@ -1558,7 +1559,7 @@ function ProjectsSection({ scrollRef }) {
 // ─── Bio constants ────────────────────────────────────────────────────────────
 const BIO_ENTER = 0.86
 const BIO_FULL = 0.93
-const BIO_CENTER = [140, 0, -30]
+const BIO_CENTER = [140, -1, -25]
 
 const PLACEHOLDER_IMAGES = [
     'https://picsum.photos/seed/bio1/600/900',
@@ -1873,7 +1874,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                 {/* Checkpoints */}
                 {SECTION_STOPS.map((_, i) => (
                     <div key={i} style={{
-                        position: 'absolute', left: `${SECTION_BAR_POSITIONS[i] * 100}%`, top: 0,
+                        position: 'absolute', left: `${(i / (SECTION_STOPS.length - 1)) * 100}%`, top: 0,
                         pointerEvents: 'auto', cursor: 'pointer',
                     }} onClick={() => { currentSectionRef.current = i }}>
                         {/* Tick above track */}
@@ -1938,13 +1939,24 @@ const DOSSIER_CSS = `
 .dossier-panel .entry span { font-size: 9.5px; color: #666; line-height: 1.6; }
 .dossier-panel .skills-list { font-size: 9.5px; color: #444; line-height: 2.1; letter-spacing: 0.04em; }
 .dossier-panel .contact-line { font-size: 9px; color: #666; font-family: 'Courier New', monospace; margin: 6px 0; letter-spacing: 0.06em; }
-.dossier-panel .dl-btn { display: block; width: 100%; margin-top: 28px; padding: 13px 0; background: #111; color: #f8f6f1; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; text-decoration: none; border: none; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
+.dossier-panel .dl-btn-row { display: flex; gap: 8px; margin-top: 28px; }
+.dossier-panel .dl-btn { display: block; flex: 1; padding: 13px 0; background: #111; color: #f8f6f1; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; text-decoration: none; border: none; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; box-sizing: border-box; }
 .dossier-panel .dl-btn:hover { background: #1a1a2e; color: #ffffff; }
+.dossier-panel .dl-btn.copied { background: #0a2a1a; color: #00ff88; }
 `
+
+const CONTACT_EMAIL = 'hello@mustafaaleem.com'
 
 function DossierOverlay({ scrollRef }) {
     const panelRef = useRef()
     const visRef = useRef(false)
+    const [copied, setCopied] = useState(false)
+
+    const copyEmail = () => {
+        navigator.clipboard.writeText(CONTACT_EMAIL)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1600)
+    }
 
     useEffect(() => {
         let rafId
@@ -1966,8 +1978,8 @@ function DossierOverlay({ scrollRef }) {
         <>
             <style>{DOSSIER_CSS}</style>
             <div ref={panelRef} className="dossier-panel hidden">
-                <h1>MUSTAFA ALEEM</h1>
-                <p className="role">UX Architect &nbsp;·&nbsp; Spatial Dev &nbsp;·&nbsp; Systems Thinker</p>
+                <h1>Open for opportunities</h1>
+                <p className="role">UX Designer &nbsp;·&nbsp; Spatial Dev &nbsp;·&nbsp; Systems Thinker</p>
                 <hr />
 
                 <p className="section-label">Experience</p>
@@ -2010,9 +2022,10 @@ function DossierOverlay({ scrollRef }) {
                 <p className="contact-line">github.com/mustafaaleem</p>
                 <p className="contact-line">linkedin.com/in/mustafaaleem</p>
 
-                <a href="/resume.pdf" download className="dl-btn">
-                    Download Resume
-                </a>
+                <div className="dl-btn-row">
+                    <a href="/Resume%20-%20Mustafa%20Akbar.pdf" download="Resume - Mustafa Akbar.pdf" className="dl-btn">↓ Resume</a>
+                    <button onClick={copyEmail} className={`dl-btn${copied ? ' copied' : ''}`}>{copied ? 'Copied ✓' : '@ Email'}</button>
+                </div>
             </div>
         </>
     )
@@ -2080,7 +2093,7 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
                         color={config.color} lineWidth={0.7} transparent opacity={0.5} />
                     <Text
                         position={[1.6, 0.5, 0]}
-                        font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                        font={SUBTITLE_FONT}
                         fontSize={0.14} lineHeight={1.5} anchorX="left" anchorY="middle"
                         color="#aabbcc" material-toneMapped={false} material-transparent={true}
                     >{config.desc}</Text>
@@ -2206,7 +2219,7 @@ function LockedCube({ clicked, onCubeClick, onHover, onHoverOut }) {
 useGLTF.preload('/spine.glb')
 
 // Samples a quadratic bezier, orients each spine cog along the tangent
-function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpeed = 1.5, paused = false }) {
+function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpeed = 1.5, paused = false, cogScale = 0.28 }) {
     const { scene } = useGLTF('/spine.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
@@ -2272,7 +2285,7 @@ function SpineChain({ start, end, mid, color, active, segments = 20, rotationSpe
                 // inner group: spin around that tangent axis (local Y)
                 <group key={i} position={t.pos} quaternion={t.quat}>
                     <group ref={el => { if (el) { el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
-                        <primitive object={clones[i]} scale={0.28} rotation={[Math.PI, 0, 0]} />
+                        <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
                     </group>
                 </group>
             ))}
@@ -2467,15 +2480,15 @@ function BustDiptych({ scrollRef }) {
         const t = scrollRef.current ?? 0
         const show = t >= DIPTYCH_ENTER
         if (opRef.current)
-            opRef.current.position.y = dampValue(opRef.current.position.y, show ? 0 : -3, 5, delta)
+            opRef.current.position.y = dampValue(opRef.current.position.y, show ? 0 : -18, 5, delta)
     })
 
     return (
         // Bust centred in the left portion of the face-camera view (fov 36, tight)
         // x=-1 shifts ~½ unit left of camera centre so the right 40vw resume panel has room
-        <group ref={opRef} position={[0, -3, 0]}>
-            <GlitchBust position={[-1, -1.5, 1.5]} scale={6} rotSpeed={0.04} />
-            <SigilModel position={[-1, -1.5, -0.4]} scale={1.8} />
+        <group ref={opRef} position={[0, -18, 0]}>
+            <GlitchBust position={[-1, -3.5, -1]} scale={6} rotSpeed={0.04} />
+            <SigilModel position={[-1, -3.5, -2.5]} scale={1.8} />
         </group>
     )
 }
@@ -2678,6 +2691,41 @@ function LoadingScreen() {
 }
 
 
+function CopyEmailHud() {
+    const [hovered, setHovered] = useState(false)
+    const [copied, setCopied] = useState(false)
+    const copy = () => {
+        navigator.clipboard.writeText(CONTACT_EMAIL)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1600)
+    }
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+             onMouseEnter={() => setHovered(true)}
+             onMouseLeave={() => setHovered(false)}>
+            <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#fff', textDecoration: 'none' }}>
+                {CONTACT_EMAIL.toUpperCase()}
+            </a>
+            {hovered && (
+                <button onClick={copy} title="Copy email" style={{
+                    background: 'none',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    color: copied ? '#00ff88' : '#aabbdd',
+                    cursor: 'pointer',
+                    padding: '2px 8px',
+                    fontSize: 10,
+                    letterSpacing: '0.12em',
+                    fontFamily: 'var(--font-mono)',
+                    lineHeight: '18px',
+                    transition: 'color 0.2s',
+                }}>
+                    {copied ? '✓' : '⧉'}
+                </button>
+            )}
+        </div>
+    )
+}
+
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
@@ -2743,7 +2791,7 @@ export default function Portfolio() {
                         <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
                     </div>
                     <div>
-                        <a href="mailto:hello@mustafa.com" style={{ color: '#fff', textDecoration: 'none' }}>HELLO@MUSTAFA.COM</a>
+                        <CopyEmailHud />
                     </div>
                 </div>
             </div>
