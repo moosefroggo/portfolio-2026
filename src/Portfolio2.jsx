@@ -3077,7 +3077,7 @@ const SCROLL_HINT_CSS = `
 .glitch-link {
     position: relative;
     display: inline-block;
-    background: linear-gradient(90deg, #8899cc 0%, #00ff88 25%, #ffffff 50%, #00fff9 75%, #8899cc 100%);
+    background: linear-gradient(90deg, #8899cc 0%, #99aab5 25%, #ffffff 50%, #9ab4b4 75%, #8899cc 100%);
     background-size: 200% auto;
     background-clip: text;
     -webkit-background-clip: text;
