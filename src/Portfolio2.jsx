@@ -45,8 +45,8 @@ const CAMERA_PATH = [
     { t: 0.86, pos: [140, 0, -2], look: [140, -3.2, -30], fov: 54, roll: 0 },
     { t: 0.93, pos: [140, 0, -12], look: [140, -3.2, -30], fov: 52, roll: 0 },
     { t: 1.00, pos: [140, 0, -20], look: [140, -3.2, -30], fov: 50, roll: 0 },
-    // ── Dossier — close-up bust left, resume panel right ──
-    { t: 1.10, pos: [140, -3.2, -24], look: [140, -3.2, -30], fov: 36, roll: 0 },
+    // ── Dossier — shifted deep to Z=-100 to clear Bio debris ──
+    { t: 1.10, pos: [140, -3.2, -100], look: [140, -3.2, -110], fov: 36, roll: 0 },
 ]
 
 // Section snap stops — camera always rests at one of these t-values
@@ -2007,8 +2007,8 @@ const DOSSIER_CSS = `
     position: fixed;
     left: 62%; top: 50%;
     transform: translate(-50%, -50%);
-    width: min(520px, 45vw);
-    height: min(720px, 82vh);
+    width: min(580px, 48vw);
+    height: min(780px, 86vh);
     background: rgba(6, 7, 20, 0.72);
     backdrop-filter: blur(22px) saturate(1.4);
     -webkit-backdrop-filter: blur(22px) saturate(1.4);
@@ -2743,7 +2743,7 @@ function PhotoRing({ appeared }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
     const radius = 5.5
-    const center = [-2, -4.5, -10]
+    const center = [-2, -4.5, 0]
 
     useFrame((_, delta) => {
         if (groupRef.current && hoveredIdx === -1) {
@@ -2785,16 +2785,15 @@ function BustDiptych({ scrollRef }) {
             const targetScale = show ? 1 : 0
             const s = dampValue(opRef.current.scale.x, targetScale, 4, delta)
             opRef.current.scale.setScalar(s)
+            // No vertical jump, stays fixed at deepest Z
             opRef.current.position.y = 0
         }
     })
 
     return (
-        // Bust centred in the left portion of the face-camera view (fov 36, tight)
-        // x=-1 shifts ~½ unit left of camera centre so the right 40vw resume panel has room
-        <group ref={opRef} position={[0, 0, 0]} scale={0}>
-            <GlitchBust position={[-2, -4.5, -10]} scale={6} rotSpeed={0.04} />
-            <SigilModel position={[-1, -4.5, -2.5]} scale={1.8} />
+        <group ref={opRef} position={[0, 0, -85]} scale={0}>
+            <GlitchBust position={[-2, -4.5, 0]} scale={6} rotSpeed={0.04} />
+            <SigilModel position={[-1, -4.5, 7.5]} scale={1.8} />
             <PhotoRing appeared={appeared} />
         </group>
     )
@@ -2824,7 +2823,7 @@ function BioSection({ scrollRef, currentSectionRef }) {
     })
 
     const flashActive = phase === 'collapse'
-    const patchVisible = ['appeared', 'afterglow'].includes(phase)
+    const patchVisible = ['appeared', 'afterglow'].includes(phase) && t < 1.04
 
     return (
         <group ref={groupRef} position={BIO_CENTER} visible={false}>
