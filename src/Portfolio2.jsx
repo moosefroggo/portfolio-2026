@@ -2689,12 +2689,14 @@ function SinglePhoto({ path, angle, radius, center, hoveredIdx, setHoveredIdx, i
 
         const isHovered = hoveredIdx === index
         const targetOp = appeared ? (isHovered ? 1 : 0.4) : 0
-        opRef.current = dampValue(opRef.current, targetOp, 4, delta)
+        opRef.current = dampValue(opRef.current, targetOp, 12, delta)
         scaleRef.current = dampValue(scaleRef.current, isHovered ? 1.4 : 1, 6, delta)
 
-        const x = center[0] + Math.cos(angle) * (radius + (isHovered ? 1.5 : 0))
-        const y = center[1] + (index % 2 === 0 ? 0.4 : -0.4) + Math.sin(state.clock.elapsedTime + index) * 0.2
-        const z = center[2] + Math.sin(angle) * (radius + (isHovered ? 1.5 : 0))
+        // Proper circular positioning around bust center
+        const radiusOffset = isHovered ? 1.5 : 0
+        const x = center[0] + Math.cos(angle) * (radius + radiusOffset)
+        const y = center[1] + Math.sin(state.clock.elapsedTime + index) * 0.15
+        const z = center[2] + Math.sin(angle) * (radius + radiusOffset)
 
         meshRef.current.position.set(x, y, z)
         meshRef.current.lookAt(center[0], center[1], center[2])
@@ -2727,8 +2729,8 @@ function SinglePhoto({ path, angle, radius, center, hoveredIdx, setHoveredIdx, i
 function PhotoRing({ appeared }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
-    const radius = 2.8
-    const center = [-2, -4.5, 0]
+    const radius = 0.1
+    const center = [-9, -3, -20]
 
     useFrame((_, delta) => {
         if (groupRef.current && hoveredIdx === -1) {
