@@ -2806,10 +2806,12 @@ function BioSection({ scrollRef, currentSectionRef }) {
     const [phase, setPhase] = useState('idle')
     const phaseRef = useRef('idle')
     const timerRef = useRef(0)
+    const tRef = useRef(0)
 
     useFrame((_, delta) => {
         if (!groupRef.current) return
         const t = scrollRef.current ?? 0
+        tRef.current = t
         groupRef.current.visible = t >= BIO_ENTER - 0.04
 
         if (t < BIO_ENTER - 0.04) {
@@ -2825,7 +2827,7 @@ function BioSection({ scrollRef, currentSectionRef }) {
     })
 
     const flashActive = phase === 'collapse'
-    const patchVisible = ['appeared', 'afterglow'].includes(phase) && t < 1.04
+    const patchVisible = ['appeared', 'afterglow'].includes(phase) && tRef.current < 1.04
 
     return (
         <group ref={groupRef} position={BIO_CENTER} visible={false}>
