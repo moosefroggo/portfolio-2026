@@ -2007,7 +2007,7 @@ const DOSSIER_CSS = `
 }
 .dossier-panel {
     position: fixed;
-    left: 80%; top: 50%;
+    left: 75%; top: 50%;
     transform: translate(-50%, -50%);
     width: min(580px, 48vw);
     height: min(780px, 86vh);
@@ -2579,16 +2579,15 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
             const orig = Array.isArray(child.material) ? child.material[0] : child.material
             // Robot appears with chromatic aberration hologram effect
             child.material = new THREE.MeshStandardMaterial({
-                map: orig.map ?? null,
-                normalMap: orig.normalMap ?? null,
-                roughnessMap: orig.roughnessMap ?? null,
-                metalnessMap: orig.metalnessMap ?? null,
+                map: orig.map,
+                normalMap: orig.normalMap,
+                roughnessMap: orig.roughnessMap,
+                metalnessMap: orig.metalnessMap,
+                color: orig.color ?? new THREE.Color(0xffffff),
                 roughness: orig.roughness ?? 0.6,
                 metalness: orig.metalness ?? 0.4,
-                emissive: new THREE.Color('#00ccff'),
-                emissiveIntensity: 0.4,
                 transparent: true,
-                opacity: 0.75,
+                opacity: 0.8,
                 toneMapped: false,
                 side: THREE.DoubleSide,
             })
@@ -2640,10 +2639,6 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
             }
 
         } else if (s.phase === 'robot') {
-            // Pulse hologram emissive
-            robotClone.traverse(child => {
-                if (child.isMesh) child.material.emissiveIntensity = 0.3 + Math.sin(state.clock.elapsedTime * 6) * 0.15
-            })
             if (s.timer > 1.0 + Math.random() * 0.8) { s.phase = 'to_human'; s.ft = 0 }
         }
     })
