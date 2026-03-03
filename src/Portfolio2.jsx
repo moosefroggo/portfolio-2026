@@ -2130,10 +2130,10 @@ function DossierOverlay({ scrollRef }) {
 
                     <div className="dossier-resume-entry">
                         <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">DELL / UT AUSTIN</span>
+                            <span className="dossier-resume-entry-title">DELL</span>
                             <span className="dossier-resume-entry-date">NOW</span>
                         </div>
-                        <div className="dossier-resume-entry-sub">AI PRODUCT DESIGN // HARDWARE DESIGN</div>
+                        <div className="dossier-resume-entry-sub">AI PRODUCT DESIGN</div>
                         <div className="dossier-resume-entry-desc">Building am AI-based leak alert system to protect Dell's PowerEdge servers.</div>
                     </div>
 
@@ -2577,16 +2577,18 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
         c.traverse(child => {
             if (!child.isMesh || !child.material) return
             const orig = Array.isArray(child.material) ? child.material[0] : child.material
-            // Robot appears as chrome hologram with chromatic aberration
+            // Robot appears as polished chrome hologram with chromatic aberration
             child.material = new THREE.MeshStandardMaterial({
                 map: orig.map,
                 normalMap: orig.normalMap,
-                color: orig.color ?? new THREE.Color(0xcccccc),
-                roughness: 0.15,
-                metalness: 1.0,
+                color: orig.color ?? new THREE.Color(0xdddddd),
+                roughness: 0.22,
+                metalness: 0.8,
+                emissive: new THREE.Color(0x333333),
+                emissiveIntensity: 0.1,
                 transparent: true,
                 opacity: 0.8,
-                toneMapped: false,
+                toneMapped: true,
                 side: THREE.DoubleSide,
             })
         })
