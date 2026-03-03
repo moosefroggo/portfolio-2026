@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, Text, useGLTF, Stats, Line, useTexture, useProgress, Html } from '@react-three/drei'
+import { Environment, Text, useGLTF, Line, useTexture, useProgress, Html } from '@react-three/drei'
 import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
@@ -684,7 +684,7 @@ function VideoScreen() {
                             <span className="hud-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#44ff88', display: 'inline-block' }} />
                             MISSION BRIEFING
                         </div>
-                        <span style={{ fontSize: 8, color: 'rgba(68,255,136,0.55)', letterSpacing: '0.1em' }}>WF-2023</span>
+                        <a href="https://github.com/moosefroggo/portfolio-2026/commit/7bf4176" target="_blank" rel="noopener noreferrer" style={{ fontSize: 8, color: 'rgba(68,255,136,0.55)', letterSpacing: '0.1em', textDecoration: 'none', cursor: 'pointer' }} onMouseOver={e => e.target.style.color = '#44ff88'} onMouseOut={e => e.target.style.color = 'rgba(68,255,136,0.55)'}>BUILD 7bf4176 · 2026-03-03</a>
                     </div>
 
                     {/* ── Video feed ── */}
@@ -2683,6 +2683,7 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
     const tex = useTexture(path)
     const opRef = useRef(0)
     const scaleRef = useRef(1)
+    const posRef = useRef({ x: 0, y: 0, z: 0 })
 
     useFrame((state, delta) => {
         if (!meshRef.current) return
@@ -2690,15 +2691,25 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         const isHovered = hoveredIdx === index
         const targetOp = appeared ? (isHovered ? 1 : 0.4) : 0
         opRef.current = dampValue(opRef.current, targetOp, 12, delta)
-        scaleRef.current = dampValue(scaleRef.current, isHovered ? 2.2 : 1, 6, delta)
+        scaleRef.current = dampValue(scaleRef.current, isHovered ? 3.8 : 1, 10, delta)
 
-        // Proper circular positioning (parent is now at center, so position relative to origin)
-        const radiusOffset = isHovered ? 1.5 : 0
-        const x = Math.cos(angle) * (radius + radiusOffset)
-        const y = Math.sin(state.clock.elapsedTime + index) * 0.15
-        const z = Math.sin(angle) * (radius + radiusOffset)
+        // When hovered: move to center and zoom in. When not: orbit normally
+        let targetX, targetY, targetZ
+        if (isHovered) {
+            targetX = 0
+            targetY = -3.2
+            targetZ = 3
+        } else {
+            targetX = Math.cos(angle) * radius
+            targetY = Math.sin(state.clock.elapsedTime + index) * 0.5
+            targetZ = Math.sin(angle) * radius
+        }
 
-        meshRef.current.position.set(x, y, z)
+        posRef.current.x = dampValue(posRef.current.x, targetX, 8, delta)
+        posRef.current.y = dampValue(posRef.current.y, targetY, 8, delta)
+        posRef.current.z = dampValue(posRef.current.z, targetZ, 8, delta)
+
+        meshRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
         meshRef.current.lookAt(state.camera.position)
         meshRef.current.scale.setScalar(scaleRef.current)
         meshRef.current.material.opacity = opRef.current
@@ -2734,7 +2745,7 @@ function PhotoRing({ appeared }) {
 
     useFrame((_, delta) => {
         if (groupRef.current && hoveredIdx === -1) {
-            groupRef.current.rotation.y += delta * 0.6
+            groupRef.current.rotation.y += delta * 0.1
         }
     })
 
@@ -2909,8 +2920,6 @@ function Scene({ scrollRef, currentSectionRef }) {
             <group position={[120, -0.5, 0]} rotation={[0, 0.2, 0]}>
                 <VideoScreen />
             </group>
-
-            <Stats />
         </Selection>
     )
 }
