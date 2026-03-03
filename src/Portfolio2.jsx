@@ -2568,10 +2568,8 @@ function ModularResumePatch({ visible, currentSectionRef }) {
 
 // ─── Glitch bust — me flickers into robot-hologram every few seconds ──────────
 function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
-    const { scene: humanScene } = useGLTF('/me.glb')
     const { scene: robotScene } = useGLTF('/also-me.glb')
 
-    const humanClone = useMemo(() => humanScene.clone(true), [humanScene])
     const robotClone = useMemo(() => {
         const c = robotScene.clone(true)
         c.traverse(child => {
@@ -2586,9 +2584,9 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
                 roughness: orig.roughness ?? 0.6,
                 metalness: orig.metalness ?? 0.4,
                 emissive: new THREE.Color('#00ccff'),
-                emissiveIntensity: 0.35,
+                emissiveIntensity: 0.3,
                 transparent: true,
-                opacity: 0.92,
+                opacity: 0.88,
                 toneMapped: false,
                 side: THREE.DoubleSide,
             })
@@ -2596,69 +2594,32 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
         return c
     }, [robotScene])
 
-    const spinRef = useRef()   // shared rotation group
-    const humanRef = useRef()
-    const robotRef = useRef()
-    const jitterRef = useRef()
-    // state machine: 'human' | 'to_robot' | 'robot' | 'to_human'
-    const g = useRef({ phase: 'human', timer: 0, ft: 0, next: 3 + Math.random() * 4 })
-
+    const spinRef = useRef()
     const wander = useRef({ target: 0, timer: 0, next: 2 + Math.random() * 3 })
 
     useFrame((state, delta) => {
-        // Lazy wander — drifts to a new angle every few seconds, always face-forward
+        // Lazy wander — drifts to a new angle every few seconds
         const w = wander.current
         w.timer += delta
         if (w.timer >= w.next) {
-            w.target = (Math.random() - 0.5) * 0.55   // random within ±0.275 rad (~16°)
+            w.target = (Math.random() - 0.5) * 0.55
             w.timer = 0
             w.next = 2.5 + Math.random() * 4.0
         }
         if (spinRef.current)
             spinRef.current.rotation.y = dampValue(spinRef.current.rotation.y, w.target, 0.6, delta)
 
-        const s = g.current
-        s.timer += delta
-
-        if (s.phase === 'human') {
-            if (s.timer > s.next) { s.phase = 'to_robot'; s.ft = 0; s.timer = 0 }
-
-        } else if (s.phase === 'to_robot' || s.phase === 'to_human') {
-            s.ft += delta
-            // rapid alternation at ~80Hz for 0.28s
-            const show = Math.floor(s.ft * 80) % 2 === 0
-            if (humanRef.current) humanRef.current.visible = s.phase === 'to_robot' ? show : !show
-            if (robotRef.current) robotRef.current.visible = s.phase === 'to_robot' ? !show : show
-            // positional jitter during glitch
-            if (jitterRef.current) {
-                jitterRef.current.position.x = (Math.random() - 0.5) * 0.09
-                jitterRef.current.position.y = (Math.random() - 0.5) * 0.06
-            }
-            if (s.ft > 0.28) {
-                const landing = s.phase === 'to_robot' ? 'robot' : 'human'
-                s.phase = landing; s.timer = 0
-                if (humanRef.current) humanRef.current.visible = landing === 'human'
-                if (robotRef.current) robotRef.current.visible = landing === 'robot'
-                if (jitterRef.current) { jitterRef.current.position.x = 0; jitterRef.current.position.y = 0 }
-                if (landing === 'human') s.next = 3 + Math.random() * 5
-            }
-
-        } else if (s.phase === 'robot') {
-            // pulse the hologram emissive — subtle, face stays readable
-            robotClone.traverse(child => {
-                if (child.isMesh) child.material.emissiveIntensity = 0.28 + Math.sin(state.clock.elapsedTime * 8) * 0.10
-            })
-            if (s.timer > 1.0 + Math.random() * 0.8) { s.phase = 'to_human'; s.ft = 0 }
-        }
+        // Subtle emissive pulse
+        robotClone.traverse(child => {
+            if (child.isMesh)
+                child.material.emissiveIntensity = 0.25 + Math.sin(state.clock.elapsedTime * 4) * 0.08
+        })
     })
 
     return (
         <group position={position} scale={scale}>
-            <group ref={jitterRef}>
-                <group ref={spinRef}>
-                    <group ref={humanRef}><primitive object={humanClone} /></group>
-                    <group ref={robotRef} visible={false}><primitive object={robotClone} /></group>
-                </group>
+            <group ref={spinRef}>
+                <primitive object={robotClone} />
             </group>
         </group>
     )
