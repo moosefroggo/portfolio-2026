@@ -2678,7 +2678,7 @@ const PHOTO_PATHS = [
     '/photos/exported_8647493E-CA66-4175-AA6D-9ACDC7C9E1A2.png'
 ]
 
-function SinglePhoto({ path, angle, radius, center, hoveredIdx, setHoveredIdx, index, appeared }) {
+function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, appeared }) {
     const meshRef = useRef()
     const tex = useTexture(path)
     const opRef = useRef(0)
@@ -2692,14 +2692,14 @@ function SinglePhoto({ path, angle, radius, center, hoveredIdx, setHoveredIdx, i
         opRef.current = dampValue(opRef.current, targetOp, 12, delta)
         scaleRef.current = dampValue(scaleRef.current, isHovered ? 1.4 : 1, 6, delta)
 
-        // Proper circular positioning around bust center
+        // Proper circular positioning (parent is now at center, so position relative to origin)
         const radiusOffset = isHovered ? 1.5 : 0
-        const x = center[0] + Math.cos(angle) * (radius + radiusOffset)
-        const y = center[1] + Math.sin(state.clock.elapsedTime + index) * 0.15
-        const z = center[2] + Math.sin(angle) * (radius + radiusOffset)
+        const x = Math.cos(angle) * (radius + radiusOffset)
+        const y = Math.sin(state.clock.elapsedTime + index) * 0.15
+        const z = Math.sin(angle) * (radius + radiusOffset)
 
         meshRef.current.position.set(x, y, z)
-        meshRef.current.lookAt(center[0], center[1], center[2])
+        meshRef.current.lookAt(0, 0, 0)
         meshRef.current.scale.setScalar(scaleRef.current)
         meshRef.current.material.opacity = opRef.current
         meshRef.current.material.emissiveIntensity = 0.15 + (isHovered ? 0.35 : 0) + Math.sin(state.clock.elapsedTime * 4 + index) * 0.05
@@ -2729,17 +2729,17 @@ function SinglePhoto({ path, angle, radius, center, hoveredIdx, setHoveredIdx, i
 function PhotoRing({ appeared }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
-    const radius = 0.1
-    const center = [-9, -3, -20]
+    const radius = 2.8
+    const center = [-2, -4.5, 0]
 
     useFrame((_, delta) => {
         if (groupRef.current && hoveredIdx === -1) {
-            groupRef.current.rotation.y += delta * 0.12
+            groupRef.current.rotation.y += delta * 0.6
         }
     })
 
     return (
-        <group ref={groupRef}>
+        <group ref={groupRef} position={center}>
             {PHOTO_PATHS.map((path, i) => {
                 const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
                 return (
@@ -2748,7 +2748,6 @@ function PhotoRing({ appeared }) {
                         path={path}
                         angle={angle}
                         radius={radius}
-                        center={center}
                         hoveredIdx={hoveredIdx}
                         setHoveredIdx={setHoveredIdx}
                         index={i}
