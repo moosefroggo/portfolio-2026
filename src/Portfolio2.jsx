@@ -1353,7 +1353,7 @@ const ETHOS_CHECKPOINTS = [
     },
     {
         label: 'SYSTEMS',
-        text: 'I break the product down to its individual cogs, then I rebuild and rearrange those cogs to solve problems. ',
+        text: 'I break the product down to its individual cogs, then I rebuild and rearrange those cogs to solve problems.',
     },
     {
         label: 'VISION',
@@ -2007,7 +2007,7 @@ const DOSSIER_CSS = `
 }
 .dossier-panel {
     position: fixed;
-    left: 38%; top: 50%;
+    left: 80%; top: 50%;
     transform: translate(-50%, -50%);
     width: min(580px, 48vw);
     height: min(780px, 86vh);
@@ -2585,6 +2585,8 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
                 metalnessMap: orig.metalnessMap ?? null,
                 roughness: orig.roughness ?? 0.6,
                 metalness: orig.metalness ?? 0.4,
+                emissive: new THREE.Color('#00ccff'),
+                emissiveIntensity: 0.4,
                 transparent: true,
                 opacity: 0.75,
                 toneMapped: false,
@@ -2638,6 +2640,10 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
             }
 
         } else if (s.phase === 'robot') {
+            // Pulse hologram emissive
+            robotClone.traverse(child => {
+                if (child.isMesh) child.material.emissiveIntensity = 0.3 + Math.sin(state.clock.elapsedTime * 6) * 0.15
+            })
             if (s.timer > 1.0 + Math.random() * 0.8) { s.phase = 'to_human'; s.ft = 0 }
         }
     })
