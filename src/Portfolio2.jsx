@@ -2007,7 +2007,7 @@ const DOSSIER_CSS = `
 }
 .dossier-panel {
     position: fixed;
-    left: 62%; top: 50%;
+    left: 28%; top: 50%;
     transform: translate(-50%, -50%);
     width: min(580px, 48vw);
     height: min(780px, 86vh);
