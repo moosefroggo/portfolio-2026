@@ -3219,7 +3219,7 @@ export default function Portfolio() {
             <DossierOverlay scrollRef={scrollRef} />
             <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
-            <Canvas style={{ zIndex: 100 }} camera={{ position: [0, 1, 16], fov: 70 }} dpr={[1, 1.5]}>
+            <Canvas style={{ zIndex: 100, pointerEvents: 'none' }} camera={{ position: [0, 1, 16], fov: 70 }} dpr={[1, 1.5]}>
                 <React.Suspense fallback={null}>
                     <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
                 </React.Suspense>
