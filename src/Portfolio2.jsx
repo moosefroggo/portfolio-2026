@@ -285,14 +285,14 @@ function CursorFX() {
                 <mesh renderOrder={100}>
                     <sphereGeometry args={[0.22, 32, 32]} />
                     <meshStandardMaterial
-                        color="#ddeeff"
-                        emissive="#3355cc"
-                        emissiveIntensity={0.55}
+                        color="#ff00ff"
+                        emissive="#ff00ff"
+                        emissiveIntensity={0.8}
                         roughness={0.0}
                         metalness={0.85}
                         envMapIntensity={4.0}
                         transparent
-                        opacity={0.45}
+                        opacity={0.5}
                         toneMapped={false}
                         side={THREE.FrontSide}
                         depthTest={false}
@@ -301,7 +301,7 @@ function CursorFX() {
                 {/* Inner glow core */}
                 <mesh scale={0.52} renderOrder={101}>
                     <sphereGeometry args={[0.22, 16, 16]} />
-                    <meshBasicMaterial color="#88bbff" transparent opacity={0.7} toneMapped={false} depthTest={false} />
+                    <meshBasicMaterial color="#ff00ff" transparent opacity={0.7} toneMapped={false} depthTest={false} />
                 </mesh>
                 {/* Hot nucleus for bloom */}
                 <mesh scale={0.20} renderOrder={102}>
@@ -309,32 +309,32 @@ function CursorFX() {
                     <meshBasicMaterial color="#ffffff" transparent opacity={1.0} toneMapped={false} depthTest={false} />
                 </mesh>
                 {/* Inner light — illuminates the glass shell from inside */}
-                <pointLight intensity={32} color="#aaccff" distance={2.5} decay={2} />
+                <pointLight intensity={32} color="#ff00ff" distance={2.5} decay={2} />
             </group>
 
             <group ref={rimRef}>
-                {/* Spike left — tip points away from centre */}
+                {/* Spike left — hot magenta */}
                 <mesh position={[-0.36, 0, 0]} rotation={[0, 0, Math.PI / 2]} renderOrder={100}>
                     <coneGeometry args={[0.026, 0.18, 6]} />
                     <meshStandardMaterial
-                        color="#aaccff" emissive="#6688cc" emissiveIntensity={1.2}
-                        roughness={0} metalness={0.2}
-                        transparent opacity={0.85} toneMapped={false} depthTest={false}
+                        color="#ff00ff" emissive="#ff00ff" emissiveIntensity={1.6}
+                        roughness={0} metalness={0.3}
+                        transparent opacity={0.9} toneMapped={false} depthTest={false}
                     />
                 </mesh>
-                {/* Spike right */}
+                {/* Spike right — hot cyan */}
                 <mesh position={[0.36, 0, 0]} rotation={[0, 0, -Math.PI / 2]} renderOrder={100}>
                     <coneGeometry args={[0.026, 0.18, 6]} />
                     <meshStandardMaterial
-                        color="#aaccff" emissive="#6688cc" emissiveIntensity={1.2}
-                        roughness={0} metalness={0.2}
-                        transparent opacity={0.85} toneMapped={false} depthTest={false}
+                        color="#00ffff" emissive="#00ffff" emissiveIntensity={1.6}
+                        roughness={0} metalness={0.3}
+                        transparent opacity={0.9} toneMapped={false} depthTest={false}
                     />
                 </mesh>
             </group>
 
             <group ref={illumRef}>
-                <pointLight intensity={24} color="#99bbff" distance={30} decay={1.5} />
+                <pointLight intensity={24} color="#ff00ff" distance={30} decay={1.5} />
             </group>
         </>
     )
