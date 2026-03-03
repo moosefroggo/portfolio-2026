@@ -2690,7 +2690,7 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         const isHovered = hoveredIdx === index
         const targetOp = appeared ? (isHovered ? 1 : 0.4) : 0
         opRef.current = dampValue(opRef.current, targetOp, 12, delta)
-        scaleRef.current = dampValue(scaleRef.current, isHovered ? 1.4 : 1, 6, delta)
+        scaleRef.current = dampValue(scaleRef.current, isHovered ? 2.2 : 1, 6, delta)
 
         // Proper circular positioning (parent is now at center, so position relative to origin)
         const radiusOffset = isHovered ? 1.5 : 0
@@ -2729,8 +2729,8 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
 function PhotoRing({ appeared }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
-    const radius = 2.8
-    const center = [-2, -3.5, 0]
+    const radius = 5
+    const center = [-9, -3.5, -20]
 
     useFrame((_, delta) => {
         if (groupRef.current && hoveredIdx === -1) {
@@ -2739,7 +2739,7 @@ function PhotoRing({ appeared }) {
     })
 
     return (
-        <group ref={groupRef} position={center}>
+        <group ref={groupRef} position={center} rotation={[0.5,0.4,0]}>
             {PHOTO_PATHS.map((path, i) => {
                 const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
                 return (
