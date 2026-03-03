@@ -2699,7 +2699,7 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         const z = Math.sin(angle) * (radius + radiusOffset)
 
         meshRef.current.position.set(x, y, z)
-        meshRef.current.lookAt(0, 0, 0)
+        meshRef.current.lookAt(state.camera.position)
         meshRef.current.scale.setScalar(scaleRef.current)
         meshRef.current.material.opacity = opRef.current
         meshRef.current.material.emissiveIntensity = 0.15 + (isHovered ? 0.35 : 0) + Math.sin(state.clock.elapsedTime * 4 + index) * 0.05
@@ -2730,7 +2730,7 @@ function PhotoRing({ appeared }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
     const radius = 2.8
-    const center = [-2, -4.5, 0]
+    const center = [-2, -3.5, 0]
 
     useFrame((_, delta) => {
         if (groupRef.current && hoveredIdx === -1) {
