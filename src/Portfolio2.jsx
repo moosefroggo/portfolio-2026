@@ -2166,7 +2166,7 @@ function DossierOverlay({ scrollRef }) {
 
                     <div className="dossier-resume-section">TOOLS & SKILLS</div>
                     <div className="dossier-resume-skills">
-                        {['Figma', 'Blender', 'Rive', 'Origami Studio', 'Miro', 'React', 'Three.js', 'Framer', 'Prototyping', 'Systems Design', 'Motion Design', 'User Research'].map(s => (
+                        {['Figma', 'Blender', 'Rive', 'Origami Studio', 'Claude Code', 'React', 'Three.js', 'Framer', 'Prototyping', 'Systems Design', 'Motion Design', 'User Research'].map(s => (
                             <span key={s} className="dossier-resume-skill">{s}</span>
                         ))}
                     </div>
@@ -2623,16 +2623,15 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
                 jitterRef.current.position.y = (Math.random() - 0.5) * 0.06
             }
             if (s.ft > 0.28) {
-                const landing = s.phase === 'to_robot' ? 'robot' : 'human'
+                const landing = s.phase === 'to_robot' ? 'to_human' : 'human'
                 s.phase = landing; s.timer = 0
-                if (humanRef.current) humanRef.current.visible = landing === 'human'
-                if (robotRef.current) robotRef.current.visible = landing === 'robot'
+                if (landing === 'human') {
+                    if (humanRef.current) humanRef.current.visible = true
+                    if (robotRef.current) robotRef.current.visible = false
+                    s.next = 6 + Math.random() * 6
+                }
                 if (jitterRef.current) { jitterRef.current.position.x = 0; jitterRef.current.position.y = 0 }
-                if (landing === 'human') s.next = 6 + Math.random() * 6
             }
-
-        } else if (s.phase === 'robot') {
-            if (s.timer > 1.8 + Math.random() * 1.2) { s.phase = 'to_human'; s.ft = 0 }
         }
     })
 
@@ -2778,7 +2777,7 @@ function BustDiptych({ scrollRef }) {
 
     return (
         <group ref={opRef} position={[0, 0, -85]} scale={0}>
-            <GlitchBust position={[-2, -4.5, 0]} scale={6} rotSpeed={0.04} />
+            <GlitchBust position={[-9, -4.5, -20]} scale={6} rotSpeed={0.04} />
             <SigilModel position={[-1, -4.5, 7.5]} scale={1.8} />
             <PhotoRing appeared={appeared} />
         </group>
