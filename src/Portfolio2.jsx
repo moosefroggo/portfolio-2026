@@ -2577,7 +2577,7 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
         c.traverse(child => {
             if (!child.isMesh || !child.material) return
             const orig = Array.isArray(child.material) ? child.material[0] : child.material
-            // Robot appears only via chromatic aberration — very transparent, no color tint
+            // Robot appears with chromatic aberration hologram effect
             child.material = new THREE.MeshStandardMaterial({
                 map: orig.map ?? null,
                 normalMap: orig.normalMap ?? null,
@@ -2586,7 +2586,7 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
                 roughness: orig.roughness ?? 0.6,
                 metalness: orig.metalness ?? 0.4,
                 transparent: true,
-                opacity: 0.15,
+                opacity: 0.75,
                 toneMapped: false,
                 side: THREE.DoubleSide,
             })
