@@ -2577,15 +2577,13 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
         c.traverse(child => {
             if (!child.isMesh || !child.material) return
             const orig = Array.isArray(child.material) ? child.material[0] : child.material
-            // Robot appears with chromatic aberration hologram effect
+            // Robot appears as chrome hologram with chromatic aberration
             child.material = new THREE.MeshStandardMaterial({
                 map: orig.map,
                 normalMap: orig.normalMap,
-                roughnessMap: orig.roughnessMap,
-                metalnessMap: orig.metalnessMap,
-                color: orig.color ?? new THREE.Color(0xffffff),
-                roughness: orig.roughness ?? 0.6,
-                metalness: orig.metalness ?? 0.4,
+                color: orig.color ?? new THREE.Color(0xcccccc),
+                roughness: 0.15,
+                metalness: 1.0,
                 transparent: true,
                 opacity: 0.8,
                 toneMapped: false,
@@ -2599,7 +2597,7 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
     const humanRef = useRef()
     const robotRef = useRef()
     const jitterRef = useRef()
-    const g = useRef({ phase: 'human', timer: 0, ft: 0, next: 3 + Math.random() * 4 })
+    const g = useRef({ phase: 'human', timer: 0, ft: 0, next: 6 + Math.random() * 6 })
 
     const wander = useRef({ target: 0, timer: 0, next: 2 + Math.random() * 3 })
 
@@ -2635,11 +2633,11 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
                 if (humanRef.current) humanRef.current.visible = landing === 'human'
                 if (robotRef.current) robotRef.current.visible = landing === 'robot'
                 if (jitterRef.current) { jitterRef.current.position.x = 0; jitterRef.current.position.y = 0 }
-                if (landing === 'human') s.next = 3 + Math.random() * 5
+                if (landing === 'human') s.next = 6 + Math.random() * 6
             }
 
         } else if (s.phase === 'robot') {
-            if (s.timer > 1.0 + Math.random() * 0.8) { s.phase = 'to_human'; s.ft = 0 }
+            if (s.timer > 1.8 + Math.random() * 1.2) { s.phase = 'to_human'; s.ft = 0 }
         }
     })
 
