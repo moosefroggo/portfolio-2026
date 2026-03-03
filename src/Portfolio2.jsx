@@ -2053,7 +2053,7 @@ const DOSSIER_CSS = `
 .dossier-resume-role { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.22em; color: rgba(136,160,255,0.55); margin: 0 0 14px; }
 .dossier-resume-section { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.25em; color: rgba(100,130,200,0.45); margin: 16px 0 8px; padding-bottom: 5px; border-bottom: 1px solid rgba(100,130,220,0.1); }
 .dossier-resume-entry { margin: 0 0 12px; }
-.dossier-resume-entry-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.dossier-resume-entry-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0px; }
 .dossier-resume-entry-title { font-family: var(--font-mono); font-size: 10px; color: #c8d8ff; letter-spacing: 0.06em; }
 .dossier-resume-entry-date { font-family: var(--font-mono); font-size: 8px; color: rgba(100,130,180,0.45); letter-spacing: 0.08em; }
 .dossier-resume-entry-sub { font-family: var(--font-mono); font-size: 8px; color: rgba(136,160,255,0.5); letter-spacing: 0.1em; margin-bottom: 3px; }
