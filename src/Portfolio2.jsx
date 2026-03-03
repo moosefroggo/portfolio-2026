@@ -1,8 +1,9 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, Text, useGLTF, Line, useTexture, useProgress, Html } from '@react-three/drei'
+import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html } from '@react-three/drei'
 import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import { useControls } from 'leva'
 
 // 🟢 Global warp offset for velocity-driven chromatic aberration
 export const warpOffset = new THREE.Vector2(0.002, 0.002)
@@ -24,7 +25,7 @@ const dragRotState = {
 const ETHOS_POS = [70, 0, -15]
 
 const CAMERA_PATH = [
-    { t: 0.00, pos: [0, 1, 16], look: [0, 0, 0], fov: 70, roll: 0 },
+    { t: 0.00, pos: [-7, 2, 18], look: [0, 2, 0], fov: 60, roll: 0 },
     // ── Ethos: camera travels to X≈65, looks toward busts at X=70 ──
     { t: 0.08, pos: [40, 0.3, 14], look: ETHOS_POS, fov: 64, roll: 0 },
     { t: 0.24, pos: [65, 0, 12], look: ETHOS_POS, fov: 60, roll: 0 },
@@ -111,7 +112,7 @@ const HERO_CONFIG = {
     subtitleYOffset: -5.8,   // Y below letter baseline (pre-scale)
     subtitleFontSize: 0.6,   // font size (pre-scale)
     subtitleLetterSpacing: 0.15,
-    spineRotationSpeed: 0.3,     // radians/sec — spin of individual spine pieces around their tangent axis
+    spineRotationSpeed: 0,     // radians/sec — spin of individual spine pieces around their tangent axis
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -156,6 +157,11 @@ function CameraController({ scrollRef }) {
     const _startLook = useMemo(() => new THREE.Vector3(), [])
     const _endLook = useMemo(() => new THREE.Vector3(), [])
 
+    const activeCameraPath = useMemo(() => [
+        { t: 0.00, pos: [0, 3, 16], look: [5, 0, 0], fov: 70, roll: 0 },
+        ...CAMERA_PATH.slice(1)
+    ], [])
+
     useFrame((state, delta) => {
         const t = scrollRef.current || 0
 
@@ -165,13 +171,13 @@ function CameraController({ scrollRef }) {
         velocityRef.current = dampValue(velocityRef.current, clamp(rawVelocity * 40, 0, 1), 14, delta)
 
         let startIndex = 0
-        for (let i = 0; i < CAMERA_PATH.length - 1; i++) {
-            if (t >= CAMERA_PATH[i].t && t <= CAMERA_PATH[i + 1].t) { startIndex = i; break }
+        for (let i = 0; i < activeCameraPath.length - 1; i++) {
+            if (t >= activeCameraPath[i].t && t <= activeCameraPath[i + 1].t) { startIndex = i; break }
         }
-        if (t >= CAMERA_PATH[CAMERA_PATH.length - 1].t) startIndex = CAMERA_PATH.length - 2
+        if (t >= activeCameraPath[activeCameraPath.length - 1].t) startIndex = activeCameraPath.length - 2
 
-        const start = CAMERA_PATH[startIndex]
-        const end = CAMERA_PATH[startIndex + 1]
+        const start = activeCameraPath[startIndex]
+        const end = activeCameraPath[startIndex + 1]
         const localT = end.t > start.t ? (t - start.t) / (end.t - start.t) : 1
         const easeT = smoothstep(clamp(localT, 0, 1))
 
@@ -1145,10 +1151,10 @@ function withZ(pts, amp = 0.35) {
 }
 
 const RAW_M = [v3(1.7244, -2), v3(1.7244, 2), v3(0, -1.8222), v3(-1.7244, 2), v3(-1.7244, -2)]
-const RAW_U = [v3(-1.2978, 2.0296), v3(-1.2978, -0.5481), v3(-1.2044, -1.17), v3(-0.9415, -1.6252), v3(-0.5353, -1.9048), v3(0, -2), v3(0.5353, -1.9048), v3(0.9415, -1.6252), v3(1.2044, -1.17), v3(1.2978, -0.5481), v3(1.2978, 2.0296)]
+const RAW_U = [v3(-1.2978, 2.0296), v3(-1.2978, -0.5481), v3(-1.2044, -1.17), v3(-0.9415, -1.6252), v3(-0.5353, -1.9048), v3(0, -2), v3(0.5353, -1.9048), v3(0.9415, -1.6252), v3(1.2044, -1.17), v3(1.2978, -0.5481), v3(1.2978, 2.0296), v3(1.45, 2.0296)]
 const RAW_S = [v3(-1.1141, -1.3541), v3(-0.9448, -1.62), v3(-0.6933, -1.8237), v3(-0.3707, -1.9541), v3(0.0119, -2), v3(0.4862, -1.9232), v3(0.8422, -1.7148), v3(1.066, -1.4075), v3(1.1437, -1.0341), v3(0.8039, -0.3555), v3(0.0563, 0.0615), v3(-0.6913, 0.4684), v3(-1.0311, 1.117), v3(-0.9624, 1.4571), v3(-0.757, 1.7489), v3(-0.4161, 1.9529), v3(0.0593, 2.0296), v3(0.4052, 1.9896), v3(0.68, 1.8785), v3(0.8859, 1.7096), v3(1.0252, 1.4963)]
 const RAW_T0 = [v3(0, -2), v3(0, 1.9704)]
-const RAW_T1 = [v3(-1.75, 1.9704), v3(1.75, 1.9704)]
+const RAW_T1 = [v3(-1.6, 1.9704), v3(1.9, 1.9704)]
 const RAW_A0 = [v3(-1.09, -0.7378), v3(1.09, -0.7378)]
 const RAW_A1 = [v3(1.6, -2), v3(0.8, 0), v3(0, 2), v3(-0.8, 0), v3(-1.6, -2)]
 const RAW_F0 = [v3(-0.8, -2), v3(-0.8, 2), v3(1.2, 2)]
@@ -1190,6 +1196,32 @@ function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], sc
                 />
             ))}
         </group>
+    )
+}
+
+// ─── Animated spotlight that sweeps left-right ────────────────────────────────
+function AnimatedSpotLight() {
+    const spotRef = useRef()
+
+    useFrame((state) => {
+        if (!spotRef.current) return
+        const sweep = Math.sin(state.clock.elapsedTime * 0.8) * 20
+        spotRef.current.position.x = sweep
+    })
+
+    return (
+        <spotLight
+            ref={spotRef}
+            position={[0, 12, 8]}
+            angle={0.6}
+            penumbra={0.3}
+            intensity={150}
+            color="#ffffff"
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            decay={1}
+        />
     )
 }
 
@@ -1275,7 +1307,8 @@ function StarField() {
     )
 }
 
-function HeroSection() {
+
+function SpineHeroSection() {
     const { size } = useThree()
     const { scene: spineScene } = useGLTF('/spine.glb')
 
@@ -1311,9 +1344,11 @@ function HeroSection() {
 
     const cfg = HERO_CONFIG
     const startX = -((cfg.letters.length - 1) / 2) * actualSpacing
+    // Adjust x position responsively based on aspect ratio
+    const responsiveXOffset = (size.width / size.height) > 1.5 ? 5 : 2
 
     return (
-        <group position={[0, cfg.groupY, 0]}>
+        <group position={[responsiveXOffset, cfg.groupY + 1.5, 0]}>
             {cfg.letters.map((letterCfg, i) => (
                 <SpineLetter2
                     key={i}
@@ -1330,7 +1365,26 @@ function HeroSection() {
                 />
             ))}
 
-            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font={SUBTITLE_FONT} fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0} color="#8899cc" material-toneMapped={false} maxWidth={(cfg.letters.length - 1) * actualSpacing} textAlign="center" lineHeight={1.5}>{cfg.subtitleText}</Text>
+            <Html position={[0, cfg.subtitleYOffset * letterScale, 0]} center distanceFactor={1.2} style={{
+                width: '800px',
+                textAlign: 'center',
+                fontSize: `${cfg.subtitleFontSize * letterScale * 16}px`,
+                color: '#aabbdd',
+                fontFamily: 'Arial, sans-serif',
+                lineHeight: '1.5',
+                pointerEvents: 'none',
+            }}>
+                <div dangerouslySetInnerHTML={{ __html: cfg.subtitleText }} />
+            </Html>
+
+            {/* Floor - large polished surface (same as glass text) */}
+            <mesh position={[0, -2, 0]} receiveShadow>
+                <boxGeometry args={[150, 0.5, 150]} />
+                <meshStandardMaterial color="#2a2a2a" metalness={0.8} roughness={0.2} envMapIntensity={3.0} />
+            </mesh>
+
+            {/* Animated spotlight that sweeps left-right */}
+            <AnimatedSpotLight />
         </group>
     )
 }
@@ -2892,25 +2946,23 @@ function Scene({ scrollRef, currentSectionRef }) {
             <CameraController scrollRef={scrollRef} />
             <DragController currentSectionRef={currentSectionRef} />
 
-            <ambientLight intensity={0.3} />
-            <directionalLight position={[5, 5, 5]} intensity={1.5} color="#ffffff" />
-            <directionalLight position={[-3, 3, -5]} intensity={0.4} color="#8888ff" />
+            <ambientLight intensity={0.03} />
             <Environment preset="night" />
 
             <EffectComposer disableNormalPass>
-                <SelectiveBloom luminanceThreshold={0.5} intensity={1.2} levels={4} />
+                <SelectiveBloom luminanceThreshold={0.4} intensity={1.6} levels={4} />
                 <ChromaticAberration offset={warpOffset} />
-                <Vignette eskil={false} offset={0.1} darkness={1.1} />
+                <Vignette eskil={false} offset={0.15} darkness={1.5} />
             </EffectComposer>
 
-            <color attach="background" args={['#050510']} />
-            <fog attach="fog" args={['#050510', 25, 60]} />
+            <color attach="background" args={['#000000']} />
+            <fog attach="fog" args={['#0a0a0a', 8, 50]} />
 
             <CursorFX />
             <Select enabled>
                 <InteractiveParticleField count={300} />
                 <StarField />
-                <HeroSection />
+                <SpineHeroSection />
                 <EthosSection scrollRef={scrollRef} />
                 <ProjectsSection scrollRef={scrollRef} />
                 <BioSection scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
@@ -3222,7 +3274,7 @@ export default function Portfolio() {
             <DossierOverlay scrollRef={scrollRef} />
             <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
-            <Canvas camera={{ position: [0, 1, 16], fov: 70 }} dpr={[1, 1.5]}>
+            <Canvas camera={{ position: [0, -4, 14], fov: 65 }} dpr={[1, 1.5]}>
                 <React.Suspense fallback={null}>
                     <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
                 </React.Suspense>
