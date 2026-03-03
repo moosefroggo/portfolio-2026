@@ -2727,7 +2727,7 @@ function SinglePhoto({ path, angle, radius, center, hoveredIdx, setHoveredIdx, i
 function PhotoRing({ appeared }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
-    const radius = 5.5
+    const radius = 2.8
     const center = [-2, -4.5, 0]
 
     useFrame((_, delta) => {
@@ -2777,7 +2777,7 @@ function BustDiptych({ scrollRef }) {
 
     return (
         <group ref={opRef} position={[0, 0, -85]} scale={0}>
-            <GlitchBust position={[-9, -4.5, -20]} scale={6} rotSpeed={0.04} />
+            <GlitchBust position={[-9, -3, -20]} scale={6} rotSpeed={0.04} />
             <SigilModel position={[-1, -4.5, 7.5]} scale={1.8} />
             <PhotoRing appeared={appeared} />
         </group>
