@@ -158,7 +158,7 @@ function CameraController({ scrollRef }) {
     const _endLook = useMemo(() => new THREE.Vector3(), [])
 
     const activeCameraPath = useMemo(() => [
-        { t: 0.00, pos: [0, 3, 16], look: [5, 0, 0], fov: 70, roll: 0 },
+        { t: 0.00, pos: [0, 3, 16], look: [0, 2.8, 0], fov: 70, roll: 0 },
         ...CAMERA_PATH.slice(1)
     ], [])
 
@@ -1025,7 +1025,7 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
             <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
 
             <Text position={[0, 1.95, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
-            <Text position={[0, 1.55, 0.1]} fontSize={0.1} color="#445577" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
+            <Text position={[0, 1.55, 0.1]} fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
             <Text position={[0, -1.55, 0.1]} font={SUBTITLE_FONT} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
 
             {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
@@ -1033,7 +1033,7 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
     )
 }
 
-function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0, 0], delay = 0, cogScale = 0.72 }) {
+function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0, 0], delay = 0, cogScale = 0.72, isHighlighted = false, highlightRotation = 0 }) {
     const instancedRef = useRef()
     const offsetRef = useRef(0)
     const drawProgressRef = useRef(0)
@@ -1042,6 +1042,8 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     const spreadOffsetsRef = useRef([])
     const frameCountRef = useRef(0)
     const lastEnterFrameRef = useRef(-100)
+    const rotationAxesRef = useRef([])  // Random axes per cog
+    const morphTimeRef = useRef(-2)  // Start unmorphing from sphere at page load
     const CACHE_STEPS = 128
 
     const { count, posCache, tanCache } = useMemo(() => {
@@ -1075,14 +1077,20 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             drawProgressRef.current = dampValue(drawProgressRef.current, 1, 5, delta)
         }
 
-        if (drawProgressRef.current > 0.99) {
-            // Converge all instances of the same letter to offset 0 so they look identical at rest
-            offsetRef.current = dampValue(offsetRef.current, 0, 8, delta)
-        } else {
-            // Speed decelerates naturally as drawing progresses
-            const movementSpeed = 0.5 * Math.max(0, 1 - drawProgressRef.current)
-            offsetRef.current = (offsetRef.current + delta * movementSpeed) % 1
+        // Keep offset stationary - cogs appear in place without traveling along curve
+        offsetRef.current = 0
+
+        // Track morphing animation - unmorph at load only
+        morphTimeRef.current += delta
+        let isMorphing = false
+        let morphProgress = 0
+
+        if (morphTimeRef.current < 2) {
+            // Intro phase only: unmorph from sphere to characters (morphProgress goes 1 to 0)
+            morphProgress = Math.max(0, 1 - morphTimeRef.current / 2)  // 2 second unmorph intro
+            isMorphing = morphProgress > 0
         }
+        // After 2 seconds, morphProgress stays at 0 (no more animation)
 
         const SPREAD_RADIUS = 8
         const SPREAD_STRENGTH = 0.85
@@ -1090,6 +1098,16 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
 
         const spacing = 1 / count
         for (let i = 0; i < count; i++) {
+            // Initialize random rotation axes if needed
+            if (!rotationAxesRef.current[i]) {
+                const axis = new THREE.Vector3(
+                    Math.random() - 0.5,
+                    Math.random() - 0.5,
+                    Math.random() - 0.5
+                ).normalize()
+                rotationAxesRef.current[i] = axis
+            }
+            const axis = rotationAxesRef.current[i]
             const t = (i * spacing + offsetRef.current) % 1
             const raw = t * CACHE_STEPS
             const idx0 = Math.floor(raw)
@@ -1104,22 +1122,42 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             const ty = tan0.y + (tan1.y - tan0.y) * frac
             const tz = tan0.z + (tan1.z - tan0.z) * frac
 
-            // Soft-selection spread — same Blender proportional edit style
+            // Soft-selection spread — disabled when character is highlighted to show rotation clearly
             if (!spreadOffsetsRef.current[i]) spreadOffsetsRef.current[i] = 0
-            const dist = hovIdx >= 0 ? Math.abs(i - hovIdx) : SPREAD_RADIUS
-            const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
-            spreadOffsetsRef.current[i] = dampValue(spreadOffsetsRef.current[i], SPREAD_STRENGTH * falloff, 10, delta)
+            let targetSpread = 0
+            if (!isHighlighted && hovIdx >= 0) {
+                // Only apply spread effect if character is NOT highlighted
+                const dist = Math.abs(i - hovIdx)
+                const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
+                targetSpread = SPREAD_STRENGTH * falloff
+            }
+            spreadOffsetsRef.current[i] = dampValue(spreadOffsetsRef.current[i], targetSpread, 10, delta)
             const spr = spreadOffsetsRef.current[i]
 
-            dummyMatrix.position.set(px, py + spr, pz)
-            dummyMatrix.lookAt(px + tx, py + spr + ty, pz + tz)
+            // Apply morphing - spread cogs outward into a sphere shape
+            let morphPos = new THREE.Vector3(px, py + spr, pz)
+            if (isMorphing) {
+                // Spread radially outward during morph (ease in-out)
+                const easeProgress = morphProgress < 0.5
+                    ? 2 * morphProgress * morphProgress
+                    : 1 - Math.pow(-2 * morphProgress + 2, 2) / 2
+                const spreadDist = easeProgress * 3
+                const morphAxis = axis.clone().multiplyScalar(spreadDist)
+                morphPos.add(morphAxis)
+            }
 
-            dummyMatrix.rotateZ(t * Math.PI * 8 + state.clock.elapsedTime * HERO_CONFIG.spineRotationSpeed)
+            dummyMatrix.position.copy(morphPos)
+            dummyMatrix.lookAt(state.camera.position)
+
+            // Rotate around random axis
+            dummyMatrix.rotateOnWorldAxis(axis, state.clock.elapsedTime * 1.5)
 
             if (t > drawProgressRef.current) {
                 dummyMatrix.scale.set(0, 0, 0)
             } else {
-                dummyMatrix.scale.set(cogScale, cogScale, cogScale)
+                // Apply scale change during morph
+                const scaleMultiplier = isMorphing ? 0.7 : 1
+                dummyMatrix.scale.set(cogScale * scaleMultiplier, cogScale * scaleMultiplier, cogScale * scaleMultiplier)
             }
 
             dummyMatrix.updateMatrix()
@@ -1150,15 +1188,15 @@ function withZ(pts, amp = 0.35) {
     return pts.map((p, i) => new THREE.Vector3(p.x, p.y, Math.sin((i / Math.max(pts.length - 1, 1)) * Math.PI * 2) * amp))
 }
 
-const RAW_M = [v3(1.7244, -2), v3(1.7244, 2), v3(0, -1.8222), v3(-1.7244, 2), v3(-1.7244, -2)]
-const RAW_U = [v3(-1.2978, 2.0296), v3(-1.2978, -0.5481), v3(-1.2044, -1.17), v3(-0.9415, -1.6252), v3(-0.5353, -1.9048), v3(0, -2), v3(0.5353, -1.9048), v3(0.9415, -1.6252), v3(1.2044, -1.17), v3(1.2978, -0.5481), v3(1.2978, 2.0296), v3(1.45, 2.0296)]
-const RAW_S = [v3(-1.1141, -1.3541), v3(-0.9448, -1.62), v3(-0.6933, -1.8237), v3(-0.3707, -1.9541), v3(0.0119, -2), v3(0.4862, -1.9232), v3(0.8422, -1.7148), v3(1.066, -1.4075), v3(1.1437, -1.0341), v3(0.8039, -0.3555), v3(0.0563, 0.0615), v3(-0.6913, 0.4684), v3(-1.0311, 1.117), v3(-0.9624, 1.4571), v3(-0.757, 1.7489), v3(-0.4161, 1.9529), v3(0.0593, 2.0296), v3(0.4052, 1.9896), v3(0.68, 1.8785), v3(0.8859, 1.7096), v3(1.0252, 1.4963)]
+const RAW_M = [v3(1.7244, -2), v3(1.7244, 2), v3(0, -1.8222), v3(-1.7244, 2), v3(-1.7244, -3)]
+const RAW_U = [v3(-1.2978, 2.0296), v3(-1.2978, -0.5481), v3(-1.2044, -1.17), v3(-0.9415, -1.6252), v3(-0.5353, -1.9048), v3(0, -2), v3(0.5353, -1.9048), v3(0.9415, -1.6252), v3(1.2044, -1.17), v3(1.2978, -0.5481), v3(1.2978, 2.0296), v3(1.45, 3.0296)]
+const RAW_S = [v3(-1.1141, -1.3541), v3(-0.9448, -1.62), v3(-0.6933, -1.8237), v3(-0.3707, -1.9541), v3(0.0119, -2), v3(0.4862, -1.9232), v3(0.8422, -1.7148), v3(1.066, -1.4075), v3(1.1437, -1.0341), v3(0.8039, -0.3555), v3(0.0563, 0.0615), v3(-0.6913, 0.4684), v3(-1.0311, 1.117), v3(-0.9624, 1.4571), v3(-0.757, 1.7489), v3(-0.4161, 1.9529), v3(0.0593, 2.0296), v3(0.4052, 1.9896), v3(0.68, 1.8785), v3(0.8859, 1.7096), v3(1.0252, 2.4963)]
 const RAW_T0 = [v3(0, -2), v3(0, 1.9704)]
 const RAW_T1 = [v3(-1.6, 1.9704), v3(1.9, 1.9704)]
-const RAW_A0 = [v3(-1.09, -0.7378), v3(1.09, -0.7378)]
-const RAW_A1 = [v3(1.6, -2), v3(0.8, 0), v3(0, 2), v3(-0.8, 0), v3(-1.6, -2)]
-const RAW_F0 = [v3(-0.8, -2), v3(-0.8, 2), v3(1.2, 2)]
-const RAW_F1 = [v3(-0.8, 0.1), v3(1.1, 0.1)]
+const RAW_A0 = [v3(-1.09, -0.7378), v3(2.09, -0.7378)]
+const RAW_A1 = [v3(1.6, -2), v3(0.8, 0), v3(0, 2), v3(-0.8, 0), v3(-1.6, -3)]
+const RAW_F0 = [v3(-0.8, -2), v3(-0.8, 2), v3(2.5, 2)]
+const RAW_F1 = [v3(-0.8, 0.1), v3(1.5, 0.1)]
 
 const LETTER_M = withZ(RAW_M, 0.30)
 const LETTER_U = withZ(RAW_U, 0.28)
@@ -1181,7 +1219,7 @@ const MUSTAFA_LETTERS = {
 }
 
 // WritingSpineLetter already handles a single path — wrap it for multi-stroke support
-function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], scale = 1, delay = 0, cogScale = 0.72 }) {
+function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], scale = 1, delay = 0, cogScale = 0.72, isHighlighted = false, highlightRotation = 0 }) {
     const paths = MUSTAFA_LETTERS[char] || [LETTER_M]
     return (
         <group position={position} scale={scale}>
@@ -1193,6 +1231,8 @@ function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], sc
                     material={material}
                     delay={delay + idx * 0.4}
                     cogScale={cogScale}
+                    isHighlighted={isHighlighted}
+                    highlightRotation={highlightRotation}
                 />
             ))}
         </group>
@@ -1311,6 +1351,9 @@ function StarField() {
 function SpineHeroSection() {
     const { size } = useThree()
     const { scene: spineScene } = useGLTF('/spine.glb')
+    const highlightedCharRef = useRef(0)
+    const highlightRotationRef = useRef(0)
+    const rotationSpeedRef = useRef(5 + Math.random() * 6) // 5-11 rad/s for more visible rotation
 
     const spineGeometry = useMemo(() => {
         let mesh = null
@@ -1340,15 +1383,24 @@ function SpineHeroSection() {
         return { letterScale: scale, actualSpacing: cfg.spacing * scale }
     }, [size.width, size.height])
 
+    useFrame((state, delta) => {
+        highlightRotationRef.current += delta * rotationSpeedRef.current
+
+        // When rotation completes one full cycle (2π), pick a new character
+        if (highlightRotationRef.current >= Math.PI * 2) {
+            highlightedCharRef.current = Math.floor(Math.random() * HERO_CONFIG.letters.length)
+            highlightRotationRef.current = 0
+            rotationSpeedRef.current = 5 + Math.random() * 6 // New speed for next character
+        }
+    })
+
     if (!spineGeometry) return null
 
     const cfg = HERO_CONFIG
     const startX = -((cfg.letters.length - 1) / 2) * actualSpacing
-    // Adjust x position responsively based on aspect ratio
-    const responsiveXOffset = (size.width / size.height) > 1.5 ? 5 : 2
 
     return (
-        <group position={[responsiveXOffset, cfg.groupY + 1.5, 0]}>
+        <group position={[0, cfg.groupY, 0]}>
             {cfg.letters.map((letterCfg, i) => (
                 <SpineLetter2
                     key={i}
@@ -1362,29 +1414,12 @@ function SpineHeroSection() {
                     ]}
                     scale={letterScale}
                     delay={0.3 + i * 0.6}
+                    isHighlighted={i === highlightedCharRef.current}
+                    highlightRotation={highlightRotationRef.current}
                 />
             ))}
 
-            <Html position={[0, cfg.subtitleYOffset * letterScale, 0]} center distanceFactor={1.2} style={{
-                width: '800px',
-                textAlign: 'center',
-                fontSize: `${cfg.subtitleFontSize * letterScale * 16}px`,
-                color: '#aabbdd',
-                fontFamily: 'Arial, sans-serif',
-                lineHeight: '1.5',
-                pointerEvents: 'none',
-            }}>
-                <div dangerouslySetInnerHTML={{ __html: cfg.subtitleText }} />
-            </Html>
-
-            {/* Floor - large polished surface (same as glass text) */}
-            <mesh position={[0, -2, 0]} receiveShadow>
-                <boxGeometry args={[150, 0.5, 150]} />
-                <meshStandardMaterial color="#2a2a2a" metalness={0.8} roughness={0.2} envMapIntensity={3.0} />
-            </mesh>
-
-            {/* Animated spotlight that sweeps left-right */}
-            <AnimatedSpotLight />
+            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font={SUBTITLE_FONT} fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0} color="#8899cc" material-toneMapped={false} maxWidth={(cfg.letters.length - 1) * actualSpacing} textAlign="center" lineHeight={1.5}>{cfg.subtitleText}</Text>
         </group>
     )
 }
@@ -2939,6 +2974,30 @@ function DragController({ currentSectionRef }) {
     return null
 }
 
+// ─── Post-Processing Effects with Leva Controls ────────────────────────────
+function PostProcessingEffects() {
+    const { bloomIntensity, bloomThreshold, chromaticMagnitude, vignetteDarkness, vignetteOffset } = useControls('Post-Processing', {
+        bloomIntensity: { value: 1.6, min: 0, max: 3, step: 0.1 },
+        bloomThreshold: { value: 0.4, min: 0, max: 1, step: 0.05 },
+        chromaticMagnitude: { value: 1, min: 0, max: 3, step: 0.1 },
+        vignetteDarkness: { value: 0.8, min: 0, max: 2, step: 0.1 },
+        vignetteOffset: { value: 0.15, min: 0, max: 0.5, step: 0.05 },
+    })
+
+    // Update chromatic aberration offset
+    useEffect(() => {
+        warpOffset.set(0.002 * chromaticMagnitude, 0.002 * chromaticMagnitude)
+    }, [chromaticMagnitude])
+
+    return (
+        <EffectComposer disableNormalPass>
+            <SelectiveBloom luminanceThreshold={bloomThreshold} intensity={bloomIntensity} levels={4} />
+            <ChromaticAberration offset={warpOffset} />
+            <Vignette eskil={false} offset={vignetteOffset} darkness={vignetteDarkness} />
+        </EffectComposer>
+    )
+}
+
 function Scene({ scrollRef, currentSectionRef }) {
     return (
         <Selection>
@@ -2949,11 +3008,7 @@ function Scene({ scrollRef, currentSectionRef }) {
             <ambientLight intensity={0.03} />
             <Environment preset="night" />
 
-            <EffectComposer disableNormalPass>
-                <SelectiveBloom luminanceThreshold={0.4} intensity={1.6} levels={4} />
-                <ChromaticAberration offset={warpOffset} />
-                <Vignette eskil={false} offset={0.15} darkness={1.5} />
-            </EffectComposer>
+            <PostProcessingEffects />
 
             <color attach="background" args={['#000000']} />
             <fog attach="fog" args={['#0a0a0a', 8, 50]} />
