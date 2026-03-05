@@ -21,6 +21,7 @@ const dragRotState = {
 // Phase: 'loading' | 'pullback' | 'done'
 const heroIntroState = {
     phase: 'loading',
+    morphProgress: 1,             // 1 = fully scattered, 0 = fully formed
     // Post-processing overrides — read by PostProcessingEffects
     vignetteOverride: 1.4,    // starts heavy, eases to null (use default)
     bloomOverride: 2.5,       // starts hot, eases to null
@@ -204,146 +205,91 @@ const PROJ_NUDGE_Y = 0.9   // vertical lift (world units)
 // Starts zoomed into a single cog, pulls back through damped stops, then
 // hands off to the scroll-driven CameraController.
 
-const HERO_INTRO_KEYFRAMES = [
-    { pos: [0, 2.8, 3.2], look: [0, 2.8, 0], fov: 30 },  // Macro — tight on center cog
-    { pos: [0, 2.8, 8], look: [0, 2.8, 0], fov: 45 },  // Mid reveal
-    { pos: [0, 3, 13], look: [0, 2.8, 0], fov: 60 },  // Near-final
-    { pos: [0, 3, 16], look: [0, 2.8, 0], fov: 70 },  // Final rest (matches scroll start)
-]
-const HERO_DWELL = [0, 0.4, 0.3, 0]  // seconds to pause at each stop
-const HERO_SPRING_SPEED = 3.5         // spring tension for position
-const HERO_SPRING_SETTLE = 7          // how fast overshoot decays
-const HERO_OVERSHOOT = 0.15           // fraction of travel distance to overshoot
+const HERO_INTRO_START = { pos: [0, 2.8, 1.8], look: [0, 2.8, 0], fov: 20 }
+const HERO_INTRO_END = { pos: [0, 3, 16], look: [0, 2.8, 0], fov: 70 }
+const HERO_ANIMATION_DURATION = 3.5  // seconds for the entire smooth pullback
 
 function HeroIntroCam() {
     const { camera } = useThree()
     const { progress, active: loadingActive } = useProgress()
 
-    const phaseRef = useRef(0)         // current keyframe index target
-    const dwellTimer = useRef(0)       // time spent at current stop
-    const settledRef = useRef(false)   // has the camera settled at current stop?
-    const startedRef = useRef(false)   // has the sequence started?
-    const overshootRef = useRef(0)     // current overshoot amount on Z axis
-    const seqDone = useRef(false)
-
-    const posRef = useRef(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].pos))
-    const lookRef = useRef(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].look))
-    const fovRef = useRef(HERO_INTRO_KEYFRAMES[0].fov)
-    const prevZRef = useRef(HERO_INTRO_KEYFRAMES[0].pos[2])
+    const animTimeRef = useRef(0)
+    const startedRef = useRef(false)
+    const doneRef = useRef(false)
+    const delayRef = useRef(3.5)  // seconds to linger (includes ~1.3s loading screen fade-out)
+    const delayingRef = useRef(false)
 
     // Set initial camera position immediately
     useEffect(() => {
-        camera.position.set(...HERO_INTRO_KEYFRAMES[0].pos)
-        camera.fov = HERO_INTRO_KEYFRAMES[0].fov
-        camera.lookAt(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].look))
+        camera.position.set(...HERO_INTRO_START.pos)
+        camera.fov = HERO_INTRO_START.fov
+        camera.lookAt(new THREE.Vector3(...HERO_INTRO_START.look))
         camera.updateProjectionMatrix()
     }, [camera])
 
     useFrame((_, delta) => {
-        if (seqDone.current) return
+        if (doneRef.current) return
 
         // Wait for loading to complete
         const isLoaded = progress > 99.9 && !loadingActive
         if (!isLoaded) {
-            // Keep camera parked at macro position during loading
-            camera.position.set(...HERO_INTRO_KEYFRAMES[0].pos)
-            camera.fov = HERO_INTRO_KEYFRAMES[0].fov
-            camera.lookAt(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].look))
+            camera.position.set(...HERO_INTRO_START.pos)
+            camera.fov = HERO_INTRO_START.fov
+            camera.lookAt(new THREE.Vector3(...HERO_INTRO_START.look))
             camera.updateProjectionMatrix()
             return
         }
 
         if (!startedRef.current) {
             startedRef.current = true
+            delayingRef.current = true
             heroIntroState.phase = 'pullback'
-            phaseRef.current = 1  // Start moving toward first pullback stop
         }
 
-        const targetKF = HERO_INTRO_KEYFRAMES[phaseRef.current]
-        const targetPos = targetKF.pos
-        const targetLook = targetKF.look
-        const targetFov = targetKF.fov
-
-        // Spring-damp position toward target
-        posRef.current.x = dampValue(posRef.current.x, targetPos[0], HERO_SPRING_SPEED, delta)
-        posRef.current.y = dampValue(posRef.current.y, targetPos[1], HERO_SPRING_SPEED, delta)
-        posRef.current.z = dampValue(posRef.current.z, targetPos[2], HERO_SPRING_SPEED, delta)
-
-        // Spring-damp lookAt
-        lookRef.current.x = dampValue(lookRef.current.x, targetLook[0], HERO_SPRING_SPEED, delta)
-        lookRef.current.y = dampValue(lookRef.current.y, targetLook[1], HERO_SPRING_SPEED, delta)
-        lookRef.current.z = dampValue(lookRef.current.z, targetLook[2], HERO_SPRING_SPEED, delta)
-
-        // FOV
-        fovRef.current = dampValue(fovRef.current, targetFov, HERO_SPRING_SPEED, delta)
-
-        // Overshoot detection — when Z velocity changes sign, we've arrived
-        const zVelocity = posRef.current.z - prevZRef.current
-        prevZRef.current = posRef.current.z
-
-        // Check if settled (position close enough to target)
-        const dist = Math.abs(posRef.current.z - targetPos[2])
-        const isSettled = dist < 0.08 && Math.abs(zVelocity) < 0.01
-
-        if (!settledRef.current && isSettled) {
-            settledRef.current = true
-            dwellTimer.current = 0
-
-            // Chromatic aberration spike on impact
-            heroIntroState.chromaticSpike = 0.018
-
-            // Overshoot kick — push Z past target briefly
-            if (phaseRef.current < HERO_INTRO_KEYFRAMES.length - 1) {
-                const travelDist = Math.abs(targetPos[2] - HERO_INTRO_KEYFRAMES[phaseRef.current - 1].pos[2])
-                overshootRef.current = travelDist * HERO_OVERSHOOT
-            }
+        // Linger on the swarm before pulling back
+        if (delayingRef.current) {
+            delayRef.current -= delta
+            if (delayRef.current > 0) return
+            delayingRef.current = false
         }
 
-        // Decay overshoot
-        overshootRef.current = dampValue(overshootRef.current, 0, HERO_SPRING_SETTLE, delta)
+        // Advance animation timer
+        animTimeRef.current += delta
+        const rawProgress = Math.min(animTimeRef.current / HERO_ANIMATION_DURATION, 1)
 
-        // Decay chromatic spike
-        heroIntroState.chromaticSpike = dampValue(heroIntroState.chromaticSpike, 0, 8, delta)
-
-        // Dwell at current stop
-        if (settledRef.current) {
-            dwellTimer.current += delta
-            if (dwellTimer.current >= HERO_DWELL[phaseRef.current]) {
-                // Move to next keyframe
-                if (phaseRef.current < HERO_INTRO_KEYFRAMES.length - 1) {
-                    phaseRef.current++
-                    settledRef.current = false
-                    dwellTimer.current = 0
-                } else {
-                    // Final stop — hand off to scroll camera
-                    seqDone.current = true
-                    heroIntroState.phase = 'done'
-                    heroIntroState.vignetteOverride = null
-                    heroIntroState.bloomOverride = null
-                    return
-                }
-            }
+        // Cubic ease-in-out: smooth continuous motion
+        let easedProgress
+        if (rawProgress < 0.5) {
+            easedProgress = 4 * rawProgress * rawProgress * rawProgress
+        } else {
+            easedProgress = 1 - Math.pow(-2 * rawProgress + 2, 3) / 2
         }
 
-        // Ease post-processing overrides toward normal as camera pulls back
-        const introProgress = (phaseRef.current - 1 + (settledRef.current ? 1 : 0)) / (HERO_INTRO_KEYFRAMES.length - 1)
-        heroIntroState.vignetteOverride = THREE.MathUtils.lerp(1.4, 0.8, introProgress)
-        heroIntroState.bloomOverride = THREE.MathUtils.lerp(2.5, 1.6, introProgress)
-
-        // Apply position with overshoot
+        // Interpolate camera from start to end — one smooth motion
         camera.position.set(
-            posRef.current.x,
-            posRef.current.y,
-            posRef.current.z + overshootRef.current
+            THREE.MathUtils.lerp(HERO_INTRO_START.pos[0], HERO_INTRO_END.pos[0], easedProgress),
+            THREE.MathUtils.lerp(HERO_INTRO_START.pos[1], HERO_INTRO_END.pos[1], easedProgress),
+            THREE.MathUtils.lerp(HERO_INTRO_START.pos[2], HERO_INTRO_END.pos[2], easedProgress)
         )
-        camera.fov = fovRef.current
-        camera.lookAt(lookRef.current)
+        camera.fov = THREE.MathUtils.lerp(HERO_INTRO_START.fov, HERO_INTRO_END.fov, easedProgress)
+        camera.lookAt(new THREE.Vector3(...HERO_INTRO_START.look))
         camera.updateProjectionMatrix()
 
-        // Apply chromatic aberration spike
-        const baseChromatic = 0.002
-        const spikeChromatic = heroIntroState.chromaticSpike
-        warpOffset.set(baseChromatic + spikeChromatic, baseChromatic + spikeChromatic)
+        // Ease post-processing overrides
+        heroIntroState.vignetteOverride = THREE.MathUtils.lerp(1.4, 0.8, easedProgress)
+        heroIntroState.bloomOverride = THREE.MathUtils.lerp(2.5, 1.6, easedProgress)
+
+        // Publish morph progress so cogs can sync to actual camera movement
+        // 1 = fully scattered (camera tight), 0 = fully formed (camera at rest)
+        heroIntroState.morphProgress = 1 - easedProgress
+
+        // Animation complete — hand off to scroll camera
+        if (rawProgress >= 1) {
+            doneRef.current = true
+            heroIntroState.phase = 'done'
+            heroIntroState.vignetteOverride = null
+            heroIntroState.bloomOverride = null
+        }
     })
 
     return null
@@ -352,7 +298,7 @@ function HeroIntroCam() {
 
 function CameraController({ scrollRef }) {
     const { camera } = useThree()
-    const lookAtTarget = useMemo(() => new THREE.Vector3(), [])
+    const lookAtTarget = useMemo(() => new THREE.Vector3(0, 2.8, 0), [])
     const prevScroll = useRef(0)
     const velocityRef = useRef(0)
     const nudgeXRef = useRef(0)
@@ -1388,7 +1334,6 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     const frameCountRef = useRef(0)
     const lastEnterFrameRef = useRef(-100)
     const rotationAxesRef = useRef([])  // Random axes per cog
-    const morphTimeRef = useRef(0)  // Start at scatter — morph gathers as camera pulls back
     const CACHE_STEPS = 128
 
     const { count, posCache, tanCache } = useMemo(() => {
@@ -1420,25 +1365,9 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         frameCountRef.current++
         if (frameCountRef.current - lastEnterFrameRef.current > 2) hovInstRef.current = -1
 
-        // Gate morph behind camera movement — swarm starts gathering as camera pulls back
-        const isCameraMoving = heroIntroState.phase === 'pullback' || heroIntroState.phase === 'done'
-        if (isCameraMoving) {
-            morphTimeRef.current += delta
-        }
-        let isMorphing = false
-        let morphProgress = 0
-
-        if (morphTimeRef.current < 3.5) {
-            // Intro phase only: swarm scatters then gathers into characters
-            const rawProgress = morphTimeRef.current / 3.5  // 0 to 1 over 3.5 seconds
-            // Snappy cubic ease-in-out: fast gathering motion
-            const easeProgress = rawProgress < 0.5
-                ? 4 * rawProgress * rawProgress * rawProgress
-                : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2
-            morphProgress = Math.max(0, 1 - easeProgress)  // Goes from 1 to 0 snappily
-            isMorphing = morphProgress > 0
-        }
-        // After 1.2 seconds, morphProgress stays at 0 (no more animation)
+        // Read morph progress directly from camera — always in sync
+        const morphProgress = heroIntroState.morphProgress || 0
+        const isMorphing = morphProgress > 0.001
 
         const SPREAD_RADIUS = 8
         const SPREAD_STRENGTH = 0.85
@@ -1485,10 +1414,16 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             // Apply morphing - scatter cogs dramatically, then gather into formation
             let morphPos = new THREE.Vector3(px, py + spr, pz)
             if (isMorphing) {
-                // Spread radially outward during morph with larger scatter distance for dramatic effect
-                const spreadDist = morphProgress * 6.5  // Larger scatter for more dramatic effect
-                const morphAxis = axis.clone().multiplyScalar(spreadDist)
-                morphPos.add(morphAxis)
+                // Scatter only in XY plane — zeroing Z prevents cogs from flying into the camera near-plane
+                const spreadDist = morphProgress * 6.5
+                const flat = new THREE.Vector3(axis.x, axis.y, 0)
+                const flatLen = flat.length()
+                if (flatLen > 0.001) {
+                    morphPos.add(flat.divideScalar(flatLen).multiplyScalar(spreadDist))
+                } else {
+                    // Fallback: scatter using index to ensure unique direction
+                    morphPos.add(new THREE.Vector3(Math.cos(i * 2.4), Math.sin(i * 2.4), 0).multiplyScalar(spreadDist))
+                }
             }
 
             dummyMatrix.position.copy(morphPos)
@@ -1509,6 +1444,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             instanced.setMatrixAt(i, dummyMatrix.matrix)
         }
         instanced.instanceMatrix.needsUpdate = true
+        if (!instanced.visible) instanced.visible = true
     })
 
     return (
@@ -1516,6 +1452,8 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             <instancedMesh
                 ref={instancedRef}
                 args={[sourceGeometry, material, count]}
+                visible={false}
+                frustumCulled={false}
                 onPointerOver={e => { hovInstRef.current = e.instanceId ?? -1; lastEnterFrameRef.current = frameCountRef.current }}
                 onPointerMove={e => { hovInstRef.current = e.instanceId ?? -1; lastEnterFrameRef.current = frameCountRef.current }}
             />
