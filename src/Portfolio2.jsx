@@ -22,7 +22,7 @@ const dragRotState = {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // Ethos position — a dark empty zone the camera pans toward
-const ETHOS_POS = [70, 0, -15]
+const ETHOS_POS = [70, 0, -5]
 
 const CAMERA_PATH = [
     { t: 0.00, pos: [-7, 2, 18], look: [0, 2, 0], fov: 60, roll: 0 },
@@ -53,7 +53,7 @@ const CAMERA_PATH = [
 // Section snap stops — camera always rests at one of these t-values
 const SECTION_STOPS = [
     0.00,   // hero
-    0.16,   // ethos
+    0.24,   // ethos
     0.44,   // card 1 park
     0.62,   // card 2 park
     0.96,   // bio patch
@@ -78,6 +78,7 @@ const PROJECT_CARDS = [
         tech: ['Blender', 'Figma', 'Origami Studio'],
         stats: { role: 'Senior Product Designer', year: '2024', company: 'Motive' },
         objectType: 'truck_immobilizer',
+        caseStudy: null,
     },
     {
         pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
@@ -86,6 +87,53 @@ const PROJECT_CARDS = [
         tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
         stats: { role: 'UX Design & Strategy', year: '2023', company: 'Educative' },
         objectType: 'workflows',
+        caseStudy: {
+            meta: { role: 'Product Design', duration: '8 months', team: 'Design, PM, Engineering' },
+            sections: [
+                {
+                    type: 'intro',
+                    label: 'THE PROBLEM',
+                    title: 'The scalability problem',
+                    body: 'As our team at Educative scaled from 50 people to over 600, a centralized repository of projects, communication, and documentation became necessary. The existing tools provided separate solutions, requiring a lot of context switching and maintenance. To solve this problem for multiple personas across the company, we set on to build a product called Workflows.',
+                },
+                {
+                    type: 'role',
+                    label: 'MY ROLE',
+                    title: 'The Manager + IC Hybrid',
+                    body: 'By this point, I had been at Educative for over 2 years. It was an ambitious product that our leadership was heavily focused on and I worked directly with sales, engineering, and product leadership on the end-to-end process. Besides this, I was also involved in hiring and developing an outcome focused team of Designers and Illustrators.',
+                },
+                {
+                    type: 'research',
+                    label: 'RESEARCH',
+                    title: 'Talking to the demographic',
+                    body: 'I spoke to a total of 31 people (18 Engineering Managers, 13 Software Engineers) sourced through my LinkedIn references. Since this was an exploratory phase for us, I deemed it best to get their perspectives about the current state of work management tools, focusing on how they use the existing tools, what they like, what they not like, and where the gaps exist in those tools.',
+                },
+                {
+                    type: 'quotes',
+                    label: 'KEY INSIGHTS',
+                    quotes: [
+                        '"I can never figure out project progress" — Engineering Managers have tight schedules and don\'t want to search for documents or projects.',
+                        '"Design, PM, and dev docs get lost." — Team alignment is broken when related docs live in different platforms.',
+                        '"Signoffs become blockers and I have to remind people via Slack" — People forget things, and PMs constantly remind via messaging apps.',
+                        '"Discussions on technical docs are difficult to resolve?" — Implementation discussions stay in limbo, preventing document approval.',
+                    ],
+                },
+                {
+                    type: 'features',
+                    label: 'FINAL DESIGNS',
+                    items: [
+                        { name: 'Task Manager', desc: 'Complete end-to-end task manager from scratch. Tasks are associated to Projects and Documents and can be assigned to anyone.' },
+                        { name: 'Review Manager', desc: 'Request reviews on documents from any team member. Full review flow with status tracking and resolution.' },
+                        { name: 'Project Manager', desc: 'A project contains several tasks and documents. It can have a due date and multiple collaborators.' },
+                        { name: 'Document Editor', desc: 'Live multiplayer document editor with auto-save. Tasks and reviews are embedded in-document with clear status.' },
+                    ],
+                },
+                {
+                    type: 'cta',
+                    body: 'The work listed in this case study is a bird\'s eye view of the project over eight months. Want to dive deep into the designs? Feel free to reach out.',
+                },
+            ],
+        },
     },
 ]
 
@@ -108,7 +156,7 @@ const HERO_CONFIG = {
     groupY: 2.8,             // vertical offset of the whole hero group
     targetFraction: 0.72,    // fraction of viewport width that MUSTAFA fills
 
-    subtitleText: 'An endlessly curios product designer currently building AI-based leak protection system at Dell, and developing a SaaS capstone application at School of Information.',
+    subtitleText: 'I am a product designer and sometimes a frontend developer. ',
     subtitleYOffset: -5.8,   // Y below letter baseline (pre-scale)
     subtitleFontSize: 0.6,   // font size (pre-scale)
     subtitleLetterSpacing: 0.15,
@@ -1017,7 +1065,6 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
             rotation={config.rot}
             onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
             onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
-            onClick={e => e.stopPropagation()}
         >
             <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
             <TargetingReticle hovered={hovered} appeared={appeared} color={config.color} radius={2.0} />
@@ -1080,17 +1127,22 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         // Keep offset stationary - cogs appear in place without traveling along curve
         offsetRef.current = 0
 
-        // Track morphing animation - unmorph at load only
+        // Track morphing animation - swarm arrangement at load
         morphTimeRef.current += delta
         let isMorphing = false
         let morphProgress = 0
 
-        if (morphTimeRef.current < 2) {
-            // Intro phase only: unmorph from sphere to characters (morphProgress goes 1 to 0)
-            morphProgress = Math.max(0, 1 - morphTimeRef.current / 2)  // 2 second unmorph intro
+        if (morphTimeRef.current < 1.2) {
+            // Intro phase only: swarm scatters then gathers into characters
+            const rawProgress = morphTimeRef.current / 1.2  // 0 to 1 over 1.2 seconds
+            // Snappy cubic ease-in-out: fast gathering motion
+            const easeProgress = rawProgress < 0.5
+                ? 4 * rawProgress * rawProgress * rawProgress
+                : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2
+            morphProgress = Math.max(0, 1 - easeProgress)  // Goes from 1 to 0 snappily
             isMorphing = morphProgress > 0
         }
-        // After 2 seconds, morphProgress stays at 0 (no more animation)
+        // After 1.2 seconds, morphProgress stays at 0 (no more animation)
 
         const SPREAD_RADIUS = 8
         const SPREAD_STRENGTH = 0.85
@@ -1134,14 +1186,11 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             spreadOffsetsRef.current[i] = dampValue(spreadOffsetsRef.current[i], targetSpread, 10, delta)
             const spr = spreadOffsetsRef.current[i]
 
-            // Apply morphing - spread cogs outward into a sphere shape
+            // Apply morphing - scatter cogs dramatically, then gather into formation
             let morphPos = new THREE.Vector3(px, py + spr, pz)
             if (isMorphing) {
-                // Spread radially outward during morph (ease in-out)
-                const easeProgress = morphProgress < 0.5
-                    ? 2 * morphProgress * morphProgress
-                    : 1 - Math.pow(-2 * morphProgress + 2, 2) / 2
-                const spreadDist = easeProgress * 3
+                // Spread radially outward during morph with larger scatter distance for dramatic effect
+                const spreadDist = morphProgress * 6.5  // Larger scatter for more dramatic effect
                 const morphAxis = axis.clone().multiplyScalar(spreadDist)
                 morphPos.add(morphAxis)
             }
@@ -1362,12 +1411,12 @@ function SpineHeroSection() {
     }, [spineScene])
 
     const material = useMemo(() => new THREE.MeshPhysicalMaterial({
-        color: '#b8d6ff',
-        metalness: 0.6,
+        color: '#ffffff',
+        metalness: 1.0,
         roughness: 0.02,
         clearcoat: 1.0,
         clearcoatRoughness: 0.0,
-        emissive: '#0a1a33',
+        emissive: '#ffffffff',
         emissiveIntensity: 0.4,
     }), [])
 
@@ -1433,7 +1482,7 @@ useGLTF.preload('/also-me.glb')
 // ═════════════════════════════════════════════════════════════════════════════
 
 const ETHOS_ENTER = 0.08   // scroll fraction: ethos begins
-const ETHOS_EXIT = 0.24   // scroll fraction: ethos ends
+const ETHOS_EXIT = 0.32   // scroll fraction: ethos ends
 
 const ETHOS_CHECKPOINTS = [
     {
@@ -1665,47 +1714,178 @@ function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
     )
 }
 
+// ─── Controlled Straight Chain (with Leva sliders) ────────────────────────────
+function ControlledStraightChain({ name, defaults }) {
+    const { px, py, pz, rx, ry, rz, scale, segments, cogScale } = useControls(
+        `Chains / ${name}`,
+        {
+            px: { value: defaults.pos[0], min: -20, max: 20, step: 0.1 },
+            py: { value: defaults.pos[1], min: -20, max: 20, step: 0.1 },
+            pz: { value: defaults.pos[2], min: -20, max: 20, step: 0.1 },
+            rx: { value: defaults.rot[0], min: -Math.PI, max: Math.PI, step: 0.01 },
+            ry: { value: defaults.rot[1], min: -Math.PI, max: Math.PI, step: 0.01 },
+            rz: { value: defaults.rot[2], min: -Math.PI, max: Math.PI, step: 0.01 },
+            scale: { value: defaults.scale, min: 0.1, max: 5, step: 0.05 },
+            segments: { value: defaults.segments, min: 4, max: 40, step: 1 },
+            cogScale: { value: defaults.cogScale, min: 0.1, max: 1, step: 0.01 },
+        }
+    )
+    return (
+        <group position={[px, py, pz]} rotation={[rx, ry, rz]} scale={scale}>
+            <StraightChain
+                start={[0, 0, 0]} end={[1, 0, 0]}
+                color="#3366ff" active={false} interactive={false}
+                segments={segments} cogScale={cogScale} rotationSpeed={1.5}
+            />
+        </group>
+    )
+}
+
 // ─── Main Ethos Section (3D) ──────────────────────────────────────────────────
-const ETHOS_SIGIL_POS = [3, 0, 11]
-const ETHOS_LEFT_PIL = [-7, 0, 11]
-const ETHOS_RIGHT_PIL = [13, 0, 11]
-const ETHOS_CHAIN_Y = 2.1   // height of pillar tops
+const ETHOS_CENTER = [0, 0, 0]
+const ETHOS_STACK_RADIUS = 3.5
+
+function EthosSnakeSpine({ trigger }) {
+    const { scene } = useGLTF('/spine.glb')
+    const meshRef = useRef()
+    const progressRef = useRef(0)
+
+    // Extract geometry and material from the loaded scene
+    const { geometry, material } = useMemo(() => {
+        let g, m
+        scene.traverse(child => {
+            if (child.isMesh) {
+                g = child.geometry
+                m = child.material.clone()
+                m.emissive?.set('#000000')
+                m.emissiveIntensity = 0
+                m.metalness = 1.0
+                m.roughness = 0.05
+                m.toneMapped = true
+            }
+        })
+        return { geometry: g, material: m }
+    }, [scene])
+
+    const curve = useMemo(() => new THREE.CatmullRomCurve3([
+        new THREE.Vector3(22, 25, -10),
+        new THREE.Vector3(10, 12, -5),
+        new THREE.Vector3(20, 2, 0),
+        new THREE.Vector3(0, -3, 5),
+        new THREE.Vector3(3, -12, 10),
+        new THREE.Vector3(-10, -22, 15),
+        new THREE.Vector3(-22, -12, -20),
+        new THREE.Vector3(22, 22, -15),
+        new THREE.Vector3(50, 40, -30) // 🏁 Exit Point (Fly away!)
+    ], false), []) // ⬅️ Closed set to false
+
+    const segments = 160
+    const dummy = useMemo(() => new THREE.Object3D(), [])
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return
+
+        // Only progress if trigger is true, but DON'T reset if false
+        // This keeps the snake's position persistent so it doesn't "re-fly-in"
+        if (trigger) {
+            meshRef.current.visible = true
+            progressRef.current += delta * 0.05
+        } else {
+            // Keep it visible if it has already started, or hide if it's the first pass
+            meshRef.current.visible = progressRef.current > 0
+        }
+
+        const p = progressRef.current
+        const curveLength = curve.getLength()
+        // Space them by ~2.8 units for a tighter "solid" look
+        const stepU = 2.8 / curveLength
+
+        // 🐍 One-shot traversal logic: stop when the tail clears the path (1.0)
+        // Max progress needed is ~1.0 + (segments * stepU)
+        const maxP = 1.0 + (segments * stepU)
+        if (p > maxP) {
+            meshRef.current.visible = false
+            return
+        }
+
+        for (let i = 0; i < segments; i++) {
+            const t = p - (i * stepU) // ⬅️ No modulo (%) here
+            if (t < 0 || t > 1) {
+                dummy.scale.setScalar(0)
+            } else {
+                const pos = curve.getPointAt(t)
+                const tan = curve.getTangentAt(t)
+
+                // Sync rotations to absolute time so they never "stop"
+                const spin = state.clock.elapsedTime * 2.0 + (i * 0.1)
+
+                dummy.position.copy(pos)
+                dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tan.normalize())
+
+                // Base orientation
+                dummy.rotateX(Math.PI)
+                dummy.rotateZ(spin)
+                dummy.scale.setScalar(5)
+            }
+            dummy.updateMatrix()
+            meshRef.current.setMatrixAt(i, dummy.matrix)
+        }
+        meshRef.current.instanceMatrix.needsUpdate = true
+    })
+
+    return (
+        <instancedMesh ref={meshRef} args={[geometry, material, segments]} frustumCulled={false} />
+    )
+}
 
 function EthosSection({ scrollRef }) {
     const groupRef = useRef()
+    const [snakeTrigger, setSnakeTrigger] = useState(false)
+    const hasRunRef = useRef(false) // 🛡️ Prevent re-running
+    const entryTimeRef = useRef(0)
 
-    useFrame(() => {
+    useFrame((state) => {
         if (!groupRef.current) return
         const t = scrollRef.current ?? 0
-        groupRef.current.visible = t >= ETHOS_ENTER - 0.03 && t <= ETHOS_EXIT + 0.03
+        const isVisible = t >= ETHOS_ENTER - 0.03 && t <= ETHOS_EXIT + 0.03
+        groupRef.current.visible = isVisible
+
+        if (isVisible && t >= ETHOS_ENTER && t <= ETHOS_EXIT && !hasRunRef.current) {
+            if (entryTimeRef.current === 0) entryTimeRef.current = state.clock.elapsedTime
+            if (state.clock.elapsedTime - entryTimeRef.current > 1.0) {
+                setSnakeTrigger(true)
+                hasRunRef.current = true // Lock it in
+            }
+        } else if (!isVisible && !snakeTrigger) {
+            // Only reset the timer if we haven't run yet
+            entryTimeRef.current = 0
+        }
     })
 
     return (
         <group ref={groupRef} position={ETHOS_POS}>
-            {/* Sigil — centred between the pillars */}
-            <SigilModel position={ETHOS_SIGIL_POS} scale={3} />
-
-            {/* Left pillar — me */}
-            <Pillar position={ETHOS_LEFT_PIL} bustUrl="/me.glb" bustRotSpeed={0.05} bustScale={5} />
-
-            {/* Right pillar — robot me */}
-            <Pillar position={ETHOS_RIGHT_PIL} bustUrl="/also-me.glb" bustRotSpeed={-0.04} bustScale={5} />
-
-            {/* Spine chain connecting the two pillar tops */}
-            <SpineChain
-                start={[ETHOS_LEFT_PIL[0], ETHOS_CHAIN_Y, ETHOS_LEFT_PIL[2]]}
-                end={[ETHOS_RIGHT_PIL[0], ETHOS_CHAIN_Y, ETHOS_RIGHT_PIL[2]]}
-                mid={[3, ETHOS_CHAIN_Y - 2.8, 11]}
-                color="#3366ff"
-                active={false}
-                interactive={false}
-                segments={30}
-                cogScale={0.52}
+            <EthosSnakeSpine trigger={snakeTrigger} />
+            {/* Bottom bust — human */}
+            <RotatingBust
+                url="/me.glb"
+                position={[5, -3.5, -3]}
+                tiltAxis={[0, -0.7, 0]}
+                rotSpeed={-0.001}
+                scale={12}
             />
 
-            <pointLight position={[3, 4, 6]} intensity={180} color="#6699ff" distance={16} decay={2} />
-            <pointLight position={[-7, 2, 4]} intensity={40} color="#3355ff" distance={10} decay={2} />
-            <pointLight position={[13, 2, 4]} intensity={40} color="#3355ff" distance={10} decay={2} />
+            {/* Top bust — robot me */}
+            <RotatingBust
+                url="/also-me.glb"
+                position={[4.5, -4, 6]}
+                tiltAxis={[0, -0.3, 0]}
+                rotSpeed={0.001}
+                scale={8}
+            />
+
+            <pointLight position={[0, 2, 6]} intensity={200} color="#6699ff" distance={18} decay={2} />
+            <pointLight position={[4, 1, 4]} intensity={60} color="#3355ff" distance={10} decay={2} />
+            <pointLight position={[-4, 1, 4]} intensity={60} color="#3355ff" distance={10} decay={2} />
         </group>
     )
 }
@@ -1978,7 +2158,8 @@ function BioGrid({ active }) {
 // ScrollBar shows all sections except the last (DOSSIER lives outside the progress arc)
 const SCROLLBAR_STOPS = SECTION_STOPS.slice(0, -1)
 const SCROLLBAR_LABELS = SECTION_LABELS.slice(0, -1)
-const SCROLLBAR_HIDE_T = SECTION_STOPS[SECTION_STOPS.length - 2] + 0.05  // starts fading just past BIO
+const SCROLLBAR_VISUAL_PERCENTS = [0, 22, 44, 73, 100] // Custom spacing to handle wide labels like 'Workflows'
+const SCROLLBAR_HIDE_T = SECTION_STOPS[SECTION_STOPS.length - 2] + 0.05
 
 function ScrollBar({ scrollRef, currentSectionRef }) {
     const fillRef = useRef()
@@ -2002,7 +2183,22 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
             opacityRef.current += (targetOp - opacityRef.current) * 0.08
             if (wrapRef.current) wrapRef.current.style.opacity = opacityRef.current
 
-            if (fillRef.current) fillRef.current.style.width = `${Math.min(t / SCROLLBAR_STOPS[SCROLLBAR_STOPS.length - 1], 1) * 100}%`
+            const stops = SECTION_STOPS.slice(0, -1)
+            const maxT = stops[stops.length - 1]
+            const currT = Math.min(t, maxT)
+
+            // Find which segment we are in to interpolate the fill visually
+            let visualP = 0
+            for (let i = 0; i < stops.length - 1; i++) {
+                if (currT >= stops[i] && currT <= stops[i + 1]) {
+                    const localT = (currT - stops[i]) / (stops[i + 1] - stops[i])
+                    visualP = SCROLLBAR_VISUAL_PERCENTS[i] + localT * (SCROLLBAR_VISUAL_PERCENTS[i + 1] - SCROLLBAR_VISUAL_PERCENTS[i])
+                    break
+                }
+            }
+            if (currT >= maxT) visualP = 100
+
+            if (fillRef.current) fillRef.current.style.width = `${visualP}%`
 
             dotRefs.current.forEach((dot, i) => {
                 if (!dot) return
@@ -2017,8 +2213,8 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
             lblRefs.current.forEach((lbl, i) => {
                 if (!lbl) return
                 const isActive = i === active
-                lbl.style.color = isActive ? ACCENT : '#2d4070'
-                lbl.style.opacity = isActive ? '1' : '0.55'
+                lbl.style.color = isActive ? ACCENT : '#6677aa'
+                lbl.style.opacity = isActive ? '1' : '0.7'
             })
 
             raf = requestAnimationFrame(loop)
@@ -2029,29 +2225,43 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
 
     return (
         <div ref={wrapRef} style={{
-            position: 'absolute', bottom: '36px', left: '50%',
-            transform: 'translateX(-50%)', width: 'min(396px, 40.8vw)',
+            position: 'absolute', bottom: '8px', left: '50%',
+            transform: 'translateX(-50%)', width: 'min(420px, 45vw)',
             zIndex: 100, pointerEvents: 'none', transition: 'none',
+            // Liquid Glass Container
+            background: 'rgba(0, 0, 0, 0)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderRadius: '16px',
+            padding: '15px 40px 30px 30px', // Extra bottom padding for labels
+            //border: '1px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center'
         }}>
-            {/* End-cap left */}
-            <div style={{ position: 'absolute', left: 0, top: '-5px', width: '1px', height: '11px', background: 'rgba(60,90,160,0.4)' }} />
-            {/* End-cap right */}
-            {/* <div style={{ position: 'absolute', right: 0, top: '-5px', width: '1px', height: '11px', background: 'rgba(60,90,160,0.4)' }} /> */}
-
             {/* Track */}
-            <div style={{ position: 'relative', height: '1px', background: 'rgba(40,70,140,0.3)' }}>
-                {/* Glowing fill */}
+            <div style={{ position: 'relative', width: '100%', height: '2px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '1px' }}>
+                {/* Glowing Liquid Fill */}
                 <div ref={fillRef} style={{
-                    position: 'absolute', top: 0, left: 0, height: '1px', width: '0%',
-                    background: 'linear-gradient(90deg, transparent, #00aaff66, #00aaff)',
-                    boxShadow: '0 0 6px #00aaff88',
-                    transition: 'width 60ms linear',
-                }} />
+                    position: 'absolute', top: 0, left: 0, height: '100%', width: '0%',
+                    background: 'linear-gradient(90deg, #0066ff, #00e5ff, #fff)',
+                    boxShadow: '0 0 15px #00aaff, 0 0 30px #00aaff44',
+                    borderRadius: '1px',
+                    transition: 'width 100ms cubic-bezier(0.23, 1, 0.32, 1)',
+                }}>
+                    {/* Shine reflection */}
+                    <div style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, height: '50%',
+                        background: 'rgba(255, 255, 255, 0.3)',
+                        borderRadius: '1px'
+                    }} />
+                </div>
 
                 {/* Checkpoints */}
-                {SECTION_STOPS.map((_, i) => (
+                {SCROLLBAR_LABELS.map((_, i) => (
                     <div key={i} style={{
-                        position: 'absolute', left: `${(i / (SECTION_STOPS.length - 1)) * 100}%`, top: 0,
+                        position: 'absolute', left: `${SCROLLBAR_VISUAL_PERCENTS[i]}%`, top: 0,
                         pointerEvents: 'auto', cursor: 'pointer',
                     }} onClick={() => { currentSectionRef.current = i }}>
                         {/* Tick above track */}
@@ -2087,6 +2297,423 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
 
 // BioOverlay replaced by in-scene ModularResumePatch
 export function BioOverlay() { return null }
+
+// ─── Case Study Overlay — project case study panel, opened on project click ──
+const CASE_STUDY_CSS = `
+.cs-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.cs-panel.open {
+    pointer-events: auto;
+    opacity: 1;
+}
+.cs-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+}
+.cs-drawer {
+    position: relative;
+    width: min(640px, 52vw);
+    height: 100vh;
+    background: rgba(6, 7, 20, 0.82);
+    backdrop-filter: blur(28px) saturate(1.4);
+    border-left: 1px solid rgba(100, 130, 220, 0.18);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cs-panel.open .cs-drawer {
+    transform: translateX(0);
+}
+.cs-header {
+    padding: 20px 28px;
+    border-bottom: 1px solid rgba(100, 130, 220, 0.12);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.cs-close-btn {
+    background: none;
+    border: 1px solid rgba(100, 130, 220, 0.25);
+    color: #8899cc;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
+}
+.cs-close-btn:hover {
+    background: rgba(100, 130, 220, 0.1);
+    border-color: rgba(100, 130, 220, 0.4);
+    color: #b8d6ff;
+}
+.cs-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 28px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 130, 220, 0.2) transparent;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.cs-body::-webkit-scrollbar {
+    width: 6px;
+}
+.cs-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.cs-body::-webkit-scrollbar-thumb {
+    background: rgba(100, 130, 220, 0.2);
+    border-radius: 3px;
+}
+.cs-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 130, 220, 0.35);
+}
+.cs-meta-row {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 36px;
+}
+.cs-meta-item label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: #445577;
+    display: block;
+    text-transform: uppercase;
+}
+.cs-meta-item span {
+    font-size: 13px;
+    color: #8899cc;
+    margin-top: 6px;
+}
+.cs-section {
+    margin-bottom: 36px;
+}
+.cs-section-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: #445577;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+.cs-section-title {
+    font-size: 18px;
+    color: #b8d6ff;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+.cs-section-body {
+    font-size: 13px;
+    color: #7788bb;
+    line-height: 1.7;
+}
+.cs-quote {
+    border-left: 2px solid rgba(100, 130, 220, 0.3);
+    padding: 10px 16px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: #8899cc;
+    font-style: italic;
+    background: rgba(30, 40, 80, 0.2);
+}
+.cs-feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.cs-feature-card {
+    background: rgba(30, 40, 80, 0.4);
+    border: 1px solid rgba(100, 130, 220, 0.12);
+    border-radius: 4px;
+    padding: 14px;
+}
+.cs-feature-name {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #00aaff;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+.cs-feature-desc {
+    font-size: 12px;
+    color: #7788bb;
+    line-height: 1.5;
+}
+.cs-cta {
+    font-size: 13px;
+    color: #7788bb;
+    line-height: 1.7;
+    padding: 16px;
+    background: rgba(100, 130, 220, 0.05);
+    border: 1px solid rgba(100, 130, 220, 0.1);
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+.cs-placeholder {
+    padding: 40px 20px;
+    color: #7788bb;
+}
+.cs-placeholder-title {
+    font-size: 16px;
+    color: #8899cc;
+    margin-bottom: 12px;
+}
+`
+
+// ─── Cyberpunk Neon Variant ──
+const CASE_STUDY_CSS_NEON = `
+@keyframes neon-glow {
+    0%, 100% { background: linear-gradient(135deg, rgba(0, 20, 40, 0.9) 0%, rgba(0, 255, 255, 0.05) 50%, rgba(255, 0, 255, 0.03) 100%); }
+    50% { background: linear-gradient(135deg, rgba(0, 30, 60, 0.95) 0%, rgba(0, 255, 255, 0.08) 50%, rgba(255, 0, 255, 0.06) 100%); }
+}
+.cs-panel-neon {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.cs-panel-neon.open {
+    pointer-events: auto;
+    opacity: 1;
+}
+.cs-backdrop-neon {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+}
+.cs-drawer-neon {
+    position: relative;
+    width: min(640px, 52vw);
+    height: 100vh;
+    background: linear-gradient(135deg, rgba(0, 20, 40, 0.9) 0%, rgba(0, 255, 255, 0.05) 50%, rgba(255, 0, 255, 0.03) 100%);
+    animation: neon-glow 8s ease-in-out infinite;
+    border-left: 2px solid #00ffff;
+    box-shadow: inset -20px 0 40px rgba(0, 255, 255, 0.1), 0 0 30px rgba(0, 255, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    clip-path: polygon(0 0, calc(100% - 30px) 0, 100% 30px, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+}
+.cs-panel-neon.open .cs-drawer-neon {
+    transform: translateX(0);
+}
+.cs-header-neon {
+    padding: 20px 28px;
+    border-bottom: 1px solid rgba(0, 255, 255, 0.4);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.05) 0%, transparent 100%);
+    box-shadow: 0 4px 15px rgba(0, 255, 255, 0.15);
+}
+.cs-close-btn-neon {
+    background: transparent;
+    border: 1px solid rgba(0, 255, 255, 0.5);
+    color: #00ffff;
+    width: 32px;
+    height: 32px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+}
+.cs-close-btn-neon:hover {
+    background: rgba(0, 255, 255, 0.1);
+    border-color: rgba(0, 255, 255, 0.8);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+}
+.cs-body-neon {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 28px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 255, 255, 0.3) transparent;
+    font-family: 'Courier New', monospace;
+}
+.cs-body-neon::-webkit-scrollbar {
+    width: 6px;
+}
+.cs-body-neon::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+}
+.cs-meta-row-neon {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 36px;
+    padding: 16px;
+    background: rgba(0, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05);
+}
+.cs-meta-item-neon label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: #00ffff;
+    display: block;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+}
+.cs-meta-item-neon span {
+    font-size: 13px;
+    color: #00ffff;
+    margin-top: 6px;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+}
+.cs-section-neon {
+    margin-bottom: 36px;
+    padding: 16px;
+    background: rgba(0, 255, 255, 0.03);
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    border-left: 3px solid rgba(0, 255, 255, 0.6);
+}
+.cs-section-label-neon {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: #00ffff;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+}
+.cs-section-title-neon {
+    font-size: 18px;
+    color: #00ffff;
+    margin-bottom: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+}
+.cs-section-body-neon {
+    font-size: 12px;
+    color: #00ff88;
+    line-height: 1.7;
+    text-shadow: 0 0 4px rgba(0, 255, 255, 0.3);
+}
+.cs-quote-neon {
+    border-left: 3px solid #ff00ff;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 12px;
+    color: #ff00ff;
+    font-style: italic;
+    background: rgba(255, 0, 255, 0.08);
+    box-shadow: inset 0 0 15px rgba(255, 0, 255, 0.1), 0 0 10px rgba(255, 0, 255, 0.2);
+    text-shadow: 0 0 8px rgba(255, 0, 255, 0.5);
+}
+.cs-feature-grid-neon {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+.cs-feature-card-neon {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    border-radius: 0;
+    padding: 14px;
+    box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05), 0 0 15px rgba(0, 255, 255, 0.15);
+}
+.cs-feature-name-neon {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: #00ffff;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+}
+.cs-feature-desc-neon {
+    font-size: 11px;
+    color: #00ff88;
+    line-height: 1.5;
+}
+.cs-cta-neon {
+    font-size: 12px;
+    color: #00ffff;
+    line-height: 1.7;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    border-left: 3px solid #ff00ff;
+    margin-bottom: 20px;
+    box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05), 0 0 20px rgba(0, 255, 255, 0.15);
+    text-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
+}
+`
+
+function CaseStudySection({ section, neon = false }) {
+    const prefix = neon ? '-neon' : ''
+
+    if (section.type === 'intro' || section.type === 'role') {
+        return (
+            <div className={`cs-section${prefix}`}>
+                <div className={`cs-section-label${prefix}`}>{section.label}</div>
+                <div className={`cs-section-title${prefix}`}>{section.title}</div>
+                <div className={`cs-section-body${prefix}`}>{section.body}</div>
+            </div>
+        )
+    } else if (section.type === 'research') {
+        return (
+            <div className={`cs-section${prefix}`}>
+                <div className={`cs-section-label${prefix}`}>{section.label}</div>
+                <div className={`cs-section-title${prefix}`}>{section.title}</div>
+                <div className={`cs-section-body${prefix}`}>{section.body}</div>
+                {section.stat && <div style={{ marginTop: 12, fontSize: 12, color: neon ? '#00ffff' : '#00aaff', fontWeight: 500, textShadow: neon ? '0 0 6px rgba(0,255,255,0.6)' : 'none' }}>→ {section.stat}</div>}
+            </div>
+        )
+    } else if (section.type === 'quotes') {
+        return (
+            <div className={`cs-section${prefix}`}>
+                <div className={`cs-section-label${prefix}`}>{section.label}</div>
+                <div style={{ marginTop: 12 }}>
+                    {section.quotes.map((q, i) => (
+                        <div key={i} className={`cs-quote${prefix}`}>{q}</div>
+                    ))}
+                </div>
+            </div>
+        )
+    } else if (section.type === 'features') {
+        return (
+            <div className={`cs-section${prefix}`}>
+                <div className={`cs-section-label${prefix}`}>{section.label}</div>
+                <div className={`cs-feature-grid${prefix}`} style={{ marginTop: 12 }}>
+                    {section.items.map((item, i) => (
+                        <div key={i} className={`cs-feature-card${prefix}`}>
+                            <div className={`cs-feature-name${prefix}`}>{item.name}</div>
+                            <div className={`cs-feature-desc${prefix}`}>{item.desc}</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    } else if (section.type === 'cta') {
+        return (
+            <div className={`cs-cta${prefix}`}>
+                {section.body}
+            </div>
+        )
+    }
+    return null
+}
 
 // ─── Dossier overlay — full-height resume panel, shown on final scroll stop ──
 const DOSSIER_CSS = `
@@ -2578,6 +3205,92 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
     )
 }
 
+// Straight-line chain — cogs positioned along a lerp instead of bezier
+function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', active = false, interactive = false, segments = 20, rotationSpeed = 1.5, paused = false, cogScale = 0.28 }) {
+    const { scene } = useGLTF('/spine.glb')
+    const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
+    const spinRefs = useRef([])
+    const posRefs = useRef([])
+    const hoveredIdxRef = useRef(-1)
+    const spreadOffsets = useRef([])
+    const frameCountRef = useRef(0)
+    const lastEnterFrameRef = useRef(-100)
+    const directions = useMemo(() => Array.from({ length: segments }, () => Math.random() < 0.5 ? 1 : -1), [segments])
+    const speedRef = useRef(1)
+
+    const transforms = useMemo(() => {
+        const s = new THREE.Vector3(...start)
+        const e = new THREE.Vector3(...end)
+        const tan = new THREE.Vector3().subVectors(e, s).normalize()
+        const quat = new THREE.Quaternion().setFromUnitVectors(_up, tan)
+        return Array.from({ length: segments }, (_, i) => {
+            const t = i / (segments - 1)
+            const pos = new THREE.Vector3().lerpVectors(s, e, t)
+            return { pos: pos.toArray(), quat }
+        })
+    }, [start, end, segments, _up])
+
+    const clones = useMemo(
+        () => transforms.map(() => {
+            const c = scene.clone(true)
+            c.traverse(child => { if (child.isMesh) child.material = child.material.clone() })
+            return c
+        }),
+        // only rebuild if segment count or base scene changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [scene, segments]
+    )
+
+    useEffect(() => {
+        clones.forEach(c => c.traverse(child => {
+            if (!child.isMesh) return
+            child.material.emissive?.set(color)
+            child.material.emissiveIntensity = active ? 0.9 : 0.08
+            child.material.toneMapped = false
+        }))
+    }, [active, color, clones])
+
+    useFrame((_, delta) => {
+        frameCountRef.current++
+        if (frameCountRef.current - lastEnterFrameRef.current > 8) hoveredIdxRef.current = -1
+
+        speedRef.current = dampValue(speedRef.current, paused ? 0 : 1, 5, delta)
+        spinRefs.current.forEach((ref, i) => {
+            if (ref) ref.rotation.z += delta * rotationSpeed * directions[i] * speedRef.current
+        })
+
+        const SPREAD_RADIUS = 7
+        const SPREAD_STRENGTH = 0.85
+        const hovIdx = hoveredIdxRef.current
+        transforms.forEach((t, i) => {
+            const posRef = posRefs.current[i]
+            if (!posRef) return
+            if (!spreadOffsets.current[i]) spreadOffsets.current[i] = 0
+            const dist = hovIdx >= 0 ? Math.abs(i - hovIdx) : SPREAD_RADIUS
+            const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
+            spreadOffsets.current[i] = dampValue(spreadOffsets.current[i], SPREAD_STRENGTH * falloff, 10, delta)
+            posRef.position.set(t.pos[0], t.pos[1] + spreadOffsets.current[i], t.pos[2])
+        })
+    })
+
+    return (
+        <group>
+            {transforms.map((t, i) => (
+                <group key={i}
+                    ref={el => { if (el) posRefs.current[i] = el }}
+                    position={t.pos}
+                    quaternion={t.quat}
+                    onPointerOver={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}
+                    onPointerMove={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}>
+                    <group ref={el => { if (el) { el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
+                        <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
+                    </group>
+                </group>
+            ))}
+        </group>
+    )
+}
+
 function ModularResumePatch({ visible, currentSectionRef }) {
     const groupRef = useRef()
     const [activeId, setActiveId] = useState(null)
@@ -2839,7 +3552,7 @@ function PhotoRing({ appeared }) {
     })
 
     return (
-        <group ref={groupRef} position={center} rotation={[0.5,0.4,0]}>
+        <group ref={groupRef} position={center} rotation={[0.5, 0.4, 0]}>
             {PHOTO_PATHS.map((path, i) => {
                 const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
                 return (
@@ -2974,6 +3687,172 @@ function DragController({ currentSectionRef }) {
     return null
 }
 
+// ─── 3D Interactive Logo Component ────────────────────────────────────────
+function Logo3D({ position = [-5, 3.5, 3] }) {
+    const groupRef = useRef()
+    const mouseRef = useRef({ x: 0, y: 0 })
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1
+            mouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1
+        }
+        window.addEventListener('mousemove', handleMouseMove)
+        return () => window.removeEventListener('mousemove', handleMouseMove)
+    }, [])
+
+    useFrame((state) => {
+        if (!groupRef.current) return
+
+        // Subtle rotation + mouse interaction
+        groupRef.current.rotation.y += 0.003
+        groupRef.current.rotation.x = mouseRef.current.y * 0.3
+        groupRef.current.rotation.z = mouseRef.current.x * 0.2
+    })
+
+    return (
+        <group ref={groupRef} position={position} scale={1.2}>
+            {/* Geometric M made of simple shapes */}
+
+            {/* Left vertical bar */}
+            <mesh position={[-0.6, 0, 0]}>
+                <boxGeometry args={[0.2, 1.2, 0.1]} />
+                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+            </mesh>
+
+            {/* Right vertical bar */}
+            <mesh position={[0.6, 0, 0]}>
+                <boxGeometry args={[0.2, 1.2, 0.1]} />
+                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+            </mesh>
+
+            {/* Left diagonal */}
+            <mesh position={[-0.15, 0.3, 0]} rotation={[0, 0, Math.PI / 4.5]}>
+                <boxGeometry args={[0.15, 0.8, 0.08]} />
+                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+            </mesh>
+
+            {/* Right diagonal */}
+            <mesh position={[0.15, 0.3, 0]} rotation={[0, 0, -Math.PI / 4.5]}>
+                <boxGeometry args={[0.15, 0.8, 0.08]} />
+                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+            </mesh>
+
+            {/* Glow effect */}
+            <pointLight position={[0, 0, 0.5]} intensity={0.5} color="#b8d6ff" distance={2} />
+        </group>
+    )
+}
+
+// ─── Animated Grid Background with Wave Effect ────────────────────────────
+function AnimatedGrid() {
+    const meshRef = useRef()
+    const mouseRef = useRef({ x: 0, y: 0 })
+    const smoothBubbleRef = useRef({ x: 0, y: 0 })
+
+    // Track mouse position
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            // Convert screen coords to world coords (normalized -1 to 1)
+            mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1
+            mouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1
+        }
+
+        window.addEventListener('mousemove', handleMouseMove)
+        return () => window.removeEventListener('mousemove', handleMouseMove)
+    }, [])
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return
+
+        const time = state.clock.elapsedTime
+        const geometry = meshRef.current.geometry
+
+        // Get position and color attributes
+        if (geometry) {
+            const positionAttribute = geometry.getAttribute('position')
+            const colorAttribute = geometry.getAttribute('color') || null
+
+            if (!positionAttribute.original) {
+                // Store original positions and initialize colors
+                positionAttribute.original = positionAttribute.array.slice()
+
+                // Initialize color attribute if it doesn't exist
+                if (!colorAttribute) {
+                    const colors = new Float32Array(positionAttribute.array.length)
+                    for (let i = 0; i < colors.length; i++) {
+                        colors[i] = 0  // Base brightness (dark by default)
+                    }
+                    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+                }
+            }
+
+            const original = positionAttribute.original
+            const posArray = positionAttribute.array
+            const colorAttr = geometry.getAttribute('color')
+            const colors = colorAttr.array
+
+            // Convert mouse coords to world space (scale to grid size)
+            const targetBubbleX = mouseRef.current.x * 30
+            const targetBubbleY = mouseRef.current.y * 30
+
+            // Smooth bubble movement with damping (lag effect)
+            smoothBubbleRef.current.x = dampValue(smoothBubbleRef.current.x, targetBubbleX, 8, delta)
+            smoothBubbleRef.current.y = dampValue(smoothBubbleRef.current.y, targetBubbleY, 8, delta)
+
+            const bubbleX = smoothBubbleRef.current.x
+            const bubbleY = smoothBubbleRef.current.y
+
+            // Apply wave distortion + mouse-following bubble effect
+            for (let i = 0; i < original.length; i += 3) {
+                const x = original[i]
+                const y = original[i + 1]
+
+                // Base wave effect: sin waves moving along the grid
+                const wave1 = Math.sin(x * 0.5 + time * 2) * 0.3
+                const wave2 = Math.sin(y * 0.5 + time * 1.5) * 0.3
+
+                // Mouse-following bubble effect
+                const distToBubble = Math.sqrt((x - bubbleX) ** 2 + (y - bubbleY) ** 2)
+                const bubble = Math.exp(-distToBubble * distToBubble / 15) * 1.5  // Gaussian bump
+
+                posArray[i + 2] = original[i + 2] + wave1 + wave2 + bubble
+
+                // Chromatic aberration effect in bubble area — each channel shifted
+                const chromaOffset = 2.5
+                const distToRed = Math.sqrt((x - bubbleX - chromaOffset) ** 2 + (y - bubbleY) ** 2)
+                const distToGreen = Math.sqrt((x - bubbleX) ** 2 + (y - bubbleY) ** 2)
+                const distToBlue = Math.sqrt((x - bubbleX + chromaOffset) ** 2 + (y - bubbleY) ** 2)
+
+                const redBrightness = Math.exp(-distToRed * distToRed / 25) * 0.8
+                const greenBrightness = Math.exp(-distToGreen * distToGreen / 25) * 0.8
+                const blueBrightness = Math.exp(-distToBlue * distToBlue / 25) * 0.8
+
+                colors[i] = redBrightness       // R channel
+                colors[i + 1] = greenBrightness // G channel
+                colors[i + 2] = blueBrightness  // B channel
+            }
+
+            positionAttribute.needsUpdate = true
+            colorAttr.needsUpdate = true
+        }
+    })
+
+    return (
+        <mesh ref={meshRef} position={[0, 0, -5]} rotation={[0, 0, 0]}>
+            <planeGeometry args={[60, 60, 40, 40]} />
+            <meshBasicMaterial
+                color="#ffffff"
+                vertexColors
+                wireframe
+                transparent
+                opacity={0.15}
+                fog={false}
+            />
+        </mesh>
+    )
+}
+
 // ─── Post-Processing Effects with Leva Controls ────────────────────────────
 function PostProcessingEffects() {
     const { bloomIntensity, bloomThreshold, chromaticMagnitude, vignetteDarkness, vignetteOffset } = useControls('Post-Processing', {
@@ -3012,6 +3891,9 @@ function Scene({ scrollRef, currentSectionRef }) {
 
             <color attach="background" args={['#000000']} />
             <fog attach="fog" args={['#0a0a0a', 8, 50]} />
+
+            {/* Animated grid background */}
+            <AnimatedGrid />
 
             <CursorFX />
             <Select enabled>
@@ -3253,9 +4135,107 @@ function GlitchLink({ href, children, ...props }) {
     )
 }
 
+function CursorOrb() {
+    const orbRef = useRef()
+    const [hovered, setHovered] = useState(false)
+    const mouse = useRef({ x: 0, y: 0 })
+
+    useEffect(() => {
+        const onMove = (e) => {
+            mouse.current.x = e.clientX
+            mouse.current.y = e.clientY
+
+            // Auto-detect hover by checking computed cursor style
+            const target = e.target
+            const cursor = window.getComputedStyle(target).cursor
+            setHovered(cursor === 'pointer' || cursor === 'crosshair')
+        }
+        window.addEventListener('mousemove', onMove)
+
+        let raf
+        const update = () => {
+            if (orbRef.current) {
+                // translate3d is hardware accelerated
+                orbRef.current.style.transform = `translate3d(${mouse.current.x}px, ${mouse.current.y}px, 0)`
+            }
+            raf = requestAnimationFrame(update)
+        }
+        raf = requestAnimationFrame(update)
+
+        return () => {
+            window.removeEventListener('mousemove', onMove)
+            cancelAnimationFrame(raf)
+        }
+    }, [])
+
+    return (
+        <div
+            ref={orbRef}
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: 0,
+                height: 0,
+                pointerEvents: 'none',
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mixBlendMode: 'screen'
+            }}
+        >
+            {/* The "Soul" - Identical to original SVG but dynamic */}
+            <div style={{
+                width: hovered ? '32px' : '24px',
+                height: hovered ? '32px' : '24px',
+                borderRadius: '50%',
+                background: 'rgba(255, 0, 255, 0.4)',
+                boxShadow: `0 0 ${hovered ? '25px' : '12px'} #ff00ff, 0 0 ${hovered ? '45px' : '20px'} #ff00ff`,
+                transition: 'width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+                <div style={{
+                    width: hovered ? '6px' : '4px',
+                    height: hovered ? '6px' : '4px',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    boxShadow: '0 0 10px #fff'
+                }} />
+            </div>
+        </div>
+    )
+}
+
+/** 
+ * A 3D Light that follows the mouse inside the Scene
+ * This makes the Orb "real" to the metallic objects.
+ */
+function SceneCursorLight() {
+    const lightRef = useRef()
+    const { viewport, camera } = useThree()
+
+    useFrame((state) => {
+        if (!lightRef.current) return
+
+        // Convert mouse (-1 to 1) to 3D world space at a specific depth
+        const x = (state.mouse.x * viewport.width) / 2
+        const y = (state.mouse.y * viewport.height) / 2
+
+        // Float the light slightly in front of the typical object plane (z ~ 5)
+        lightRef.current.position.set(x, y, 8)
+    })
+
+    return <pointLight ref={lightRef} intensity={15} color="#ff00ff" distance={20} decay={2} />
+}
+
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
+
+    // Global UI hover tracker
     useEffect(() => {
         const onMove = (e) => {
             const overUI = e.target.tagName !== 'CANVAS'
@@ -3300,7 +4280,14 @@ export default function Portfolio() {
     }, [])
 
     return (
-        <div style={{ width: '100vw', height: '100vh', background: '#050510', overflow: 'hidden' }}>
+        <div style={{
+            width: '100vw',
+            height: '100vh',
+            background: '#050510',
+            overflow: 'hidden',
+            cursor: 'none' // Hide native to show Orb
+        }}>
+            <CursorOrb />
             <LoadingScreen />
 
             {/* GLOBAL HUD */}
@@ -3329,8 +4316,9 @@ export default function Portfolio() {
             <DossierOverlay scrollRef={scrollRef} />
             <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
-            <Canvas camera={{ position: [0, -4, 14], fov: 65 }} dpr={[1, 1.5]}>
+            <Canvas camera={{ position: [0, -4, 14], fov: 65 }} dpr={[1, 1.5]} style={{ zIndex: 1 }}>
                 <React.Suspense fallback={null}>
+                    <SceneCursorLight />
                     <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
                 </React.Suspense>
             </Canvas>
