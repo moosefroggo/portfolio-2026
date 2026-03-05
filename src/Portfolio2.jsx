@@ -17,6 +17,16 @@ const dragRotState = {
     rotY: [0, 0],        // accumulated yaw per card
 }
 
+// ── Hero Intro Shared State (module-level) ────────────────────────────────────
+// Phase: 'loading' | 'pullback' | 'done'
+const heroIntroState = {
+    phase: 'loading',
+    // Post-processing overrides — read by PostProcessingEffects
+    vignetteOverride: 1.4,    // starts heavy, eases to null (use default)
+    bloomOverride: 2.5,       // starts hot, eases to null
+    chromaticSpike: 0,        // 0 = no spike, >0 = spike magnitude
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. CONFIGURATION & CAMERA PATH
 // ═════════════════════════════════════════════════════════════════════════════
@@ -190,6 +200,156 @@ function ScrollSmoother({ currentSectionRef, scrollRef }) {
 const PROJ_NUDGE_X = 1.6   // horizontal lean (world units)
 const PROJ_NUDGE_Y = 0.9   // vertical lift (world units)
 
+// ── Cinematic Hero Intro Camera ───────────────────────────────────────────────
+// Starts zoomed into a single cog, pulls back through damped stops, then
+// hands off to the scroll-driven CameraController.
+
+const HERO_INTRO_KEYFRAMES = [
+    { pos: [0, 2.8, 3.2], look: [0, 2.8, 0], fov: 30 },  // Macro — tight on center cog
+    { pos: [0, 2.8, 8], look: [0, 2.8, 0], fov: 45 },  // Mid reveal
+    { pos: [0, 3, 13], look: [0, 2.8, 0], fov: 60 },  // Near-final
+    { pos: [0, 3, 16], look: [0, 2.8, 0], fov: 70 },  // Final rest (matches scroll start)
+]
+const HERO_DWELL = [0, 0.4, 0.3, 0]  // seconds to pause at each stop
+const HERO_SPRING_SPEED = 3.5         // spring tension for position
+const HERO_SPRING_SETTLE = 7          // how fast overshoot decays
+const HERO_OVERSHOOT = 0.15           // fraction of travel distance to overshoot
+
+function HeroIntroCam() {
+    const { camera } = useThree()
+    const { progress, active: loadingActive } = useProgress()
+
+    const phaseRef = useRef(0)         // current keyframe index target
+    const dwellTimer = useRef(0)       // time spent at current stop
+    const settledRef = useRef(false)   // has the camera settled at current stop?
+    const startedRef = useRef(false)   // has the sequence started?
+    const overshootRef = useRef(0)     // current overshoot amount on Z axis
+    const seqDone = useRef(false)
+
+    const posRef = useRef(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].pos))
+    const lookRef = useRef(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].look))
+    const fovRef = useRef(HERO_INTRO_KEYFRAMES[0].fov)
+    const prevZRef = useRef(HERO_INTRO_KEYFRAMES[0].pos[2])
+
+    // Set initial camera position immediately
+    useEffect(() => {
+        camera.position.set(...HERO_INTRO_KEYFRAMES[0].pos)
+        camera.fov = HERO_INTRO_KEYFRAMES[0].fov
+        camera.lookAt(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].look))
+        camera.updateProjectionMatrix()
+    }, [camera])
+
+    useFrame((_, delta) => {
+        if (seqDone.current) return
+
+        // Wait for loading to complete
+        const isLoaded = progress > 99.9 && !loadingActive
+        if (!isLoaded) {
+            // Keep camera parked at macro position during loading
+            camera.position.set(...HERO_INTRO_KEYFRAMES[0].pos)
+            camera.fov = HERO_INTRO_KEYFRAMES[0].fov
+            camera.lookAt(new THREE.Vector3(...HERO_INTRO_KEYFRAMES[0].look))
+            camera.updateProjectionMatrix()
+            return
+        }
+
+        if (!startedRef.current) {
+            startedRef.current = true
+            heroIntroState.phase = 'pullback'
+            phaseRef.current = 1  // Start moving toward first pullback stop
+        }
+
+        const targetKF = HERO_INTRO_KEYFRAMES[phaseRef.current]
+        const targetPos = targetKF.pos
+        const targetLook = targetKF.look
+        const targetFov = targetKF.fov
+
+        // Spring-damp position toward target
+        posRef.current.x = dampValue(posRef.current.x, targetPos[0], HERO_SPRING_SPEED, delta)
+        posRef.current.y = dampValue(posRef.current.y, targetPos[1], HERO_SPRING_SPEED, delta)
+        posRef.current.z = dampValue(posRef.current.z, targetPos[2], HERO_SPRING_SPEED, delta)
+
+        // Spring-damp lookAt
+        lookRef.current.x = dampValue(lookRef.current.x, targetLook[0], HERO_SPRING_SPEED, delta)
+        lookRef.current.y = dampValue(lookRef.current.y, targetLook[1], HERO_SPRING_SPEED, delta)
+        lookRef.current.z = dampValue(lookRef.current.z, targetLook[2], HERO_SPRING_SPEED, delta)
+
+        // FOV
+        fovRef.current = dampValue(fovRef.current, targetFov, HERO_SPRING_SPEED, delta)
+
+        // Overshoot detection — when Z velocity changes sign, we've arrived
+        const zVelocity = posRef.current.z - prevZRef.current
+        prevZRef.current = posRef.current.z
+
+        // Check if settled (position close enough to target)
+        const dist = Math.abs(posRef.current.z - targetPos[2])
+        const isSettled = dist < 0.08 && Math.abs(zVelocity) < 0.01
+
+        if (!settledRef.current && isSettled) {
+            settledRef.current = true
+            dwellTimer.current = 0
+
+            // Chromatic aberration spike on impact
+            heroIntroState.chromaticSpike = 0.018
+
+            // Overshoot kick — push Z past target briefly
+            if (phaseRef.current < HERO_INTRO_KEYFRAMES.length - 1) {
+                const travelDist = Math.abs(targetPos[2] - HERO_INTRO_KEYFRAMES[phaseRef.current - 1].pos[2])
+                overshootRef.current = travelDist * HERO_OVERSHOOT
+            }
+        }
+
+        // Decay overshoot
+        overshootRef.current = dampValue(overshootRef.current, 0, HERO_SPRING_SETTLE, delta)
+
+        // Decay chromatic spike
+        heroIntroState.chromaticSpike = dampValue(heroIntroState.chromaticSpike, 0, 8, delta)
+
+        // Dwell at current stop
+        if (settledRef.current) {
+            dwellTimer.current += delta
+            if (dwellTimer.current >= HERO_DWELL[phaseRef.current]) {
+                // Move to next keyframe
+                if (phaseRef.current < HERO_INTRO_KEYFRAMES.length - 1) {
+                    phaseRef.current++
+                    settledRef.current = false
+                    dwellTimer.current = 0
+                } else {
+                    // Final stop — hand off to scroll camera
+                    seqDone.current = true
+                    heroIntroState.phase = 'done'
+                    heroIntroState.vignetteOverride = null
+                    heroIntroState.bloomOverride = null
+                    return
+                }
+            }
+        }
+
+        // Ease post-processing overrides toward normal as camera pulls back
+        const introProgress = (phaseRef.current - 1 + (settledRef.current ? 1 : 0)) / (HERO_INTRO_KEYFRAMES.length - 1)
+        heroIntroState.vignetteOverride = THREE.MathUtils.lerp(1.4, 0.8, introProgress)
+        heroIntroState.bloomOverride = THREE.MathUtils.lerp(2.5, 1.6, introProgress)
+
+        // Apply position with overshoot
+        camera.position.set(
+            posRef.current.x,
+            posRef.current.y,
+            posRef.current.z + overshootRef.current
+        )
+        camera.fov = fovRef.current
+        camera.lookAt(lookRef.current)
+        camera.updateProjectionMatrix()
+
+        // Apply chromatic aberration spike
+        const baseChromatic = 0.002
+        const spikeChromatic = heroIntroState.chromaticSpike
+        warpOffset.set(baseChromatic + spikeChromatic, baseChromatic + spikeChromatic)
+    })
+
+    return null
+}
+
+
 function CameraController({ scrollRef }) {
     const { camera } = useThree()
     const lookAtTarget = useMemo(() => new THREE.Vector3(), [])
@@ -211,6 +371,9 @@ function CameraController({ scrollRef }) {
     ], [])
 
     useFrame((state, delta) => {
+        // Yield to HeroIntroCam during the intro sequence
+        if (heroIntroState.phase !== 'done') return
+
         const t = scrollRef.current || 0
 
         const rawVelocity = Math.abs(t - prevScroll.current) / Math.max(delta, 0.001)
@@ -1218,14 +1381,14 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
 function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0, 0], delay = 0, cogScale = 0.72, isHighlighted = false, highlightRotation = 0 }) {
     const instancedRef = useRef()
     const offsetRef = useRef(0)
-    const drawProgressRef = useRef(0)
+    const drawProgressRef = useRef(1)  // Cogs visible from the start (for macro shot)
     const dummyMatrix = useMemo(() => new THREE.Object3D(), [])
     const hovInstRef = useRef(-1)
     const spreadOffsetsRef = useRef([])
     const frameCountRef = useRef(0)
     const lastEnterFrameRef = useRef(-100)
     const rotationAxesRef = useRef([])  // Random axes per cog
-    const morphTimeRef = useRef(0)  // Reset to 0 since we now gate the tick
+    const morphTimeRef = useRef(0)  // Start at scatter — morph gathers as camera pulls back
     const CACHE_STEPS = 128
 
     const { count, posCache, tanCache } = useMemo(() => {
@@ -1248,7 +1411,6 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     }, [points, sourceGeometry])
 
     const { progress, active: loadingActive } = useProgress()
-    const startTimeRef = useRef(null)
 
     useFrame((state, delta) => {
         const instanced = instancedRef.current
@@ -1258,23 +1420,17 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         frameCountRef.current++
         if (frameCountRef.current - lastEnterFrameRef.current > 2) hovInstRef.current = -1
 
-        // ⏱️ Animation Sync: start once progress is near completion
-        const isLoaded = progress > 99.9
-        if (isLoaded) {
-            if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime
-            const sceneTime = state.clock.elapsedTime - startTimeRef.current
-
-            if (sceneTime > delay) {
-                drawProgressRef.current = dampValue(drawProgressRef.current, 1, 5, delta)
-                morphTimeRef.current += delta
-            }
+        // Gate morph behind camera movement — swarm starts gathering as camera pulls back
+        const isCameraMoving = heroIntroState.phase === 'pullback' || heroIntroState.phase === 'done'
+        if (isCameraMoving) {
+            morphTimeRef.current += delta
         }
         let isMorphing = false
         let morphProgress = 0
 
-        if (morphTimeRef.current < 1.2) {
+        if (morphTimeRef.current < 3.5) {
             // Intro phase only: swarm scatters then gathers into characters
-            const rawProgress = morphTimeRef.current / 1.2  // 0 to 1 over 1.2 seconds
+            const rawProgress = morphTimeRef.current / 3.5  // 0 to 1 over 3.5 seconds
             // Snappy cubic ease-in-out: fast gathering motion
             const easeProgress = rawProgress < 0.5
                 ? 4 * rawProgress * rawProgress * rawProgress
@@ -1432,14 +1588,12 @@ function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], sc
 function AnimatedSpotLight() {
     const spotRef = useRef()
     const startTimeRef = useRef(null)
-    const { progress, active: loadingActive } = useProgress()
 
     useFrame((state) => {
         if (!spotRef.current) return
 
-        // ⏱️ Sync: Don't sweep until loading is done
-        const isLoaded = progress === 100 && !loadingActive
-        if (!isLoaded) return
+        // Start sweeping once intro is done
+        if (heroIntroState.phase !== 'done') return
 
         if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime
 
@@ -1474,7 +1628,6 @@ function StarField() {
     const pointsRef = useRef()
     const groupRef = useRef()
     const startTimeRef = useRef(null)
-    const { progress, active: loadingActive } = useProgress()
 
     const { positions, targets, colors, delays } = useMemo(() => {
         const positions = new Float32Array(STAR_COUNT * 3)
@@ -1512,9 +1665,8 @@ function StarField() {
     useFrame((state) => {
         if (!pointsRef.current) return
 
-        // ⏱️ Sync: Don't start fading in stars until loading is done
-        const isLoaded = progress === 100 && !loadingActive
-        if (!isLoaded) return
+        // Stars fade in once pullback starts (ambient background element)
+        if (heroIntroState.phase === 'loading') return
 
         if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime
 
@@ -1595,8 +1747,8 @@ function SpineHeroSection() {
     const subtitleOpRef = useRef(0)
 
     useFrame((state, delta) => {
-        const isLoaded = progress === 100 && !loadingActive
-        if (!isLoaded) return
+        // Gate behind hero intro completion
+        if (heroIntroState.phase !== 'done') return
 
         highlightRotationRef.current += delta * rotationSpeedRef.current
 
@@ -3106,38 +3258,77 @@ const COMPANY_NODES = [
 const HUB_POS = [0, 0, 0]
 const CUBE_POS = [5.5, 0, 0]
 
-// Company jack — hex bolt shape, label to the left, data readout to the right
+// Company card — holographic logo display, label to the left, data readout to the right
 function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
+    const logoTextures = {
+        'cbre': '/textures/logos/cbre-logo.png',
+        'motive': '/textures/logos/motive-logo.png',
+        'educative': '/textures/logos/educative-logo.png',
+        'dell': '/textures/logos/dell-log.png',
+    }
+
+    const texture = useTexture(logoTextures[config.id])
     const meshRef = useRef()
+    const groupRef = useRef()
     const [hovered, setHovered] = useState(false)
 
-    useFrame((_, delta) => {
-        if (meshRef.current) meshRef.current.rotation.z += delta * (hovered ? 1.5 : 0.2)
+    useFrame(() => {
+        if (groupRef.current) {
+            // Subtle tilt rotation for holographic effect
+            groupRef.current.rotation.y = (hovered ? 0.15 : 0.08) + Math.sin(Date.now() * 0.0003) * 0.05
+            groupRef.current.rotation.x = (hovered ? -0.1 : -0.05) + Math.cos(Date.now() * 0.0004) * 0.03
+        }
+        // Scale animation on hover
+        if (meshRef.current) {
+            const targetScale = hovered ? 1.15 : 1.0
+            meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.15)
+        }
     })
 
     return (
-        <group position={config.pos}>
+        <group position={config.pos} ref={groupRef}>
+            {/* Main logo card */}
             <mesh
                 ref={meshRef}
-                rotation={[Math.PI / 2, 0, 0]}
                 onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
                 onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
                 onClick={e => { e.stopPropagation(); onClick() }}
             >
-                <cylinderGeometry args={[0.45, 0.55, 0.35, 6]} />
+                <planeGeometry args={[0.8, 0.8]} />
                 <meshStandardMaterial
-                    color={isActive ? config.color : '#111118'}
-                    metalness={0.9} roughness={0.2}
+                    map={texture}
                     emissive={config.color}
-                    emissiveIntensity={isActive ? 0.5 : (hovered ? 0.2 : 0)}
+                    emissiveIntensity={isActive ? 0.4 : (hovered ? 0.15 : 0.05)}
+                    metalness={0.3} roughness={0.4}
+                    toneMapped={false}
+                    transparent
+                />
+            </mesh>
+
+            {/* Glowing edge frame */}
+            <mesh position={[0, 0, 0.01]}>
+                <planeGeometry args={[0.85, 0.85]} />
+                <meshBasicMaterial
+                    color={config.color}
+                    wireframe
+                    transparent
+                    opacity={isActive ? 0.8 : (hovered ? 0.5 : 0.25)}
                     toneMapped={false}
                 />
             </mesh>
-            <mesh position={[0, 0, 0.18]}>
-                <circleGeometry args={[0.17, 16]} />
-                <meshBasicMaterial color="#000" />
+
+            {/* Inner glow ring */}
+            <mesh position={[0, 0, 0.02]}>
+                <ringGeometry args={[0.38, 0.42, 32]} />
+                <meshBasicMaterial
+                    color={config.color}
+                    transparent
+                    opacity={isActive ? 0.6 : (hovered ? 0.3 : 0.1)}
+                    toneMapped={false}
+                />
             </mesh>
-            <pointLight color={config.color} intensity={isActive ? 1.5 : 0} distance={3} />
+
+            <pointLight color={config.color} intensity={isActive ? 1.8 : (hovered ? 0.8 : 0.3)} distance={3} />
 
             {/* Label — to the left of the jack */}
             <Text
@@ -3290,7 +3481,7 @@ function LockedCube({ clicked, onCubeClick, onHover, onHoverOut }) {
 useGLTF.preload('/spine.glb')
 
 // Samples a quadratic bezier, orients each spine cog along the tangent
-function SpineChain({ start, end, mid, color, active, interactive = true, segments = 20, rotationSpeed = 1.5, paused = false, cogScale = 0.28 }) {
+function SpineChain({ start, end, mid, color, active, interactive = true, segments = 20, rotationSpeed = 1.5, paused = false, targetSpeed = null, cogScale = 0.28 }) {
     const { scene } = useGLTF('/spine.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
@@ -3353,7 +3544,9 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
         if (frameCountRef.current - lastEnterFrameRef.current > 8) hoveredIdxRef.current = -1
 
         // Spin each cog — smoothly decelerates/accelerates on pause/resume
-        speedRef.current = dampValue(speedRef.current, paused ? 0 : 1, 5, delta)
+        // targetSpeed takes precedence: use it if provided, otherwise use paused flag
+        const target = targetSpeed !== null ? targetSpeed : (paused ? 0 : 1)
+        speedRef.current = dampValue(speedRef.current, target, 5, delta)
         spinRefs.current.forEach((ref, i) => {
             if (ref) ref.rotation.z += delta * rotationSpeed * directions[i] * speedRef.current
         })
@@ -3393,7 +3586,7 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
 }
 
 // Straight-line chain — cogs positioned along a lerp instead of bezier
-function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', active = false, interactive = false, segments = 20, rotationSpeed = 1.5, paused = false, cogScale = 0.28 }) {
+function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', active = false, interactive = false, segments = 20, rotationSpeed = 1.5, paused = false, targetSpeed = null, cogScale = 0.28 }) {
     const { scene } = useGLTF('/spine.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
@@ -3441,7 +3634,9 @@ function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', 
         frameCountRef.current++
         if (frameCountRef.current - lastEnterFrameRef.current > 8) hoveredIdxRef.current = -1
 
-        speedRef.current = dampValue(speedRef.current, paused ? 0 : 1, 5, delta)
+        // targetSpeed takes precedence: use it if provided, otherwise use paused flag
+        const target = targetSpeed !== null ? targetSpeed : (paused ? 0 : 1)
+        speedRef.current = dampValue(speedRef.current, target, 5, delta)
         spinRefs.current.forEach((ref, i) => {
             if (ref) ref.rotation.z += delta * rotationSpeed * directions[i] * speedRef.current
         })
@@ -3487,23 +3682,22 @@ function ModularResumePatch({ visible, currentSectionRef }) {
     const [companyPaused, setCompanyPaused] = useState(() => COMPANY_NODES.map(() => false))
     const staggerTimers = useRef([])
 
-    // When cube is hovered, stagger-pause each company chain; resume all on hover out
+    // When cube is hovered or company is selected, adjust pause states
     useEffect(() => {
         staggerTimers.current.forEach(clearTimeout)
         staggerTimers.current = []
         if (cubeHovered) {
-            COMPANY_NODES.forEach((_, i) => {
-                const delay = 60 + Math.random() * 380
-                staggerTimers.current[i] = setTimeout(
-                    () => setCompanyPaused(prev => { const n = [...prev]; n[i] = true; return n }),
-                    delay
-                )
-            })
+            // Cube hovered: pause all companies
+            setCompanyPaused(COMPANY_NODES.map(() => true))
+        } else if (activeId) {
+            // Company selected: pause all except selected
+            setCompanyPaused(COMPANY_NODES.map(node => node.id !== activeId))
         } else {
+            // No interaction: resume all
             setCompanyPaused(COMPANY_NODES.map(() => false))
         }
         return () => staggerTimers.current.forEach(clearTimeout)
-    }, [cubeHovered])
+    }, [cubeHovered, activeId])
 
     useFrame((_, delta) => {
         if (!groupRef.current) return
@@ -3515,24 +3709,46 @@ function ModularResumePatch({ visible, currentSectionRef }) {
     return (
         <group ref={groupRef}>
             {/* Company → Resume spine chains */}
-            {COMPANY_NODES.map((node, i) => (
-                <SpineChain
-                    key={node.id}
-                    start={node.pos} end={HUB_POS}
-                    mid={[(node.pos[0] + HUB_POS[0]) / 2, node.pos[1] - 1.8, 0]}
-                    color={node.color}
-                    active={activeId === node.id}
-                    paused={companyPaused[i] || hoveredNodeId === node.id}
-                />
-            ))}
+            {COMPANY_NODES.map((node, i) => {
+                // Determine target speed for this company chain
+                let targetSpeed = 1.0  // default: normal speed
+                if (cubeHovered) {
+                    targetSpeed = 0    // cube hovered: pause all companies
+                } else if (activeId === node.id) {
+                    targetSpeed = 0.4  // company selected: slowdown this one
+                } else if (activeId) {
+                    targetSpeed = 0    // another company selected: pause this one
+                }
+                return (
+                    <SpineChain
+                        key={node.id}
+                        start={node.pos} end={HUB_POS}
+                        mid={[(node.pos[0] + HUB_POS[0]) / 2, node.pos[1] - 1.8, 0]}
+                        color={node.color}
+                        active={activeId === node.id}
+                        targetSpeed={targetSpeed}
+                    />
+                )
+            })}
 
             {/* Resume → Cube spine chain */}
-            <SpineChain
-                start={HUB_POS} end={CUBE_POS} mid={[2.75, -2.0, 0]}
-                color="#3366ff"
-                active={cubeClicked}
-                paused={cubeHovered}
-            />
+            {(() => {
+                // Cube spine slows when cube is hovered, pauses when company is selected
+                let cubeTargetSpeed = 1.0
+                if (cubeHovered) {
+                    cubeTargetSpeed = 0.4  // cube hovered: slowdown
+                } else if (activeId) {
+                    cubeTargetSpeed = 0    // company selected: pause cube
+                }
+                return (
+                    <SpineChain
+                        start={HUB_POS} end={CUBE_POS} mid={[2.75, -2.0, 0]}
+                        color="#3366ff"
+                        active={cubeClicked}
+                        targetSpeed={cubeTargetSpeed}
+                    />
+                )
+            })()}
 
             {COMPANY_NODES.map(node => (
                 <SynthNode
@@ -4055,11 +4271,15 @@ function PostProcessingEffects() {
         warpOffset.set(0.002 * chromaticMagnitude, 0.002 * chromaticMagnitude)
     }, [chromaticMagnitude])
 
+    // Hero intro overrides — reads module-level state each render
+    const effectiveBloom = heroIntroState.bloomOverride ?? bloomIntensity
+    const effectiveVignette = heroIntroState.vignetteOverride ?? vignetteDarkness
+
     return (
         <EffectComposer disableNormalPass>
-            <SelectiveBloom luminanceThreshold={bloomThreshold} intensity={bloomIntensity} levels={4} />
+            <SelectiveBloom luminanceThreshold={bloomThreshold} intensity={effectiveBloom} levels={4} />
             <ChromaticAberration offset={warpOffset} />
-            <Vignette eskil={false} offset={vignetteOffset} darkness={vignetteDarkness} />
+            <Vignette eskil={false} offset={vignetteOffset} darkness={effectiveVignette} />
         </EffectComposer>
     )
 }
@@ -4068,6 +4288,7 @@ function Scene({ scrollRef, currentSectionRef }) {
     return (
         <Selection>
             <ScrollSmoother currentSectionRef={currentSectionRef} scrollRef={scrollRef} />
+            <HeroIntroCam />
             <CameraController scrollRef={scrollRef} />
             <DragController currentSectionRef={currentSectionRef} />
 
