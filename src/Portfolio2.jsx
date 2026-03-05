@@ -619,7 +619,7 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
             roughness: orig.roughness ?? 0.6,
             metalness: orig.metalness ?? 0.4,
             emissive: new THREE.Color(accentColor),
-            emissiveIntensity: 0.3,
+            emissiveIntensity: 0.1, // 💡 Reduced glare
             transparent: true,
             opacity: 0,
             toneMapped: false,
@@ -665,7 +665,7 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
     return (
         <group>
             {/* Truck — textured hologram, center-left */}
-            <group ref={truckGroupRef} position={[-0.4, -0.3, 0]}>
+            <group ref={truckGroupRef} position={[-0.4, -1.5, 0]}>
                 <primitive object={truckClone} />
             </group>
 
@@ -679,8 +679,8 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
             {appeared && (
                 <SpineChain
                     start={[1.6, 0.9, 0.3]}
-                    end={[-0.4, -0.3, 0]}
-                    mid={[0.6, -0.2, 0.15]}
+                    end={[-0.4, -1.5, 0]}
+                    mid={[0.6, -0.3, 0.15]}
                     color="#ffaa22"
                     active={hovered}
                     interactive={false}
@@ -813,7 +813,7 @@ function WorkflowsScene({ hovered, appeared, cardIndex }) {
 
     return (
         <group>
-            <group ref={groupRef}>
+            <group ref={groupRef} position={[0, -1.2, 0]}>
                 <primitive object={wfClone} />
                 <pointLight color="#44ff88" intensity={appeared ? 1.2 : 0} distance={8} decay={2} />
             </group>
@@ -1007,6 +1007,130 @@ function ScanReveal({ color, active, onComplete }) {
 }
 
 // ─── Project zone grid — fills void behind cards ──────────────────────────────
+function NexusHubCore({ scrollRef }) {
+    const groupRef = useRef()
+    const coreRef = useRef()
+    const ringsRef = useRef([])
+
+    useFrame((state, delta) => {
+        if (!groupRef.current) return
+        const t = scrollRef.current ?? 0
+        const active = t >= 0.32 && t <= 0.88
+        groupRef.current.visible = active
+
+        if (active) {
+            coreRef.current.rotation.y += delta * 0.4
+            coreRef.current.rotation.z += delta * 0.2
+
+            ringsRef.current.forEach((ring, i) => {
+                if (!ring) return
+                ring.rotation.x += delta * (0.15 * (i + 1))
+                ring.rotation.y += delta * (0.1 * (i + 1))
+            })
+        }
+    })
+
+    return (
+        <group ref={groupRef} position={[120, 1.5, -22]}>
+            <mesh ref={coreRef}>
+                <sphereGeometry args={[4, 32, 32]} />
+                <meshStandardMaterial color="#00aaff" emissive="#00aaff" emissiveIntensity={4} wireframe transparent opacity={0.4} />
+            </mesh>
+            {[6.5, 9, 12].map((radius, i) => (
+                <mesh key={i} ref={el => ringsRef.current[i] = el}>
+                    <torusGeometry args={[radius, 0.04, 16, 100]} />
+                    <meshStandardMaterial color="#44ff88" emissive="#44ff88" emissiveIntensity={1.5} transparent opacity={0.2} />
+                </mesh>
+            ))}
+            <pointLight intensity={40} color="#00aaff" distance={30} decay={2} />
+        </group>
+    )
+}
+
+function NexusDataStreams({ scrollRef }) {
+    const count = 50 // 📉 Lower density
+    const meshRef = useRef()
+    const dummy = useMemo(() => new THREE.Object3D(), [])
+    const particles = useMemo(() => {
+        return Array.from({ length: 50 }, () => ({
+            pos: new THREE.Vector3(
+                90 + Math.random() * 60,
+                -15 + Math.random() * 30,
+                -15 + Math.random() * 25
+            ),
+            speed: 0.02 + Math.random() * 0.04,
+            scale: 0.01 + Math.random() * 0.02 // 🤏 5x smaller
+        }))
+    }, [])
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return
+        const t = scrollRef.current ?? 0
+        const isVisible = t >= 0.32 && t <= 0.88
+        meshRef.current.visible = isVisible
+
+        if (isVisible) {
+            particles.forEach((p, i) => {
+                p.pos.y += p.speed
+                if (p.pos.y > 15) p.pos.y = -15
+
+                dummy.position.copy(p.pos)
+                dummy.scale.setScalar(p.scale * (1 + Math.sin(state.clock.elapsedTime * 2 + i) * 0.3))
+                dummy.updateMatrix()
+                meshRef.current.setMatrixAt(i, dummy.matrix)
+            })
+            meshRef.current.instanceMatrix.needsUpdate = true
+        }
+    })
+
+    return (
+        <instancedMesh ref={meshRef} args={[null, null, count]}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial color="#44ff88" emissive="#44ff88" emissiveIntensity={3} transparent opacity={0.4} />
+        </instancedMesh>
+    )
+}
+
+function ProjectPedestal({ color, appeared }) {
+    return (
+        <group position={[0, -2.6, 0]} scale={appeared ? 1 : 0}>
+            <mesh rotation-x={-Math.PI / 2}>
+                <cylinderGeometry args={[2.8, 2.8, 0.15, 32]} />
+                <meshStandardMaterial color={color} transparent opacity={0.08} metalness={1} roughness={0.1} />
+            </mesh>
+            {/* Inner glowing ring */}
+            <mesh rotation-x={-Math.PI / 2} position={[0, 0.08, 0]}>
+                <ringGeometry args={[2.7, 2.8, 64]} />
+                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={5} transparent opacity={0.6} toneMapped={false} />
+            </mesh>
+            {/* Subtle base glow */}
+            <pointLight position={[0, 0.5, 0]} intensity={8} color={color} distance={4} decay={2} />
+        </group>
+    )
+}
+
+function NexusDataThreads({ scrollRef }) {
+    const groupRef = useRef()
+    const threads = useMemo(() => [
+        { start: [100, 0, 0], end: [120, 1.5, -22] },
+        { start: [120, -0.5, 0], end: [120, 1.5, -22] }
+    ], [])
+
+    useFrame((_, delta) => {
+        if (!groupRef.current) return
+        const t = scrollRef.current ?? 0
+        groupRef.current.visible = t >= 0.32 && t <= 0.88
+    })
+
+    return (
+        <group ref={groupRef}>
+            {threads.map((p, i) => (
+                <Line key={i} points={[p.start, p.end]} color="#00aaff" lineWidth={0.15} transparent opacity={0.15} toneMapped={false} />
+            ))}
+        </group>
+    )
+}
+
 function ProjectZoneGrid({ scrollRef }) {
     const groupRef = useRef()
     const opacityRef = useRef(0)
@@ -1025,21 +1149,31 @@ function ProjectZoneGrid({ scrollRef }) {
         return pts
     }, [])
 
-    useFrame((_, delta) => {
+    useFrame((state, delta) => {
         if (!groupRef.current) return
         if (matsRef.current.length === 0)
             groupRef.current.traverse(child => { if (child.material) matsRef.current.push({ mat: child.material, dim: !!child.userData.dim }) })
         const t = scrollRef.current ?? 0
-        opacityRef.current = dampValue(opacityRef.current, (t >= 0.35 && t <= 0.85) ? 1 : 0, 3, delta)
+        opacityRef.current = dampValue(opacityRef.current, (t >= 0.32 && t <= 0.88) ? 1 : 0, 3, delta)
         const op = opacityRef.current
-        matsRef.current.forEach(({ mat, dim }) => { mat.opacity = op * (dim ? 0.06 : 0.12) })
+
+        // Scan pulse effect
+        const pulse = Math.sin(state.clock.elapsedTime * 0.8) * 0.5 + 0.5
+        matsRef.current.forEach(({ mat, dim }) => {
+            mat.opacity = op * (dim ? 0.03 : 0.08) + (pulse * 0.05 * op)
+        })
     })
 
     return (
         <group ref={groupRef}>
             {lines.map((l, i) => (
-                <Line key={i} points={[l.p1, l.p2]} color="#2244aa" lineWidth={0.5} transparent opacity={0} toneMapped={false} userData={{ dim: l.dim }} />
+                <Line key={i} points={[l.p1, l.p2]} color="#00aaff" lineWidth={0.3} transparent opacity={0} toneMapped={false} userData={{ dim: l.dim }} />
             ))}
+            {/* Haze shifted down to the floor level (was accidentally at Y=0) */}
+            <mesh position={[120, -3.4, -5]} rotation-x={-Math.PI / 2}>
+                <planeGeometry args={[70, 20]} />
+                <meshStandardMaterial color="#001144" transparent opacity={0.1 * opacityRef.current} />
+            </mesh>
         </group>
     )
 }
@@ -1066,14 +1200,15 @@ function ProjectCard({ config, scrollRef, cardIndex }) {
             onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
             onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
         >
+            <ProjectPedestal color={config.color} appeared={appeared} />
             <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
             <TargetingReticle hovered={hovered} appeared={appeared} color={config.color} radius={2.0} />
             <ScanReveal color={config.color} active={scanActive} onComplete={() => setAppeared(true)} />
             <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
 
-            <Text position={[0, 1.95, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
-            <Text position={[0, 1.55, 0.1]} fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
-            <Text position={[0, -1.55, 0.1]} font={SUBTITLE_FONT} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
+            <Text position={[0, 2.15, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
+            <Text position={[0, 1.75, 0.1]} fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
+            <Text position={[0, -1.35, 0.1]} font={SUBTITLE_FONT} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
 
             {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
         </group>
@@ -1090,7 +1225,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     const frameCountRef = useRef(0)
     const lastEnterFrameRef = useRef(-100)
     const rotationAxesRef = useRef([])  // Random axes per cog
-    const morphTimeRef = useRef(-2)  // Start unmorphing from sphere at page load
+    const morphTimeRef = useRef(0)  // Reset to 0 since we now gate the tick
     const CACHE_STEPS = 128
 
     const { count, posCache, tanCache } = useMemo(() => {
@@ -1112,6 +1247,9 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         return { count: c, posCache: pc, tanCache: tc }
     }, [points, sourceGeometry])
 
+    const { progress, active: loadingActive } = useProgress()
+    const startTimeRef = useRef(null)
+
     useFrame((state, delta) => {
         const instanced = instancedRef.current
         if (!instanced || count === 0) return
@@ -1120,15 +1258,17 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         frameCountRef.current++
         if (frameCountRef.current - lastEnterFrameRef.current > 2) hovInstRef.current = -1
 
-        if (state.clock.elapsedTime > delay) {
-            drawProgressRef.current = dampValue(drawProgressRef.current, 1, 5, delta)
+        // ⏱️ Animation Sync: start once progress is near completion
+        const isLoaded = progress > 99.9
+        if (isLoaded) {
+            if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime
+            const sceneTime = state.clock.elapsedTime - startTimeRef.current
+
+            if (sceneTime > delay) {
+                drawProgressRef.current = dampValue(drawProgressRef.current, 1, 5, delta)
+                morphTimeRef.current += delta
+            }
         }
-
-        // Keep offset stationary - cogs appear in place without traveling along curve
-        offsetRef.current = 0
-
-        // Track morphing animation - swarm arrangement at load
-        morphTimeRef.current += delta
         let isMorphing = false
         let morphProgress = 0
 
@@ -1291,10 +1431,20 @@ function SpineLetter2({ char, sourceGeometry, material, position = [0, 0, 0], sc
 // ─── Animated spotlight that sweeps left-right ────────────────────────────────
 function AnimatedSpotLight() {
     const spotRef = useRef()
+    const startTimeRef = useRef(null)
+    const { progress, active: loadingActive } = useProgress()
 
     useFrame((state) => {
         if (!spotRef.current) return
-        const sweep = Math.sin(state.clock.elapsedTime * 0.8) * 20
+
+        // ⏱️ Sync: Don't sweep until loading is done
+        const isLoaded = progress === 100 && !loadingActive
+        if (!isLoaded) return
+
+        if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime
+
+        const t = state.clock.elapsedTime - startTimeRef.current
+        const sweep = Math.sin(t * 0.8) * 20
         spotRef.current.position.x = sweep
     })
 
@@ -1323,6 +1473,8 @@ const STAR_DELAY = 0    // seconds after mount before first star appears
 function StarField() {
     const pointsRef = useRef()
     const groupRef = useRef()
+    const startTimeRef = useRef(null)
+    const { progress, active: loadingActive } = useProgress()
 
     const { positions, targets, colors, delays } = useMemo(() => {
         const positions = new Float32Array(STAR_COUNT * 3)
@@ -1359,9 +1511,16 @@ function StarField() {
 
     useFrame((state) => {
         if (!pointsRef.current) return
+
+        // ⏱️ Sync: Don't start fading in stars until loading is done
+        const isLoaded = progress === 100 && !loadingActive
+        if (!isLoaded) return
+
+        if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime
+
         // Keep stars centered on camera so they appear everywhere
         if (groupRef.current) groupRef.current.position.copy(state.camera.position)
-        const t = state.clock.elapsedTime
+        const t = state.clock.elapsedTime - startTimeRef.current
         let dirty = false
 
         for (let i = 0; i < STAR_COUNT; i++) {
@@ -1432,7 +1591,13 @@ function SpineHeroSection() {
         return { letterScale: scale, actualSpacing: cfg.spacing * scale }
     }, [size.width, size.height])
 
+    const { progress, active: loadingActive } = useProgress()
+    const subtitleOpRef = useRef(0)
+
     useFrame((state, delta) => {
+        const isLoaded = progress === 100 && !loadingActive
+        if (!isLoaded) return
+
         highlightRotationRef.current += delta * rotationSpeedRef.current
 
         // When rotation completes one full cycle (2π), pick a new character
@@ -1441,6 +1606,9 @@ function SpineHeroSection() {
             highlightRotationRef.current = 0
             rotationSpeedRef.current = 5 + Math.random() * 6 // New speed for next character
         }
+
+        // Fade in subtitle after MUSTAFA letters start swarming (slight delay)
+        subtitleOpRef.current = dampValue(subtitleOpRef.current, 1, 2, delta)
     })
 
     if (!spineGeometry) return null
@@ -1468,7 +1636,23 @@ function SpineHeroSection() {
                 />
             ))}
 
-            <Text position={[0, cfg.subtitleYOffset * letterScale, 0]} font={SUBTITLE_FONT} fontSize={cfg.subtitleFontSize * letterScale} anchorX="center" anchorY="middle" letterSpacing={0} color="#8899cc" material-toneMapped={false} maxWidth={(cfg.letters.length - 1) * actualSpacing} textAlign="center" lineHeight={1.5}>{cfg.subtitleText}</Text>
+            <Text
+                position={[0, cfg.subtitleYOffset * letterScale, 0]}
+                font={SUBTITLE_FONT}
+                fontSize={cfg.subtitleFontSize * letterScale}
+                anchorX="center"
+                anchorY="middle"
+                letterSpacing={0}
+                color="#8899cc"
+                material-toneMapped={false}
+                maxWidth={(cfg.letters.length - 1) * actualSpacing}
+                textAlign="center"
+                lineHeight={1.5}
+                material-transparent={true}
+                material-opacity={subtitleOpRef.current}
+            >
+                {cfg.subtitleText}
+            </Text>
         </group>
     )
 }
@@ -1893,6 +2077,9 @@ function EthosSection({ scrollRef }) {
 function ProjectsSection({ scrollRef }) {
     return (
         <group>
+            <NexusHubCore scrollRef={scrollRef} />
+            <NexusDataStreams scrollRef={scrollRef} />
+            <NexusDataThreads scrollRef={scrollRef} />
             <ProjectZoneGrid scrollRef={scrollRef} />
             {PROJECT_CARDS.map((config, i) => (
                 <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} />
@@ -3018,7 +3205,7 @@ function ResumeHub({ currentSectionRef }) {
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.13} letterSpacing={0.05} anchorX="center" anchorY="middle"
                 color="#3a5080" material-toneMapped={false}
-            >MUSTAFA ALEEM // UX ARCHITECT</Text>
+            >MUSTAFA ALI AKBAR // UX designer</Text>
         </group>
     )
 }
