@@ -3,10 +3,13 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html } from '@react-three/drei'
 import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import { useControls } from 'leva'
+// import { useControls } from 'leva'
+
+// Enable Draco decoder for compressed GLBs
+useGLTF.setDecoderPath('/draco/')
 
 // 🟢 Global warp offset for velocity-driven chromatic aberration
-export const warpOffset = new THREE.Vector2(0.002, 0.002)
+const warpOffset = new THREE.Vector2(0.002, 0.002)
 
 // 🎡 Per-card drag rotation state (module-level, read in useFrame)
 const dragRotState = {
@@ -35,9 +38,11 @@ const heroIntroState = {
 // Ethos position — a dark empty zone the camera pans toward
 const ETHOS_POS = [70, 0, -5]
 
+// ── Camera track for the page scroll ──
 const CAMERA_PATH = [
-    { t: 0.00, pos: [-7, 2, 18], look: [0, 2, 0], fov: 60, roll: 0 },
-    // ── Ethos: camera travels to X≈65, looks toward busts at X=70 ──
+    // ── Hero area (start) ──
+    { t: 0.00, pos: [0, 2, 18], look: [0, 2, 0], fov: 60, roll: 0 },
+    // ── Ethos transition ──
     { t: 0.08, pos: [40, 0.3, 14], look: ETHOS_POS, fov: 64, roll: 0 },
     { t: 0.24, pos: [65, 0, 12], look: ETHOS_POS, fov: 60, roll: 0 },
     // ── Transition to project rail (30-unit gap: ethos X=70 → cards X=100) ──
@@ -70,7 +75,7 @@ const SECTION_STOPS = [
     0.96,   // bio patch
     1.10,   // dossier (close-up camera on bust + resume panel)
 ]
-const WHEEL_THRESHOLD = 60   // deltaY pixels to trigger a section advance
+const WHEEL_THRESHOLD = 300  // deltaY pixels to trigger a section advance
 const SECTION_LABELS = ['HERO', 'ETHOS', 'NEXUS', 'Workflows', 'BIO', 'DOSSIER']
 // Visual positions in the nav bar (independent of scroll stops)
 const SECTION_BAR_POSITIONS = [0.00, 0.13, 0.30, 0.47, 0.67, 1.00]
@@ -83,12 +88,13 @@ const SUBTITLE_FONT = '/fonts/Oxanium-VariableFont_wght.ttf'
 
 const PROJECT_CARDS = [
     {
-        pos: [100, 0, 0], rot: [0, -0.15, 0], color: '#00aaff', appear: 0.44,
+        pos: [100, 0, 0], rot: [0, 0, 0], color: '#00aaff', appear: 0.44,
         title: 'Engine Immobilizer', subtitle: '01 // Motive',
         desc: 'Allowing managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
         stats: { role: 'Senior Product Designer', year: '2024', company: 'Motive' },
         objectType: 'truck_immobilizer',
+        video: '/demos/ei-noborder.mp4',
         caseStudy: null,
     },
     {
@@ -98,6 +104,7 @@ const PROJECT_CARDS = [
         tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
         stats: { role: 'UX Design & Strategy', year: '2023', company: 'Educative' },
         objectType: 'workflows',
+        video: '/demos/wf-noborder.mp4',
         caseStudy: {
             meta: { role: 'Product Design', duration: '8 months', team: 'Design, PM, Engineering' },
             sections: [
@@ -204,101 +211,23 @@ const PROJ_NUDGE_Y = 0.9   // vertical lift (world units)
 // ── Cinematic Hero Intro Camera ───────────────────────────────────────────────
 // Starts zoomed into a single cog, pulls back through damped stops, then
 // hands off to the scroll-driven CameraController.
-
 const HERO_INTRO_START = { pos: [0, 2.8, 1.8], look: [0, 2.8, 0], fov: 20 }
-const HERO_INTRO_END = { pos: [0, 3, 16], look: [0, 2.8, 0], fov: 70 }
+const HERO_INTRO_END = { pos: [0, 2, 18], look: [0, 2, 0], fov: 60 }
 const HERO_ANIMATION_DURATION = 3.5  // seconds for the entire smooth pullback
 
-function HeroIntroCam() {
-    const { camera } = useThree()
-    const { progress, active: loadingActive } = useProgress()
-
-    const animTimeRef = useRef(0)
-    const startedRef = useRef(false)
-    const doneRef = useRef(false)
-    const delayRef = useRef(3.5)  // seconds to linger (includes ~1.3s loading screen fade-out)
-    const delayingRef = useRef(false)
-
-    // Set initial camera position immediately
-    useEffect(() => {
-        camera.position.set(...HERO_INTRO_START.pos)
-        camera.fov = HERO_INTRO_START.fov
-        camera.lookAt(new THREE.Vector3(...HERO_INTRO_START.look))
-        camera.updateProjectionMatrix()
-    }, [camera])
-
-    useFrame((_, delta) => {
-        if (doneRef.current) return
-
-        // Wait for loading to complete
-        const isLoaded = progress > 99.9 && !loadingActive
-        if (!isLoaded) {
-            camera.position.set(...HERO_INTRO_START.pos)
-            camera.fov = HERO_INTRO_START.fov
-            camera.lookAt(new THREE.Vector3(...HERO_INTRO_START.look))
-            camera.updateProjectionMatrix()
-            return
-        }
-
-        if (!startedRef.current) {
-            startedRef.current = true
-            delayingRef.current = true
-            heroIntroState.phase = 'pullback'
-        }
-
-        // Linger on the swarm before pulling back
-        if (delayingRef.current) {
-            delayRef.current -= delta
-            if (delayRef.current > 0) return
-            delayingRef.current = false
-        }
-
-        // Advance animation timer
-        animTimeRef.current += delta
-        const rawProgress = Math.min(animTimeRef.current / HERO_ANIMATION_DURATION, 1)
-
-        // Cubic ease-in-out: smooth continuous motion
-        let easedProgress
-        if (rawProgress < 0.5) {
-            easedProgress = 4 * rawProgress * rawProgress * rawProgress
-        } else {
-            easedProgress = 1 - Math.pow(-2 * rawProgress + 2, 3) / 2
-        }
-
-        // Interpolate camera from start to end — one smooth motion
-        camera.position.set(
-            THREE.MathUtils.lerp(HERO_INTRO_START.pos[0], HERO_INTRO_END.pos[0], easedProgress),
-            THREE.MathUtils.lerp(HERO_INTRO_START.pos[1], HERO_INTRO_END.pos[1], easedProgress),
-            THREE.MathUtils.lerp(HERO_INTRO_START.pos[2], HERO_INTRO_END.pos[2], easedProgress)
-        )
-        camera.fov = THREE.MathUtils.lerp(HERO_INTRO_START.fov, HERO_INTRO_END.fov, easedProgress)
-        camera.lookAt(new THREE.Vector3(...HERO_INTRO_START.look))
-        camera.updateProjectionMatrix()
-
-        // Ease post-processing overrides
-        heroIntroState.vignetteOverride = THREE.MathUtils.lerp(1.4, 0.8, easedProgress)
-        heroIntroState.bloomOverride = THREE.MathUtils.lerp(2.5, 1.6, easedProgress)
-
-        // Publish morph progress so cogs can sync to actual camera movement
-        // 1 = fully scattered (camera tight), 0 = fully formed (camera at rest)
-        heroIntroState.morphProgress = 1 - easedProgress
-
-        // Animation complete — hand off to scroll camera
-        if (rawProgress >= 1) {
-            doneRef.current = true
-            heroIntroState.phase = 'done'
-            heroIntroState.vignetteOverride = null
-            heroIntroState.bloomOverride = null
-        }
-    })
-
-    return null
-}
+// HeroIntroCam has been cleanly merged directly into CameraController to prevent handoff jumps
 
 
 function CameraController({ scrollRef }) {
     const { camera } = useThree()
-    const lookAtTarget = useMemo(() => new THREE.Vector3(0, 2.8, 0), [])
+    const { progress, active: loadingActive } = useProgress()
+
+    // Intro animation state
+    const animTimeRef = useRef(0)
+    const delayRef = useRef(3.5)
+
+    // Scroll animation state
+    const lookAtTarget = useRef(new THREE.Vector3(...HERO_INTRO_START.look))
     const prevScroll = useRef(0)
     const velocityRef = useRef(0)
     const nudgeXRef = useRef(0)
@@ -311,19 +240,111 @@ function CameraController({ scrollRef }) {
     const _startLook = useMemo(() => new THREE.Vector3(), [])
     const _endLook = useMemo(() => new THREE.Vector3(), [])
 
-    const activeCameraPath = useMemo(() => [
-        { t: 0.00, pos: [0, 3, 16], look: [0, 2.8, 0], fov: 70, roll: 0 },
-        ...CAMERA_PATH.slice(1)
-    ], [])
+    const activeCameraPath = CAMERA_PATH
 
     useFrame((state, delta) => {
-        // Yield to HeroIntroCam during the intro sequence
-        if (heroIntroState.phase !== 'done') return
+        let isIntroFinished = heroIntroState.phase === 'done'
 
+        // Shared narrow compensation values (used by both intro end and scroll logic)
+        const narrowFactor = Math.max(0, 1.6 - camera.aspect)
+        const aspectBoost = narrowFactor * 30
+        const narrowZPullback = narrowFactor * 10
+
+        let targetFov = 70
+        let targetRoll = 0
+
+        if (!isIntroFinished) {
+            // ─── 1) HERO INTRO SEQUENCE ───────────────────────────────────────
+            const isLoaded = progress > 99.9 && !loadingActive
+            if (!isLoaded) {
+                // Pin to start while loading
+                _targetPos.set(...HERO_INTRO_START.pos)
+                _targetLook.set(...HERO_INTRO_START.look)
+                targetFov = HERO_INTRO_START.fov
+                // Skip lerping during load
+                camera.position.copy(_targetPos)
+                lookAtTarget.current.copy(_targetLook)
+                camera.fov = targetFov
+                camera.lookAt(lookAtTarget.current)
+                camera.updateProjectionMatrix()
+                return
+            }
+
+            if (heroIntroState.phase === 'loading') {
+                heroIntroState.phase = 'pullback'
+            }
+
+            // Linger phase
+            if (delayRef.current > 0) {
+                delayRef.current -= delta
+                _targetPos.set(...HERO_INTRO_START.pos)
+                _targetLook.set(...HERO_INTRO_START.look)
+                targetFov = HERO_INTRO_START.fov
+                camera.position.copy(_targetPos)
+                lookAtTarget.current.copy(_targetLook)
+                camera.fov = targetFov
+                camera.lookAt(lookAtTarget.current)
+                camera.updateProjectionMatrix()
+                return
+            }
+
+            // Advance intro animation
+            animTimeRef.current += delta
+            const rawProgress = Math.min(animTimeRef.current / HERO_ANIMATION_DURATION, 1)
+
+            // Cubic ease-in-out
+            let easedProgress = rawProgress < 0.5
+                ? 4 * Math.pow(rawProgress, 3)
+                : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2
+
+            // Calculate current intro targets
+            const targetZ = HERO_INTRO_END.pos[2] + narrowZPullback
+            const endFov = HERO_INTRO_END.fov + aspectBoost
+
+            _targetPos.set(
+                THREE.MathUtils.lerp(HERO_INTRO_START.pos[0], HERO_INTRO_END.pos[0], easedProgress),
+                THREE.MathUtils.lerp(HERO_INTRO_START.pos[1], HERO_INTRO_END.pos[1], easedProgress),
+                THREE.MathUtils.lerp(HERO_INTRO_START.pos[2], targetZ, easedProgress)
+            )
+
+            _targetLook.set(
+                THREE.MathUtils.lerp(HERO_INTRO_START.look[0], HERO_INTRO_END.look[0], easedProgress),
+                THREE.MathUtils.lerp(HERO_INTRO_START.look[1], HERO_INTRO_END.look[1], easedProgress),
+                THREE.MathUtils.lerp(HERO_INTRO_START.look[2], HERO_INTRO_END.look[2], easedProgress)
+            )
+
+            targetFov = THREE.MathUtils.lerp(HERO_INTRO_START.fov, endFov, easedProgress)
+            heroIntroState.morphProgress = 1 - easedProgress
+            heroIntroState.vignetteOverride = THREE.MathUtils.lerp(1.4, 0.8, easedProgress)
+            heroIntroState.bloomOverride = THREE.MathUtils.lerp(2.5, 1.6, easedProgress)
+            // Ramp CA down from 0.004 at start to 0.001 at end so it matches the scroll-phase value
+            const caStr = THREE.MathUtils.lerp(0.004, 0.001, easedProgress)
+            warpOffset.set(caStr, caStr)
+
+            if (rawProgress >= 1) {
+                isIntroFinished = true
+                heroIntroState.phase = 'done'
+                heroIntroState.vignetteOverride = null
+                heroIntroState.bloomOverride = null
+                // Reset scroll to 0 in case user scrolled during intro
+                scrollRef.current = 0
+                prevScroll.current = 0
+            }
+
+            // Directly apply targets during intro to prevent drift
+            camera.position.copy(_targetPos)
+            lookAtTarget.current.copy(_targetLook)
+            camera.fov = targetFov
+            camera.lookAt(lookAtTarget.current)
+            camera.updateProjectionMatrix()
+            return
+        }
+
+        // ─── 2) SCROLL NAVIGATION SEQUENCE ────────────────────────────────
         const t = scrollRef.current || 0
-
         const rawVelocity = Math.abs(t - prevScroll.current) / Math.max(delta, 0.001)
         prevScroll.current = t
+
         // Higher multiplier = spikes faster; higher damping factor = decays faster → sharper jerk
         velocityRef.current = dampValue(velocityRef.current, clamp(rawVelocity * 40, 0, 1), 14, delta)
 
@@ -344,15 +365,12 @@ function CameraController({ scrollRef }) {
         _targetLook.lerpVectors(_startLook, _endLook, easeT)
 
         const baseFov = THREE.MathUtils.lerp(start.fov, end.fov, easeT)
-        // Narrow-screen compensation — wider FOV + camera pulled back so cards don't clip sides
-        // Threshold 1.6: starts compensation earlier (covers typical laptops/tablets)
-        const narrowFactor = Math.max(0, 1.6 - camera.aspect)
-        const aspectBoost = narrowFactor * 30   // more aggressive widening
-        _targetPos.z += narrowFactor * 10        // significant depth pullback
-        const targetFov = baseFov + velocityRef.current * 12 + aspectBoost
+        _targetPos.z += narrowZPullback
+        targetFov = baseFov + velocityRef.current * 12 + aspectBoost
+
         // Exaggerate path roll during scroll for a thrown-through-space feel
         const pathRoll = THREE.MathUtils.lerp(start.roll, end.roll, easeT) * (Math.PI / 180)
-        const targetRoll = pathRoll * (1 + velocityRef.current * 3.5)
+        targetRoll = pathRoll * (1 + velocityRef.current * 3.5)
 
         // ── Mouse parallax nudge: active only in project card section ────────
         // Blend weight — project cards AND bio/resume section
@@ -376,14 +394,18 @@ function CameraController({ scrollRef }) {
         _targetPos.x += nudgeXRef.current
         _targetPos.y += nudgeYRef.current
 
+        // Only lerp during the scroll phase (intro sets exact values and returns early above)
         const lerpFactor = 1 - Math.exp(-6 * delta)
         camera.position.lerp(_targetPos, lerpFactor)
-        lookAtTarget.lerp(_targetLook, lerpFactor)
-
-        camera.lookAt(lookAtTarget)
+        lookAtTarget.current.lerp(_targetLook, lerpFactor)
         camera.fov = dampValue(camera.fov, targetFov, 6, delta)
-        camera.rotation.z = dampValue(camera.rotation.z, targetRoll, 6, delta)
+
+        // Use applied roll instead of raw assignment for smoother mouse tracking
+        const applyRoll = dampValue(camera.rotation.z, targetRoll, 6, delta)
+
+        camera.lookAt(lookAtTarget.current)
         camera.updateProjectionMatrix()
+        camera.rotation.z = applyRoll
 
         const chromaticStr = 0.001 + velocityRef.current * 0.045
         warpOffset.set(chromaticStr, chromaticStr)
@@ -739,7 +761,7 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
     return { clone, mats }
 }
 
-function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
+function TruckImmobilizerScene({ hovered, appeared, cardIndex, onOpen }) {
     const { scene: truckScene } = useGLTF('/Truck.glb')
     const { scene: immScene } = useGLTF('/Engine Immobilizer.glb')
 
@@ -760,6 +782,7 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
         truckMats.forEach(m => { m.opacity = truckOpRef.current })
 
         immOpRef.current = dampValue(immOpRef.current, appeared ? 0.9 : 0, 5, delta)
+        eiVideoOpRef.current = immOpRef.current
         immMats.forEach(m => { m.opacity = immOpRef.current })
 
         if (truckGroupRef.current) {
@@ -772,7 +795,7 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
     })
 
     return (
-        <group>
+        <group onClick={e => { e.stopPropagation(); onOpen?.() }}>
             {/* Truck — textured hologram, center-left */}
             <group ref={truckGroupRef} position={[-0.4, -1.5, 0]}>
                 <primitive object={truckClone} />
@@ -804,22 +827,25 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex }) {
 useGLTF.preload('/Truck.glb')
 useGLTF.preload('/Engine Immobilizer.glb')
 
-// Module-level ref so VideoScreen can be lifted outside <Select enabled>
+// Module-level refs so VideoScreen can be lifted outside <Select enabled>
 // and WorkflowsScene can still drive its opacity.
 const wfVideoOpRef = { current: 0 }
+const eiVideoOpRef = { current: 0 }
 
-const CORNER_STYLES = [
-    { top: 6, left: 6, borderTop: '2px solid #44ff88', borderLeft: '2px solid #44ff88' },
-    { top: 6, right: 6, borderTop: '2px solid #44ff88', borderRight: '2px solid #44ff88' },
-    { bottom: 6, left: 6, borderBottom: '2px solid #44ff88', borderLeft: '2px solid #44ff88' },
-    { bottom: 6, right: 6, borderBottom: '2px solid #44ff88', borderRight: '2px solid #44ff88' },
-]
-
-function VideoScreen() {
+function VideoScreen({
+    src = "/demos/wf-noborder.mp4",
+    opRef = wfVideoOpRef,
+    buildText = "2023",
+    buildUrl = "https://github.com/moosefroggo/portfolio-2026/commit/7bf4176",
+    cornerLabel = "SIG 4/5",
+    footerLabel = "$1M Customer Acquired",
+    colorHex = "#44ff88",
+    colorRgb = "68,255,136"
+}) {
     const containerRef = useRef()
 
     useFrame(() => {
-        if (containerRef.current) containerRef.current.style.opacity = wfVideoOpRef.current
+        if (containerRef.current && opRef) containerRef.current.style.opacity = opRef.current
     })
 
     return (
@@ -831,33 +857,32 @@ function VideoScreen() {
                         @keyframes hud-scan  { 0%{top:-15%} 100%{top:115%} }
                         .hud-dot  { animation: hud-blink 1.1s step-end infinite }
                         .hud-scan { position:absolute;left:0;right:0;height:20%;
-                                    background:linear-gradient(to bottom,transparent,rgba(68,255,136,0.05),transparent);
-                                    animation:hud-scan 2.8s linear infinite;pointer-events:none }
+                            animation:hud-scan 2.8s linear infinite;pointer-events:none }
                     `}</style>
 
                     {/* ── Header ── */}
                     <div style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '5px 9px',
-                        background: 'rgba(68,255,136,0.07)',
-                        border: '1px solid rgba(68,255,136,0.35)',
+                        background: `rgba(${colorRgb},0.07)`,
+                        border: `1px solid rgba(${colorRgb},0.35)`,
                         borderBottom: 'none',
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, letterSpacing: '0.15em', color: '#44ff88' }}>
-                            <span className="hud-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#44ff88', display: 'inline-block' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, letterSpacing: '0.15em', color: colorHex }}>
+                            <span className="hud-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: colorHex, display: 'inline-block' }} />
                             MISSION BRIEFING
                         </div>
-                        <a href="https://github.com/moosefroggo/portfolio-2026/commit/7bf4176" target="_blank" rel="noopener noreferrer" style={{ fontSize: 8, color: 'rgba(68,255,136,0.55)', letterSpacing: '0.1em', textDecoration: 'none', cursor: 'pointer' }} onMouseOver={e => e.target.style.color = '#44ff88'} onMouseOut={e => e.target.style.color = 'rgba(68,255,136,0.55)'}>BUILD 7bf4176 · 2026-03-03</a>
+                        <a href={buildUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 8, color: `rgba(${colorRgb},0.55)`, letterSpacing: '0.1em', textDecoration: 'none', cursor: 'pointer' }} onMouseOver={e => e.target.style.color = colorHex} onMouseOut={e => e.target.style.color = `rgba(${colorRgb},0.55)`}>{buildText}</a>
                     </div>
 
                     {/* ── Video feed ── */}
                     <div style={{
                         position: 'relative', lineHeight: 0, overflow: 'hidden',
-                        border: '1px solid rgba(68,255,136,0.35)', borderTop: 'none', borderBottom: 'none'
+                        border: `1px solid rgba(${colorRgb},0.35)`, borderTop: 'none', borderBottom: 'none'
                     }}>
-                        <video src="/workflows-video.mp4" autoPlay loop muted playsInline
+                        <video src={src} autoPlay loop muted playsInline
                             style={{
-                                width: '262px', height: '148px', objectFit: 'cover', display: 'block',
+                                width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block',
                                 filter: 'contrast(1.05) brightness(0.88)'
                             }} />
 
@@ -867,30 +892,35 @@ function VideoScreen() {
                             background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 3px)'
                         }} />
                         {/* Moving sweep */}
-                        <div className="hud-scan" />
+                        <div className="hud-scan" style={{ background: `linear-gradient(to bottom,transparent,rgba(${colorRgb},0.05),transparent)` }} />
 
                         {/* Corner brackets */}
-                        {CORNER_STYLES.map((s, i) => (
+                        {[
+                            { top: 6, left: 6, borderTop: `2px solid ${colorHex}`, borderLeft: `2px solid ${colorHex}` },
+                            { top: 6, right: 6, borderTop: `2px solid ${colorHex}`, borderRight: `2px solid ${colorHex}` },
+                            { bottom: 6, left: 6, borderBottom: `2px solid ${colorHex}`, borderLeft: `2px solid ${colorHex}` },
+                            { bottom: 6, right: 6, borderBottom: `2px solid ${colorHex}`, borderRight: `2px solid ${colorHex}` },
+                        ].map((s, i) => (
                             <div key={i} style={{ position: 'absolute', width: 12, height: 12, pointerEvents: 'none', ...s }} />
                         ))}
 
                         {/* Top-right label */}
                         <div style={{
                             position: 'absolute', top: 9, right: 22, fontSize: 7,
-                            color: 'rgba(68,255,136,0.65)', letterSpacing: '0.12em'
-                        }}>SIG 4/5</div>
+                            color: `rgba(${colorRgb},0.65)`, letterSpacing: '0.12em'
+                        }}>{cornerLabel}</div>
                     </div>
 
                     {/* ── Footer ── */}
                     <div style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         padding: '4px 9px',
-                        background: 'rgba(68,255,136,0.04)',
-                        border: '1px solid rgba(68,255,136,0.35)',
+                        background: `rgba(${colorRgb},0.04)`,
+                        border: `1px solid rgba(${colorRgb},0.35)`,
                         borderTop: 'none',
                     }}>
-                        <span style={{ fontSize: 7, color: 'rgba(68,255,136,0.5)', letterSpacing: '0.1em' }}>$1M Customer Acquired</span>
-                        <span className="hud-dot" style={{ fontSize: 7, color: 'rgba(68,255,136,0.65)', letterSpacing: '0.1em' }}>● REC</span>
+                        <span style={{ fontSize: 7, color: `rgba(${colorRgb},0.5)`, letterSpacing: '0.1em' }}>{footerLabel}</span>
+                        <span className="hud-dot" style={{ fontSize: 7, color: `rgba(${colorRgb},0.65)`, letterSpacing: '0.1em' }}>● REC</span>
                     </div>
                 </div>
             </Html>
@@ -898,7 +928,7 @@ function VideoScreen() {
     )
 }
 
-function WorkflowsScene({ hovered, appeared, cardIndex }) {
+function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
     const { scene: wfScene } = useGLTF('/workflows.glb')
 
     const groupRef = useRef()
@@ -921,7 +951,7 @@ function WorkflowsScene({ hovered, appeared, cardIndex }) {
     })
 
     return (
-        <group>
+        <group onClick={e => { e.stopPropagation(); onOpen?.() }}>
             <group ref={groupRef} position={[0, -1.2, 0]}>
                 <primitive object={wfClone} />
                 <pointLight color="#44ff88" intensity={appeared ? 1.2 : 0} distance={8} decay={2} />
@@ -932,7 +962,7 @@ function WorkflowsScene({ hovered, appeared, cardIndex }) {
 
 useGLTF.preload('/workflows.glb')
 
-function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex }) {
+function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex, onOpen }) {
     const meshRef = useRef()
     const wireRef = useRef()
     const pulseRef = useRef()
@@ -979,14 +1009,14 @@ function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex }) {
     })
 
     if (objectType === 'truck_immobilizer') {
-        return <TruckImmobilizerScene hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
+        return <TruckImmobilizerScene hovered={hovered} appeared={appeared} cardIndex={cardIndex} onOpen={onOpen} />
     }
     if (objectType === 'workflows') {
-        return <WorkflowsScene hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
+        return <WorkflowsScene hovered={hovered} appeared={appeared} cardIndex={cardIndex} onOpen={onOpen} />
     }
 
     return (
-        <group>
+        <group onClick={e => { e.stopPropagation(); onOpen?.() }}>
             <mesh ref={wireRef} geometry={geometry}>
                 <meshBasicMaterial color={color} wireframe transparent opacity={0} toneMapped={false} />
             </mesh>
@@ -1140,12 +1170,12 @@ function NexusHubCore({ scrollRef }) {
     })
 
     return (
-        <group ref={groupRef} position={[120, 1.5, -22]}>
+        <group ref={groupRef} position={[120, 1.5, -32]}>
             <mesh ref={coreRef}>
                 <sphereGeometry args={[4, 32, 32]} />
                 <meshStandardMaterial color="#00aaff" emissive="#00aaff" emissiveIntensity={4} wireframe transparent opacity={0.4} />
             </mesh>
-            {[6.5, 9, 12].map((radius, i) => (
+            {[5.5, 7.5, 10].map((radius, i) => (
                 <mesh key={i} ref={el => ringsRef.current[i] = el}>
                     <torusGeometry args={[radius, 0.04, 16, 100]} />
                     <meshStandardMaterial color="#44ff88" emissive="#44ff88" emissiveIntensity={1.5} transparent opacity={0.2} />
@@ -1221,8 +1251,8 @@ function ProjectPedestal({ color, appeared }) {
 function NexusDataThreads({ scrollRef }) {
     const groupRef = useRef()
     const threads = useMemo(() => [
-        { start: [100, 0, 0], end: [120, 1.5, -22] },
-        { start: [120, -0.5, 0], end: [120, 1.5, -22] }
+        { start: [100, 0, 0], end: [120, 1.5, -32] },
+        { start: [120, -0.5, 0], end: [120, 1.5, -32] }
     ], [])
 
     useFrame((_, delta) => {
@@ -1288,29 +1318,37 @@ function ProjectZoneGrid({ scrollRef }) {
 }
 
 // ─── Project card — full assembly ─────────────────────────────────────────────
-function ProjectCard({ config, scrollRef, cardIndex }) {
+function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
     const [hovered, setHovered] = useState(false)
     const [appeared, setAppeared] = useState(false)
     const [scanActive, setScanActive] = useState(false)
     const scanFiredRef = useRef(false)
 
-    useFrame(() => {
+    const groupRef = useRef()
+    useFrame((state, delta) => {
         const t = scrollRef?.current ?? 0
         if (!scanFiredRef.current && t >= config.appear - 0.015) {
             scanFiredRef.current = true
             setScanActive(true)
         }
+        if (groupRef.current) {
+            // Base scale 1.0, but when hovered add a subtle 1.0 -> 1.04 sine pulse
+            const targetScale = hovered ? 1.02 + Math.sin(state.clock.elapsedTime * 4) * 0.02 : 1.0
+            groupRef.current.scale.setScalar(dampValue(groupRef.current.scale.x, targetScale, 4, delta))
+        }
     })
 
     return (
         <group
+            ref={groupRef}
             position={config.pos}
             rotation={config.rot}
-            onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
+            onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
             onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
+            onClick={e => { e.stopPropagation(); onOpen?.() }}
         >
             <ProjectPedestal color={config.color} appeared={appeared} />
-            <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} />
+            <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} onOpen={onOpen} />
             <TargetingReticle hovered={hovered} appeared={appeared} color={config.color} radius={2.0} />
             <ScanReveal color={config.color} active={scanActive} onComplete={() => setAppeared(true)} />
             <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
@@ -1336,8 +1374,8 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     const rotationAxesRef = useRef([])  // Random axes per cog
     const CACHE_STEPS = 128
 
-    const { count, posCache, tanCache } = useMemo(() => {
-        if (!sourceGeometry) return { count: 0, posCache: [], tanCache: [] }
+    const { count, posCache, tanCache, centerP } = useMemo(() => {
+        if (!sourceGeometry) return { count: 0, posCache: [], tanCache: [], centerP: new THREE.Vector3() }
         const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5)
 
         sourceGeometry.computeBoundingBox()
@@ -1346,13 +1384,24 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         const linkLength = Math.max(size.x, size.y, size.z)
         const c = Math.ceil(curve.getLength() / (linkLength + 0.05))
 
-        const pc = [], tc = []
+        const pc = []
+        const tc = []
+        const bMin = new THREE.Vector3(Infinity, Infinity, Infinity)
+        const bMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity)
+
         for (let i = 0; i <= CACHE_STEPS; i++) {
             const t = i / CACHE_STEPS
-            pc.push(curve.getPointAt(t))
+            const pt = curve.getPointAt(t)
+            pc.push(pt)
             tc.push(curve.getTangentAt(t))
+            bMin.min(pt)
+            bMax.max(pt)
         }
-        return { count: c, posCache: pc, tanCache: tc }
+
+        // Calculate centerP using the bounding box of the points, not the curve midpoint
+        const cp = new THREE.Vector3().addVectors(bMin, bMax).multiplyScalar(0.5)
+
+        return { count: c, posCache: pc, tanCache: tc, centerP: cp }
     }, [points, sourceGeometry])
 
     const { progress, active: loadingActive } = useProgress()
@@ -1368,6 +1417,9 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
         // Read morph progress directly from camera — always in sync
         const morphProgress = heroIntroState.morphProgress || 0
         const isMorphing = morphProgress > 0.001
+
+        // Let the cogs continuously flow along the spine - DISABLED per user request
+        // offsetRef.current += delta * 0.15
 
         const SPREAD_RADIUS = 8
         const SPREAD_STRENGTH = 0.85
@@ -1385,7 +1437,9 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
                 rotationAxesRef.current[i] = axis
             }
             const axis = rotationAxesRef.current[i]
-            const t = (i * spacing + offsetRef.current) % 1
+
+            // Path calculation (no longer uses offsetRef, so they stay in place)
+            const t = (i * spacing) % 1
             const raw = t * CACHE_STEPS
             const idx0 = Math.floor(raw)
             const frac = raw - idx0
@@ -1408,7 +1462,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
                 const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
                 targetSpread = SPREAD_STRENGTH * falloff
             }
-            spreadOffsetsRef.current[i] = dampValue(spreadOffsetsRef.current[i], targetSpread, 10, delta)
+            spreadOffsetsRef.current[i] = dampValue(spreadOffsetsRef.current[i], targetSpread, 3.5, delta)
             const spr = spreadOffsetsRef.current[i]
 
             // Apply morphing - scatter cogs dramatically, then gather into formation
@@ -1427,7 +1481,39 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             }
 
             dummyMatrix.position.copy(morphPos)
+
+            // Calculate the two target orientations
             dummyMatrix.lookAt(state.camera.position)
+            const cameraLookQuat = dummyMatrix.quaternion.clone()
+
+            dummyMatrix.lookAt(morphPos.x, morphPos.y, morphPos.z + 10)
+            const forwardLookQuat = dummyMatrix.quaternion.clone()
+
+            // Smoothly transition from tracking camera to facing forward over the last 15% of the morph
+            if (heroIntroState.phase !== 'done') {
+                if (morphProgress < 0.15) {
+                    // map 0.15 -> 0 to 0 -> 1 for the slerp amount
+                    const lookAlpha = 1 - (morphProgress / 0.15)
+                    dummyMatrix.quaternion.copy(cameraLookQuat).slerp(forwardLookQuat, lookAlpha)
+                } else {
+                    dummyMatrix.quaternion.copy(cameraLookQuat)
+                }
+            } else {
+                dummyMatrix.quaternion.copy(forwardLookQuat)
+            }
+
+            // Apply highlight rotation (around Z axis of the character)
+            if (isHighlighted && highlightRotation > 0) {
+                // Find true geometric center of character path
+                const rx = morphPos.x - centerP.x
+                const ry = morphPos.y - centerP.y
+                const distFromCenter = Math.sqrt(rx * rx + ry * ry)
+                if (distFromCenter > 0.001) {
+                    const angle = Math.atan2(ry, rx) + highlightRotation
+                    dummyMatrix.position.x = centerP.x + Math.cos(angle) * distFromCenter
+                    dummyMatrix.position.y = centerP.y + Math.sin(angle) * distFromCenter
+                }
+            }
 
             // Rotate around random axis
             dummyMatrix.rotateOnWorldAxis(axis, state.clock.elapsedTime * 1.5)
@@ -1435,9 +1521,22 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             if (t > drawProgressRef.current) {
                 dummyMatrix.scale.set(0, 0, 0)
             } else {
-                // Apply scale change during morph
-                const scaleMultiplier = isMorphing ? 0.7 : 1
+                // Smoothly lerp scale from 0.7 (scattered) to 1.0 (formed) using morphProgress
+                const scaleMultiplier = 0.7 + 0.3 * (1 - Math.min(morphProgress, 1))
                 dummyMatrix.scale.set(cogScale * scaleMultiplier, cogScale * scaleMultiplier, cogScale * scaleMultiplier)
+            }
+
+            if (heroIntroState.morphProgress > 0.0 && heroIntroState.morphProgress < 0.02 && i === 0) {
+                console.log('APPROACHING ANIMATION END (SpineCog 0):', {
+                    morphProgress: heroIntroState.morphProgress,
+                    highlightRotation,
+                    px: dummyMatrix.position.x,
+                    py: dummyMatrix.position.y,
+                    pz: dummyMatrix.position.z,
+                    rx: dummyMatrix.rotation.x,
+                    ry: dummyMatrix.rotation.y,
+                    rz: dummyMatrix.rotation.z
+                })
             }
 
             dummyMatrix.updateMatrix()
@@ -1665,8 +1764,8 @@ function SpineHeroSection() {
         roughness: 0.02,
         clearcoat: 1.0,
         clearcoatRoughness: 0.0,
-        emissive: '#ffffffff',
-        emissiveIntensity: 0.4,
+        emissive: '#a1a1a1ff',
+        emissiveIntensity: 10,
     }), [])
 
     // Responsive scale: fit MUSTAFA into targetFraction of the viewport width.
@@ -1683,18 +1782,24 @@ function SpineHeroSection() {
 
     const { progress, active: loadingActive } = useProgress()
     const subtitleOpRef = useRef(0)
+    const timeSinceDoneRef = useRef(0)
 
     useFrame((state, delta) => {
         // Gate behind hero intro completion
         if (heroIntroState.phase !== 'done') return
 
-        highlightRotationRef.current += delta * rotationSpeedRef.current
+        // Smooth ease-in for the rotation acceleration to avoid harsh visual jerks on the first frame
+        timeSinceDoneRef.current += delta
+        const speedMultiplier = Math.min(timeSinceDoneRef.current / 0.5, 1)
+
+        highlightRotationRef.current += delta * rotationSpeedRef.current * speedMultiplier
 
         // When rotation completes one full cycle (2π), pick a new character
         if (highlightRotationRef.current >= Math.PI * 2) {
             highlightedCharRef.current = Math.floor(Math.random() * HERO_CONFIG.letters.length)
             highlightRotationRef.current = 0
-            rotationSpeedRef.current = 5 + Math.random() * 6 // New speed for next character
+            rotationSpeedRef.current = 3 + Math.random() * 5 // Generate speed for next character
+            timeSinceDoneRef.current = 0 // Reset acceleration ease-in
         }
 
         // Fade in subtitle after MUSTAFA letters start swarming (slight delay)
@@ -1726,23 +1831,6 @@ function SpineHeroSection() {
                 />
             ))}
 
-            <Text
-                position={[0, cfg.subtitleYOffset * letterScale, 0]}
-                font={SUBTITLE_FONT}
-                fontSize={cfg.subtitleFontSize * letterScale}
-                anchorX="center"
-                anchorY="middle"
-                letterSpacing={0}
-                color="#8899cc"
-                material-toneMapped={false}
-                maxWidth={(cfg.letters.length - 1) * actualSpacing}
-                textAlign="center"
-                lineHeight={1.5}
-                material-transparent={true}
-                material-opacity={subtitleOpRef.current}
-            >
-                {cfg.subtitleText}
-            </Text>
         </group>
     )
 }
@@ -1916,45 +2004,39 @@ function RotatingBust({ url, position, tiltAxis, rotSpeed = 0.3, scale = 1 }) {
     )
 }
 
-// ─── Sigil model ──────────────────────────────────────────────────────────────
-// Geometry is offset from origin in Blender export — centroid at ~[−0.448, 0.567, 112.808]
-const SIGIL2_OFFSET = [0.448, -0.567, -112.808]
 
-function SigilModel({ position, scale = 1 }) {
-    const { scene } = useGLTF('/sigil2.glb')
+// ─── Sigil model (sigil.glb) ───────────────────────────────────────────────────
+function SigilModel({ position = [0, 0, 0], scale = 1 }) {
+    const { scene } = useGLTF('/sigil.glb')
+    const sigilMat = useMemo(() => new THREE.MeshPhysicalMaterial({
+        color: '#b8d6ff',
+        metalness: 1.0,
+        roughness: 0.02,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.0,
+        toneMapped: false,
+    }), [])
     const cloned = useMemo(() => {
         const c = scene.clone(true)
-        c.traverse(child => {
-            if (!child.isMesh) return
-            // Replace material — original has alpha=0 (invisible) and wrong color
-            child.material = new THREE.MeshStandardMaterial({
-                color: '#6699ff',
-                emissive: '#6699ff',
-                emissiveIntensity: 1.4,
-                side: THREE.DoubleSide,
-                toneMapped: false,
-            })
-        })
+        c.traverse(child => { if (child.isMesh) child.material = sigilMat })
+        // Center so rotation spins around visual center
+        const box = new THREE.Box3().setFromObject(c)
+        const center = new THREE.Vector3()
+        box.getCenter(center)
+        c.position.sub(center)
         return c
-    }, [scene])
+    }, [scene, sigilMat])
     const spinRef = useRef()
-
-    useFrame((_, delta) => {
-        if (spinRef.current) spinRef.current.rotation.y += delta * 0.08
-    })
-
+    useFrame((state) => { if (spinRef.current) spinRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.2 - 0.25 })
     return (
         <group position={position} scale={scale}>
-            <group ref={spinRef}>
-                <group rotation={[Math.PI / 2, 0, 0]}>
-                    <primitive object={cloned} position={SIGIL2_OFFSET} />
-                </group>
+            <group rotation={[-0.4, 0.7, 0.9]}>
+                <group ref={spinRef}><primitive object={cloned} /></group>
             </group>
         </group>
     )
 }
-
-useGLTF.preload('/sigil2.glb')
+useGLTF.preload('/sigil.glb')
 
 // ─── Pillar with bust on top ───────────────────────────────────────────────────
 function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
@@ -2164,7 +2246,7 @@ function EthosSection({ scrollRef }) {
     )
 }
 
-function ProjectsSection({ scrollRef }) {
+function ProjectsSection({ scrollRef, onOpenProject }) {
     return (
         <group>
             <NexusHubCore scrollRef={scrollRef} />
@@ -2172,7 +2254,7 @@ function ProjectsSection({ scrollRef }) {
             <NexusDataThreads scrollRef={scrollRef} />
             <ProjectZoneGrid scrollRef={scrollRef} />
             {PROJECT_CARDS.map((config, i) => (
-                <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} />
+                <ProjectCard key={i} config={config} scrollRef={scrollRef} cardIndex={i} onOpen={() => onOpenProject?.(config)} />
             ))}
         </group>
     )
@@ -2502,7 +2584,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
 
     return (
         <div ref={wrapRef} style={{
-            position: 'absolute', bottom: '8px', left: '50%',
+            position: 'fixed', bottom: '16px', left: '50%',
             transform: 'translateX(-50%)', width: 'min(420px, 45vw)',
             zIndex: 100, pointerEvents: 'none', transition: 'none',
             // Liquid Glass Container
@@ -2510,7 +2592,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             borderRadius: '16px',
-            padding: '15px 40px 30px 30px', // Extra bottom padding for labels
+            padding: '24px 40px 40px 30px', // Extra bottom padding for labels
             //border: '1px solid rgba(255, 255, 255, 0.12)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
             display: 'flex',
@@ -2992,86 +3074,158 @@ function CaseStudySection({ section, neon = false }) {
     return null
 }
 
-// ─── Dossier overlay — full-height resume panel, shown on final scroll stop ──
-const DOSSIER_CSS = `
-@keyframes dossier-in {
-    from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
-    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+function CaseStudyOverlay({ project, onClose }) {
+    const [visible, setVisible] = useState(false)
+
+    useEffect(() => {
+        if (project) requestAnimationFrame(() => setVisible(true))
+        else setVisible(false)
+    }, [project])
+
+    if (!project) return null
+
+    const cs = project.caseStudy
+    const color = project.color
+
+    return (
+        <>
+            <style>{CASE_STUDY_CSS}</style>
+            <div className={`cs-panel${visible ? ' open' : ''}`}>
+                <div className="cs-backdrop" onClick={onClose} />
+                <div className="cs-drawer">
+                    {/* Header */}
+                    <div className="cs-header">
+                        <div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', letterSpacing: '0.14em', color: '#445577', textTransform: 'uppercase' }}>{project.subtitle}</div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color, letterSpacing: '0.08em', marginTop: '4px' }}>{project.title}</div>
+                        </div>
+                        <button className="cs-close-btn" onClick={onClose}>&times;</button>
+                    </div>
+
+                    {/* Scrollable body */}
+                    <div className="cs-body">
+                        {/* Video at the top */}
+                        {project.video && (
+                            <div style={{ marginBottom: '28px', borderRadius: '4px', overflow: 'hidden', border: `1px solid ${color}22`, background: '#000' }}>
+                                <video
+                                    src={project.video}
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    style={{ width: '100%', display: 'block' }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Meta row */}
+                        {cs?.meta && (
+                            <div className="cs-meta-row">
+                                {Object.entries(cs.meta).map(([key, val]) => (
+                                    <div className="cs-meta-item" key={key}>
+                                        <label>{key}</label>
+                                        <span>{val}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Case study sections */}
+                        {cs?.sections?.map((section, i) => (
+                            <CaseStudySection key={i} section={section} />
+                        ))}
+
+                        {/* Placeholder if no case study data */}
+                        {!cs && (
+                            <div className="cs-placeholder">
+                                <div className="cs-placeholder-title">Case study coming soon</div>
+                                <div style={{ fontSize: '13px', color: '#556688', lineHeight: 1.7 }}>
+                                    {project.desc}
+                                </div>
+                                <div style={{ marginTop: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                    {project.tech.map(t => (
+                                        <span key={t} style={{ fontSize: '10px', letterSpacing: '0.1em', color: '#556688', padding: '3px 8px', border: '1px solid #1a2444', borderRadius: '2px', fontFamily: 'var(--font-mono)' }}>{t}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    )
 }
-.dossier-panel {
+
+// ─── About panel — right side, shown on final scroll stop ────────────────────
+const ABOUT_CSS = `
+@keyframes about-in {
+    from { opacity: 0; transform: translateY(calc(-50% + 12px)); }
+    to   { opacity: 1; transform: translateY(-50%); }
+}
+.about-panel {
     position: fixed;
-    left: 75%; top: 50%;
-    transform: translate(-50%, -50%);
-    width: min(580px, 48vw);
-    height: min(780px, 86vh);
-    background: rgba(6, 7, 20, 0.72);
-    backdrop-filter: blur(22px) saturate(1.4);
-    -webkit-backdrop-filter: blur(22px) saturate(1.4);
-    border: 1px solid rgba(100, 130, 220, 0.22);
-    border-radius: 4px;
-    display: flex; flex-direction: column;
-    pointer-events: auto;
-    box-shadow: 0 0 0 1px rgba(60,90,200,0.08), 0 24px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06);
-    z-index: 80;
-    transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16,1,0.3,1);
-    overflow: hidden;
-}
-.dossier-panel:not(.hidden) { animation: dossier-in 0.45s cubic-bezier(0.16,1,0.3,1) both; }
-.dossier-panel.hidden { opacity: 0; transform: translate(-50%, -46%) scale(0.96); pointer-events: none; }
-.dossier-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 14px 8px;
-    border-bottom: 1px solid rgba(100,130,220,0.15);
-    flex-shrink: 0;
-}
-.dossier-header-label {
-    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.28em;
-    color: rgba(136,160,255,0.6); text-transform: uppercase;
-    display: flex; align-items: center; gap: 7px;
-}
-.dossier-header-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: #3366ff; box-shadow: 0 0 6px #3366ff;
-    animation: dossier-blink 1.4s step-end infinite;
-}
-@keyframes dossier-blink { 0%,100%{opacity:1} 50%{opacity:0} }
-.dossier-header-id { font-family: var(--font-mono); font-size: 8px; color: rgba(100,130,180,0.35); letter-spacing: 0.12em; }
-.dossier-panel .resume-body {
-    flex: 1; overflow-y: auto; padding: 18px 18px 12px;
-    scrollbar-width: thin; scrollbar-color: rgba(80,120,220,0.25) transparent;
-}
-.dossier-panel .resume-body::-webkit-scrollbar { width: 3px; }
-.dossier-panel .resume-body::-webkit-scrollbar-thumb { background: rgba(80,120,220,0.25); border-radius: 2px; }
-.dossier-resume-name { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.2em; color: #eef2ff; margin: 0 0 2px; }
-.dossier-resume-role { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.22em; color: rgba(136,160,255,0.55); margin: 0 0 14px; }
-.dossier-resume-section { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.25em; color: rgba(100,130,200,0.45); margin: 16px 0 8px; padding-bottom: 5px; border-bottom: 1px solid rgba(100,130,220,0.1); }
-.dossier-resume-entry { margin: 0 0 12px; }
-.dossier-resume-entry-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0px; }
-.dossier-resume-entry-title { font-family: var(--font-mono); font-size: 10px; color: #c8d8ff; letter-spacing: 0.06em; }
-.dossier-resume-entry-date { font-family: var(--font-mono); font-size: 8px; color: rgba(100,130,180,0.45); letter-spacing: 0.08em; }
-.dossier-resume-entry-sub { font-family: var(--font-mono); font-size: 8px; color: rgba(136,160,255,0.5); letter-spacing: 0.1em; margin-bottom: 3px; }
-.dossier-resume-entry-desc { font-family: 'Space Mono', monospace; font-size: 8.5px; color: rgba(180,200,240,0.5); line-height: 1.7; letter-spacing: 0.02em; }
-.dossier-resume-skills { display: flex; flex-wrap: wrap; gap: 5px; }
-.dossier-resume-skill { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.12em; color: rgba(100,140,220,0.65); padding: 2px 7px; border: 1px solid rgba(80,110,200,0.18); border-radius: 2px; }
-.dossier-panel .dl-btn-row {
-    display: flex; flex-shrink: 0;
-    border-top: 1px solid rgba(100,130,220,0.15);
-}
-.dossier-panel .dl-btn {
-    display: block; flex: 1; padding: 11px 0;
+    right: 48px; top: 50%;
+    transform: translateY(-50%);
+    width: min(360px, 32vw);
     background: transparent;
-    color: rgba(136,160,255,0.7);
-    font-family: var(--font-mono); font-size: 9px;
-    letter-spacing: 0.25em; text-transform: uppercase;
-    text-align: center; text-decoration: none;
-    border: none; border-right: 1px solid rgba(100,130,220,0.15);
-    cursor: pointer;
-    transition: background 0.18s ease, color 0.18s ease;
-    box-sizing: border-box;
+    z-index: 80;
+    pointer-events: auto;
+    transition: opacity 0.5s ease;
 }
-.dossier-panel .dl-btn:last-child { border-right: none; }
-.dossier-panel .dl-btn:hover { background: rgba(50,90,220,0.14); color: #ffffff; }
-.dossier-panel .dl-btn.copied { background: rgba(0,80,40,0.22); color: #00ff88; }
+.about-panel.hidden { opacity: 0; pointer-events: none; }
+.about-panel:not(.hidden) { animation: about-in 0.55s cubic-bezier(0.16,1,0.3,1) both; }
+.about-label {
+    font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.32em;
+    color: rgba(136,160,255,0.4); text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+}
+.about-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(to right, rgba(100,130,220,0.25), transparent);
+}
+.about-dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: #3366ff; box-shadow: 0 0 5px #3366ff;
+    animation: about-blink 1.4s step-end infinite; flex-shrink: 0;
+}
+@keyframes about-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.about-name {
+    font-family: var(--font-mono); font-size: 18px; letter-spacing: 0.15em;
+    color: #eef2ff; margin: 0 0 4px; font-weight: 400;
+}
+.about-role {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.26em;
+    color: rgba(136,160,255,0.45); margin: 0 0 28px; text-transform: uppercase;
+}
+.about-bio {
+    font-family: 'Space Mono', monospace; font-size: 12px;
+    color: rgba(180,200,240,0.65); line-height: 1.9; letter-spacing: 0.01em;
+    margin: 0 0 28px;
+}
+.about-bio strong { color: rgba(200,220,255,0.85); font-weight: 400; }
+.about-divider {
+    height: 1px; background: linear-gradient(to right, rgba(100,130,220,0.2), transparent);
+    margin: 0 0 22px;
+}
+.about-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
+.about-skill {
+    font-family: var(--font-mono); font-size: 7px; letter-spacing: 0.14em;
+    color: rgba(100,140,220,0.6); padding: 3px 9px;
+    border: 1px solid rgba(80,110,200,0.18); border-radius: 2px;
+    text-transform: uppercase;
+}
+.about-contact {
+    display: flex; gap: 12px;
+}
+.about-contact-btn {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.22em;
+    color: rgba(136,160,255,0.6); text-transform: uppercase; text-decoration: none;
+    padding: 8px 14px; border: 1px solid rgba(100,130,220,0.2); border-radius: 2px;
+    background: transparent; cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.about-contact-btn:hover { background: rgba(50,90,220,0.12); color: #fff; border-color: rgba(100,130,220,0.4); }
+.about-contact-btn.copied { background: rgba(0,80,40,0.22); color: #00ff88; border-color: rgba(0,200,100,0.2); }
 `
 
 const CONTACT_EMAIL = 'mustafa.akbar.me@gmail.com'
@@ -3105,78 +3259,41 @@ function DossierOverlay({ scrollRef }) {
 
     return (
         <>
-            <style>{DOSSIER_CSS}</style>
-            <div ref={panelRef} className="dossier-panel hidden">
-                <div className="dossier-header">
-                    <div className="dossier-header-label">
-                        <span className="dossier-header-dot" />
-                        DOSSIER // MUSTAFA ALI AKBAR
-                    </div>
-                    <span className="dossier-header-id">UX-26</span>
+            <style>{ABOUT_CSS}</style>
+            <div ref={panelRef} className="about-panel hidden">
+                <div className="about-label">
+                    <span className="about-dot" />
+                    About
                 </div>
 
-                <div className="resume-body">
-                    <div className="dossier-resume-name">MUSTAFA ALI AKBAR</div>
-                    <div className="dossier-resume-role">SENIOR PRODUCT DESIGNER</div>
+                <div className="about-name">MUSTAFA ALI AKBAR</div>
+                <div className="about-role">Senior Product Designer</div>
 
-                    <div className="dossier-resume-section">EXPERIENCE</div>
+                <p className="about-bio">
+                    I design at the intersection of <strong>systems thinking</strong> and <strong>motion</strong> — building products that feel alive without getting in the way.
+                </p>
+                <p className="about-bio">
+                    Currently at <strong>Dell</strong> (UT Austin capstone), designing an AI-based cooling leak detection system for PowerEdge servers. Previously at <strong>Motive</strong> and <strong>CBRE</strong>, leading UX across enterprise and spatial computing domains.
+                </p>
+                <p className="about-bio">
+                    I prototype in code, obsess over interaction timing, and believe the gap between design and engineering is where the best work happens.
+                </p>
 
-                    <div className="dossier-resume-entry">
-                        <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">DELL</span>
-                            <span className="dossier-resume-entry-date">NOW</span>
-                        </div>
-                        <div className="dossier-resume-entry-sub">AI PRODUCT DESIGN</div>
-                        <div className="dossier-resume-entry-desc">Building am AI-based leak alert system to protect Dell's PowerEdge servers.</div>
-                    </div>
+                <div className="about-divider" />
 
-                    <div className="dossier-resume-entry">
-                        <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">CBRE</span>
-                            <span className="dossier-resume-entry-date">2025</span>
-                        </div>
-                        <div className="dossier-resume-entry-sub">VISUAL DESIGN // INTERACTION DESIGN // FRONTEND DEVELOPMENT</div>
-                        <div className="dossier-resume-entry-desc">Revamped the visual language of SmartFM product through an immersive three.js demo </div>
-                    </div>
-
-                    <div className="dossier-resume-entry">
-                        <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">MOTIVE</span>
-                            <span className="dossier-resume-entry-date">2024</span>
-                        </div>
-                        <div className="dossier-resume-entry-sub">SENIOR PRODUCT DESIGNER // ENTERPRISE SYSTEMS</div>
-                        <div className="dossier-resume-entry-desc">Led UX for Engine Immobilizer - remote vehicle security system allowing fleet managers to immobilize vehicles in real-time.</div>
-                    </div>
-
-                    <div className="dossier-resume-entry">
-                        <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">EDUCATIVE</span>
-                            <span className="dossier-resume-entry-date">2023</span>
-                        </div>
-                        <div className="dossier-resume-entry-sub">UX DESIGN & STRATEGY // LEARNING SYSTEMS</div>
-                        <div className="dossier-resume-entry-desc">Designed Workflows — a central hub for project and documentation management, helping fast-moving teams optimize for outcomes.</div>
-                    </div>
-
-                    <div className="dossier-resume-section">TOOLS & SKILLS</div>
-                    <div className="dossier-resume-skills">
-                        {['Figma', 'Blender', 'Rive', 'Origami Studio', 'Claude Code', 'React', 'Three.js', 'Framer', 'Prototyping', 'Systems Design', 'Motion Design', 'User Research'].map(s => (
-                            <span key={s} className="dossier-resume-skill">{s}</span>
-                        ))}
-                    </div>
-
-                    <div className="dossier-resume-section">EDUCATION</div>
-                    <div className="dossier-resume-entry">
-                        <div className="dossier-resume-entry-header">
-                            <span className="dossier-resume-entry-title">The University of Texas at Austin</span>
-                            <span className="dossier-resume-entry-date">2026</span>
-                        </div>
-                        <div className="dossier-resume-entry-sub">SCHOOL OF INFORMATION</div>
-                    </div>
+                <div className="about-skills">
+                    {['Figma', 'Blender', 'Three.js', 'React', 'Rive', 'Origami Studio', 'Motion Design', 'Systems Design', 'User Research', 'Prototyping'].map(s => (
+                        <span key={s} className="about-skill">{s}</span>
+                    ))}
                 </div>
 
-                <div className="dl-btn-row">
-                    <a href="/Resume%20-%20Mustafa%20Akbar.pdf" download="Resume - Mustafa Akbar.pdf" className="dl-btn">↓ Download PDF</a>
-                    <button onClick={copyEmail} className={`dl-btn${copied ? ' copied' : ''}`}>{copied ? 'Copied ✓' : '@ Email'}</button>
+                <div className="about-contact">
+                    <button onClick={copyEmail} className={`about-contact-btn${copied ? ' copied' : ''}`}>
+                        {copied ? 'Copied ✓' : '@ Email'}
+                    </button>
+                    <a href="/Resume%20-%20Mustafa%20Akbar.pdf" download="Resume - Mustafa Akbar.pdf" className="about-contact-btn">
+                        ↓ Resume
+                    </a>
                 </div>
             </div>
         </>
@@ -3188,24 +3305,26 @@ function DossierOverlay({ scrollRef }) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 const COMPANY_NODES = [
-    { id: 'cbre', pos: [-5.5, 2.4, 0], title: 'CBRE', desc: 'VISUAL LANG // 2025\nINTERACTION DESIGN', color: '#ff3366' },
-    { id: 'motive', pos: [-5.5, 0.8, 0], title: 'MOTIVE', desc: 'PRODUCT UX // 2024\nENTERPRISE SYSTEMS', color: '#ffaa22' },
-    { id: 'educative', pos: [-5.5, -0.8, 0], title: 'EDUCATIVE', desc: 'UX DESIGN // 2023\nLEARNING SYSTEMS', color: '#00aaff' },
-    { id: 'dell', pos: [-5.5, -2.4, 0], title: 'DELL', desc: 'CAPSTONE // NOW\nSCHOOL OF INFO', color: '#44ff88' },
+    { id: 'dell', pos: [-5.5, 2.4, 0], title: 'DELL', desc: 'CAPSTONE // NOW\nSCHOOL OF INFO', color: '#0076CE' },
+    { id: 'cbre', pos: [-5.5, 0.8, 0], title: 'CBRE', desc: 'VISUAL LANG // 2025\nINTERACTION DESIGN', color: '#003F2D' },
+    { id: 'motive', pos: [-5.5, -0.8, 0], title: 'MOTIVE', desc: 'PRODUCT UX // 2024\nENTERPRISE SYSTEMS', color: '#444444' },
+    { id: 'educative', pos: [-5.5, -2.4, 0], title: 'EDUCATIVE', desc: 'UX DESIGN // 2023\nLEARNING SYSTEMS', color: '#5553FF' },
 ]
 const HUB_POS = [0, 0, 0]
 const CUBE_POS = [5.5, 0, 0]
 
+const LOGO_TEXTURES = {
+    'cbre':      '/textures/logos/2/27/cbre.png',
+    'motive':    '/textures/logos/motive-logo.png',
+    'educative': '/textures/logos/educative-logo.png',
+    'dell':      '/textures/logos/dell-log.png',
+}
+// Preload all logos so useTexture never triggers a mid-render load
+Object.values(LOGO_TEXTURES).forEach(p => useTexture.preload(p))
+
 // Company card — holographic logo display, label to the left, data readout to the right
 function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
-    const logoTextures = {
-        'cbre': '/textures/logos/cbre-logo.png',
-        'motive': '/textures/logos/motive-logo.png',
-        'educative': '/textures/logos/educative-logo.png',
-        'dell': '/textures/logos/dell-log.png',
-    }
-
-    const texture = useTexture(logoTextures[config.id])
+    const texture = useTexture(LOGO_TEXTURES[config.id])
     const meshRef = useRef()
     const groupRef = useRef()
     const [hovered, setHovered] = useState(false)
@@ -3225,23 +3344,47 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
 
     return (
         <group position={config.pos} ref={groupRef}>
-            {/* Main logo card */}
+            {/* Semi-transparent cube body */}
             <mesh
                 ref={meshRef}
                 onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
                 onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
                 onClick={e => { e.stopPropagation(); onClick() }}
             >
-                <planeGeometry args={[0.8, 0.8]} />
+                <boxGeometry args={[0.75, 0.75, 0.75]} />
                 <meshStandardMaterial
-                    map={texture}
+                    color="#0a0a1a"
                     emissive={config.color}
-                    emissiveIntensity={isActive ? 0.4 : (hovered ? 0.15 : 0.05)}
-                    metalness={0.3} roughness={0.4}
+                    emissiveIntensity={isActive ? 0.25 : (hovered ? 0.1 : 0.03)}
+                    metalness={0.7} roughness={0.15}
+                    transparent opacity={isActive ? 0.55 : (hovered ? 0.45 : 0.35)}
                     toneMapped={false}
-                    transparent
                 />
             </mesh>
+
+            {/* Point light inside the cube */}
+            <pointLight
+                color="#ffffff"
+                intensity={isActive ? 1.8 : (hovered ? 0.9 : 0.4)}
+                distance={2.5}
+                decay={2}
+            />
+
+            {/* Logo planes on front and back — emissive map so logo glows */}
+            {[0.38, -0.38].map((z, idx) => (
+                <mesh key={idx} position={[0, 0, z]} rotation={[0, idx === 1 ? Math.PI : 0, 0]}>
+                    <planeGeometry args={[0.45, 0.45]} />
+                    <meshStandardMaterial
+                        map={texture}
+                        emissiveMap={texture}
+                        emissive={'#ffffff'}
+                        emissiveIntensity={isActive ? 1.4 : (hovered ? 0.9 : 0.5)}
+                        transparent alphaTest={0.05}
+                        metalness={0.2} roughness={0.4}
+                        toneMapped={false}
+                    />
+                </mesh>
+            ))}
 
             {/* Glowing edge frame */}
             <mesh position={[0, 0, 0.01]}>
@@ -3499,7 +3642,7 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
             if (!spreadOffsets.current[i]) spreadOffsets.current[i] = 0
             const dist = hovIdx >= 0 ? Math.abs(i - hovIdx) : SPREAD_RADIUS
             const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
-            spreadOffsets.current[i] = dampValue(spreadOffsets.current[i], SPREAD_STRENGTH * falloff, 10, delta)
+            spreadOffsets.current[i] = dampValue(spreadOffsets.current[i], SPREAD_STRENGTH * falloff, 3.5, delta)
             posRef.position.set(t.pos[0], t.pos[1] + spreadOffsets.current[i], t.pos[2])
         })
     })
@@ -3588,7 +3731,7 @@ function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', 
             if (!spreadOffsets.current[i]) spreadOffsets.current[i] = 0
             const dist = hovIdx >= 0 ? Math.abs(i - hovIdx) : SPREAD_RADIUS
             const falloff = dist < SPREAD_RADIUS ? Math.pow(1 - dist / SPREAD_RADIUS, 2) : 0
-            spreadOffsets.current[i] = dampValue(spreadOffsets.current[i], SPREAD_STRENGTH * falloff, 10, delta)
+            spreadOffsets.current[i] = dampValue(spreadOffsets.current[i], SPREAD_STRENGTH * falloff, 3.5, delta)
             posRef.position.set(t.pos[0], t.pos[1] + spreadOffsets.current[i], t.pos[2])
         })
     })
@@ -3710,7 +3853,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
 }
 
 // ─── Glitch bust — me flickers into robot-hologram every few seconds ──────────
-function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
+function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06, dimmed = false }) {
     const { scene: humanScene } = useGLTF('/me.glb')
     const { scene: robotScene } = useGLTF('/also-me.glb')
 
@@ -3735,6 +3878,27 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
     const humanRef = useRef()
     const robotRef = useRef()
     const jitterRef = useRef()
+    const dimFactorRef = useRef(1)
+
+    // Pre-collect meshes and set transparency to avoid per-frame traversal and ensure opacity works
+    const meshCache = useMemo(() => {
+        const meshes = []
+        const prep = (obj) => {
+            obj.traverse(c => {
+                if (c.isMesh && c.material) {
+                    const materials = Array.isArray(c.material) ? c.material : [c.material]
+                    materials.forEach(m => {
+                        m.transparent = true
+                        m.needsUpdate = true
+                    })
+                    meshes.push({ mesh: c, originalOpacity: c.material.opacity ?? 1 })
+                }
+            })
+        }
+        prep(humanClone)
+        prep(robotClone)
+        return meshes
+    }, [humanClone, robotClone])
     const g = useRef({ phase: 'human', timer: 0, ft: 0, next: 6 + Math.random() * 6 })
 
     const wander = useRef({ target: 0, timer: 0, next: 2 + Math.random() * 3 })
@@ -3752,6 +3916,12 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06 }) {
 
         const s = g.current
         s.timer += delta
+
+        // Handle dimming
+        dimFactorRef.current = dampValue(dimFactorRef.current, dimmed ? 0.15 : 1, 6, delta)
+        meshCache.forEach(({ mesh, originalOpacity }) => {
+            mesh.material.opacity = originalOpacity * dimFactorRef.current
+        })
 
         if (s.phase === 'human') {
             if (s.timer > s.next) { s.phase = 'to_robot'; s.ft = 0; s.timer = 0 }
@@ -3795,7 +3965,7 @@ const DIPTYCH_ENTER = 1.06   // appears as camera approaches dossier stop
 
 const RESUME_CSS = `
 .dossier { width:240px; background:#f7f6f2; color:#111; font-family:'Georgia',serif;
-           padding:28px 24px; box-shadow:0 4px 32px rgba(0,0,0,0.22); user-select:none }
+           padding:28px 24px; box-shadow:0 44px 32px rgba(0,0,0,0.22); user-select:none }
 .dossier h1 { font-size:17px; font-weight:700; letter-spacing:0.06em; margin:0 0 3px }
 .dossier .role { font-size:8.5px; letter-spacing:0.22em; color:#555; margin:0 0 16px; font-family:'Courier New',monospace }
 .dossier hr { border:none; border-top:1px solid #ccc; margin:0 0 14px }
@@ -3821,30 +3991,103 @@ const PHOTO_PATHS = [
     '/photos/exported_8647493E-CA66-4175-AA6D-9ACDC7C9E1A2.png'
 ]
 
-function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, appeared }) {
+function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused }) {
     const meshRef = useRef()
-    const tex = useTexture(path)
     const opRef = useRef(0)
     const scaleRef = useRef(1)
     const posRef = useRef({ x: 0, y: 0, z: 0 })
+    const outlineRef = useRef()
+    const outlineOpRef = useRef(0)
+    const tex = useTexture(path)
+    const _camDir = useMemo(() => new THREE.Vector3(), [])
+    const _worldTarget = useMemo(() => new THREE.Vector3(), [])
+
+    const shaderRef = useRef()
+    const mat = useMemo(() => {
+        const m = new THREE.MeshStandardMaterial({
+            map: tex, emissiveMap: tex, emissive: new THREE.Color('#00ccff'),
+            transparent: true, opacity: 0, side: THREE.DoubleSide,
+            toneMapped: false, depthWrite: false,
+        })
+        m.onBeforeCompile = (shader) => {
+            shader.uniforms.uBendRadius = { value: radius }
+            shader.uniforms.uTime = { value: 0 }
+            shader.uniforms.uClothAmp = { value: 0.18 }
+            shader.uniforms.uHoverUV = { value: new THREE.Vector2(0.5, 0.5) }
+            shader.uniforms.uHoverStrength = { value: 0.0 }
+            shaderRef.current = shader
+            shader.vertexShader = 'uniform float uBendRadius;\nuniform float uTime;\nuniform float uClothAmp;\nuniform vec2 uHoverUV;\nuniform float uHoverStrength;\n' + shader.vertexShader
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `vec3 transformed = vec3(position);
+
+                // Cloth weight: top edge pinned, bottom sways freely
+                float hang = (0.5 - uv.y);
+
+                // Multi-frequency waves for organic cloth ripple
+                float w1 = sin(position.x * 1.8 + uTime * 1.4) * 0.9;
+                float w2 = sin(position.x * 3.5 - uTime * 2.1 + position.y * 0.8) * 0.4;
+                float w3 = cos(position.y * 2.2 + uTime * 1.0) * 0.5;
+                float cloth = (w1 + w2 + w3) * uClothAmp * hang;
+
+                // Lateral sway
+                float sway = sin(position.y * 1.2 + uTime * 0.7) * uClothAmp * 0.4 * hang;
+
+                // Hover pull — Gaussian attraction toward cursor UV
+                vec2 uvDiff = uv - uHoverUV;
+                float pullDist = length(uvDiff);
+                float pull = exp(-pullDist * pullDist * 6.0) * uHoverStrength;
+
+                // Apply bend + cloth + hover pull
+                float theta = transformed.x / uBendRadius;
+                transformed.x = sin(theta) * uBendRadius + sway;
+                transformed.z = transformed.z + (uBendRadius - cos(theta) * uBendRadius) + cloth + pull;
+                transformed.y += sin(position.x * 2.0 + uTime * 1.1) * uClothAmp * 0.2 * hang;`
+            )
+        }
+        return m
+    }, [tex, radius])
 
     useFrame((state, delta) => {
         if (!meshRef.current) return
 
         const isHovered = hoveredIdx === index
-        const targetOp = appeared ? (isHovered ? 1 : 0.4) : 0
-        opRef.current = dampValue(opRef.current, targetOp, 12, delta)
-        scaleRef.current = dampValue(scaleRef.current, isHovered ? 3.8 : 1, 10, delta)
+        outlineOpRef.current = dampValue(outlineOpRef.current, isHovered ? 0.8 : 0, 10, delta)
+        if (outlineRef.current) outlineRef.current.material.opacity = outlineOpRef.current
 
-        // When hovered: move to center and zoom in. When not: orbit normally
+        let targetOp = appeared ? 1.0 : 0
+        if (isAnyFocused) {
+            targetOp = focused ? 1.0 : 0.3
+        }
+
+        opRef.current = dampValue(opRef.current, targetOp, 12, delta)
+
+        // Tick cloth shader time + animate hover pull
+        if (shaderRef.current) {
+            shaderRef.current.uniforms.uTime.value = state.clock.elapsedTime
+            const targetStrength = isHovered ? 1.2 : 0.0
+            shaderRef.current.uniforms.uHoverStrength.value = dampValue(shaderRef.current.uniforms.uHoverStrength.value, targetStrength, 6, delta)
+        }
+
+        let targetScale = 1.8
+        if (focused) targetScale = 2.2
+
+        scaleRef.current = dampValue(scaleRef.current, targetScale, 10, delta)
+
+        // When focused: move to camera center-view.
         let targetX, targetY, targetZ
-        if (isHovered) {
-            targetX = 0
-            targetY = -3.2
-            targetZ = 3
+        if (focused) {
+            // Compute 8 units in front of camera in world space, then convert to local group space
+            state.camera.getWorldDirection(_camDir)
+            _worldTarget.copy(state.camera.position).addScaledVector(_camDir, 8)
+            if (meshRef.current.parent) meshRef.current.parent.worldToLocal(_worldTarget)
+            targetX = _worldTarget.x
+            targetY = _worldTarget.y
+            targetZ = _worldTarget.z
         } else {
+            // Standard orbital position
             targetX = Math.cos(angle) * radius
-            targetY = Math.sin(state.clock.elapsedTime + index) * 0.5
+            targetY = Math.sin(state.clock.elapsedTime + index * 0.5) * 0.5
             targetZ = Math.sin(angle) * radius
         }
 
@@ -3853,47 +4096,58 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         posRef.current.z = dampValue(posRef.current.z, targetZ, 8, delta)
 
         meshRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
-        meshRef.current.lookAt(state.camera.position)
+        if (focused) {
+            meshRef.current.lookAt(state.camera.position)
+        } else {
+            // Face outward from ring center — bends panels around the arc
+            meshRef.current.rotation.set(0, Math.PI / 2 - angle, 0)
+        }
         meshRef.current.scale.setScalar(scaleRef.current)
         meshRef.current.material.opacity = opRef.current
-        meshRef.current.material.emissiveIntensity = 0.15 + (isHovered ? 0.35 : 0) + Math.sin(state.clock.elapsedTime * 4 + index) * 0.05
+        meshRef.current.material.emissiveIntensity = 0.15 + (isHovered || focused ? 0.35 : 0) + Math.sin(state.clock.elapsedTime * 4 + index) * 0.05
     })
 
     return (
-        <mesh
-            ref={meshRef}
-            onPointerOver={e => { e.stopPropagation(); setHoveredIdx(index); document.body.style.cursor = 'pointer' }}
-            onPointerOut={() => { setHoveredIdx(-1); document.body.style.cursor = 'auto' }}
-        >
-            <planeGeometry args={[1.5, 2.2]} />
-            <meshStandardMaterial
-                map={tex}
-                emissive="#00ccff"
-                emissiveMap={tex}
-                transparent
-                opacity={0}
-                side={THREE.DoubleSide}
-                toneMapped={false}
-                depthWrite={false}
-            />
-        </mesh>
+        <group>
+            {/* Hover highlight outline */}
+            <mesh
+                ref={outlineRef}
+                position={[posRef.current.x, posRef.current.y, posRef.current.z - 0.05]}
+                scale={scaleRef.current * 1.08}
+                onPointerOver={() => { }} // dummy to allow events to pass to main mesh
+            >
+                <planeGeometry args={[20.0, 28.56]} />
+                <meshBasicMaterial color="#00ccff" transparent opacity={0} wireframe />
+            </mesh>
+
+            <mesh
+                ref={meshRef}
+                material={mat}
+                onPointerOver={e => { e.stopPropagation(); if (!isAnyFocused) setHoveredIdx(index); document.body.style.cursor = 'pointer' }}
+                onPointerMove={e => { if (shaderRef.current && e.uv) shaderRef.current.uniforms.uHoverUV.value.copy(e.uv) }}
+                onPointerOut={() => { if (!isAnyFocused) setHoveredIdx(-1); document.body.style.cursor = 'auto' }}
+                onClick={e => { e.stopPropagation(); onFocus(focused ? -1 : index) }}
+            >
+                <planeGeometry args={[20.0, 28.28, 32, 32]} />
+            </mesh>
+        </group>
     )
 }
 
-function PhotoRing({ appeared }) {
+function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
-    const radius = 5
-    const center = [-9, -3.5, -20]
+    const radius = 70
+    const center = [-80, 9, -200]
 
     useFrame((_, delta) => {
-        if (groupRef.current && hoveredIdx === -1) {
+        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1) {
             groupRef.current.rotation.y += delta * 0.1
         }
     })
 
     return (
-        <group ref={groupRef} position={center} rotation={[0.5, 0.4, 0]}>
+        <group ref={groupRef} position={center} rotation={[0.3, 0.7, 0.3]}>
             {PHOTO_PATHS.map((path, i) => {
                 const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
                 return (
@@ -3906,6 +4160,9 @@ function PhotoRing({ appeared }) {
                         setHoveredIdx={setHoveredIdx}
                         index={i}
                         appeared={appeared}
+                        focused={focusedIdx === i}
+                        isAnyFocused={focusedIdx !== -1}
+                        onFocus={setFocusedIdx}
                     />
                 )
             })}
@@ -3913,9 +4170,78 @@ function PhotoRing({ appeared }) {
     )
 }
 
+
+// ─── Procedural techno sigil — sharp star + rune strokes + segmented ring ─────
+const RUNE_PATHS = [
+    [[-1.6, 1.3, 0], [-0.5, 0.5, 0.35], [0.4, -0.4, 0], [1.5, -1.2, 0]],
+    [[1.6, 1.3, 0], [0.5, 0.4, -0.3], [-0.3, -0.3, 0], [-1.5, -1.1, 0]],
+    [[-1.9, 0.6, 0], [-0.7, 0.15, 0.4], [0, -0.25, 0], [0.8, 0.15, -0.4], [1.9, 0.5, 0]],
+    [[0.25, 1.7, 0], [1.0, 0.9, 0.15], [1.2, 0.05, 0], [0.8, -0.65, 0]],
+    [[-0.25, -1.7, 0], [-1.0, -0.9, -0.15], [-1.2, -0.05, 0], [-0.8, 0.65, 0]],
+]
+
+// Export sigil as SVG — Blender imports SVG as editable Bezier curves
+// File > Import > Scalable Vector Graphics (.svg) in Blender
+function exportSigilSVG() {
+    const S = 100        // scale: 1 Three.js unit = 100 SVG px
+    const CX = 500, CY = 500  // SVG center (Y is flipped)
+    const tx = (x) => CX + x * S
+    const ty = (y) => CY - y * S  // flip Y for SVG
+
+    const paths = []
+
+    // 1. Outer ring — 8 arcs
+    const R = 2.2
+    for (let i = 0; i < 8; i++) {
+        const startRad = THREE.MathUtils.degToRad(i * 45 + 3.5)
+        const endRad   = THREE.MathUtils.degToRad(i * 45 + 41.5)
+        const x1 = tx(Math.cos(startRad) * R), y1 = ty(Math.sin(startRad) * R)
+        const x2 = tx(Math.cos(endRad)   * R), y2 = ty(Math.sin(endRad)   * R)
+        const r  = R * S
+        paths.push(`<path d="M ${x1} ${y1} A ${r} ${r} 0 0 0 ${x2} ${y2}" stroke="#00aaff" stroke-width="4.5" fill="none"/>`)
+    }
+
+    // 2. Tick marks — 8 short lines at gap midpoints
+    for (let i = 0; i < 8; i++) {
+        const a = THREE.MathUtils.degToRad(i * 45)
+        const r0 = 2.44, r1 = 2.66
+        paths.push(`<line x1="${tx(Math.cos(a)*r0)}" y1="${ty(Math.sin(a)*r0)}" x2="${tx(Math.cos(a)*r1)}" y2="${ty(Math.sin(a)*r1)}" stroke="#00aaff" stroke-width="6"/>`)
+    }
+
+    // 3. 4-pointed star (quadratic bezier outline)
+    const sd = `M ${tx(0)} ${ty(1.8)}
+      Q ${tx(0.18)} ${ty(0.18)} ${tx(0.9)} ${ty(0)}
+      Q ${tx(0.18)} ${ty(-0.18)} ${tx(0)} ${ty(-1.8)}
+      Q ${tx(-0.18)} ${ty(-0.18)} ${tx(-0.9)} ${ty(0)}
+      Q ${tx(-0.18)} ${ty(0.18)} ${tx(0)} ${ty(1.8)} Z`
+    paths.push(`<path d="${sd}" stroke="#00aaff" stroke-width="3" fill="none"/>`)
+
+    // 4. Rune strokes — CatmullRom sampled to polyline (30 pts each)
+    RUNE_PATHS.forEach(pts => {
+        const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)))
+        const samples = curve.getPoints(30)
+        const d = samples.map((p, j) => `${j === 0 ? 'M' : 'L'} ${tx(p.x).toFixed(1)} ${ty(p.y).toFixed(1)}`).join(' ')
+        paths.push(`<path d="${d}" stroke="#00aaff" stroke-width="2.8" fill="none"/>`)
+    })
+
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" style="background:#000">
+  <!-- TechnoSigil — import into Blender via File > Import > Scalable Vector Graphics -->
+  ${paths.join('\n  ')}
+</svg>`
+
+    const blob = new Blob([svg], { type: 'image/svg+xml' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url; a.download = 'techno-sigil.svg'; a.click()
+    URL.revokeObjectURL(url)
+}
+
+
 function BustDiptych({ scrollRef }) {
     const opRef = useRef()
     const [appeared, setAppeared] = useState(false)
+    const [focusedIdx, setFocusedIdx] = useState(-1)
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
@@ -3932,9 +4258,18 @@ function BustDiptych({ scrollRef }) {
 
     return (
         <group ref={opRef} position={[0, 0, -85]} scale={0}>
-            <GlitchBust position={[-9, -3, -20]} scale={6} rotSpeed={0.04} />
-            <SigilModel position={[-1, -4.5, 7.5]} scale={1.8} />
-            <PhotoRing appeared={appeared} />
+            {/* GlitchBust hidden — revert: uncomment below */}
+            {/* <GlitchBust position={[-9, -3, -20]} scale={6} rotSpeed={0.04} dimmed={focusedIdx !== -1} /> */}
+            <SigilModel position={[-40, -20, -250]} scale={9} />
+            <PhotoRing appeared={appeared} focusedIdx={focusedIdx} setFocusedIdx={setFocusedIdx} />
+
+            {/* Backdrop to close focused image */}
+            {focusedIdx !== -1 && (
+                <mesh position={[0, 0, 10]} onClick={() => setFocusedIdx(-1)}>
+                    <planeGeometry args={[100, 100]} />
+                    <meshBasicMaterial transparent opacity={0} />
+                </mesh>
+            )}
         </group>
     )
 }
@@ -4194,39 +4529,28 @@ function AnimatedGrid() {
     )
 }
 
-// ─── Post-Processing Effects with Leva Controls ────────────────────────────
+// ─── Hardcoded Post-Processing Effects ────────────────────────────
 function PostProcessingEffects() {
-    const { bloomIntensity, bloomThreshold, chromaticMagnitude, vignetteDarkness, vignetteOffset } = useControls('Post-Processing', {
-        bloomIntensity: { value: 1.6, min: 0, max: 3, step: 0.1 },
-        bloomThreshold: { value: 0.4, min: 0, max: 1, step: 0.05 },
-        chromaticMagnitude: { value: 1, min: 0, max: 3, step: 0.1 },
-        vignetteDarkness: { value: 0.8, min: 0, max: 2, step: 0.1 },
-        vignetteOffset: { value: 0.15, min: 0, max: 0.5, step: 0.05 },
-    })
-
-    // Update chromatic aberration offset
+    // Hardcode chromatic aberration magnitude to 3.0
     useEffect(() => {
-        warpOffset.set(0.002 * chromaticMagnitude, 0.002 * chromaticMagnitude)
-    }, [chromaticMagnitude])
+        warpOffset.set(0.004, 0.004)
+    }, [])
 
     // Hero intro overrides — reads module-level state each render
-    const effectiveBloom = heroIntroState.bloomOverride ?? bloomIntensity
-    const effectiveVignette = heroIntroState.vignetteOverride ?? vignetteDarkness
+    const effectiveBloom = heroIntroState.bloomOverride ?? 1.6
 
     return (
         <EffectComposer disableNormalPass>
-            <SelectiveBloom luminanceThreshold={bloomThreshold} intensity={effectiveBloom} levels={4} />
+            <SelectiveBloom luminanceThreshold={0.4} intensity={effectiveBloom} levels={4} />
             <ChromaticAberration offset={warpOffset} />
-            <Vignette eskil={false} offset={vignetteOffset} darkness={effectiveVignette} />
         </EffectComposer>
     )
 }
 
-function Scene({ scrollRef, currentSectionRef }) {
+function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
     return (
-        <Selection>
+        <group>
             <ScrollSmoother currentSectionRef={currentSectionRef} scrollRef={scrollRef} />
-            <HeroIntroCam />
             <CameraController scrollRef={scrollRef} />
             <DragController currentSectionRef={currentSectionRef} />
 
@@ -4242,20 +4566,30 @@ function Scene({ scrollRef, currentSectionRef }) {
             <AnimatedGrid />
 
             <CursorFX />
-            <Select enabled>
-                <InteractiveParticleField count={300} />
-                <StarField />
-                <SpineHeroSection />
-                <EthosSection scrollRef={scrollRef} />
-                <ProjectsSection scrollRef={scrollRef} />
-                <BioSection scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
-            </Select>
+            <InteractiveParticleField count={300} />
+            <StarField />
+            <SpineHeroSection />
+            <EthosSection scrollRef={scrollRef} />
+            <ProjectsSection scrollRef={scrollRef} onOpenProject={onOpenProject} />
+            <BioSection scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
-            {/* VideoScreen rendered outside Select enabled — no bloom bleed */}
+            {/* VideoScreens rendered outside Select enabled — no bloom bleed */}
+            <group position={[100, 0, 0]} rotation={[0, 0, 0]}>
+                <VideoScreen
+                    src="/demos/ei-noborder.mp4"
+                    opRef={eiVideoOpRef}
+                    buildText="BUILD 7bf4176 · 2026-03-03"
+                    buildUrl="https://github.com/moosefroggo/portfolio-2026/commit/7bf4176"
+                    cornerLabel="SIG 2/5"
+                    footerLabel="5M+ Vehicles Secured"
+                    colorHex="#00aaff"
+                    colorRgb="0,170,255"
+                />
+            </group>
             <group position={[120, -0.5, 0]} rotation={[0, 0.2, 0]}>
                 <VideoScreen />
             </group>
-        </Selection>
+        </group>
     )
 }
 
@@ -4268,61 +4602,115 @@ function Scene({ scrollRef, currentSectionRef }) {
 // ═════════════════════════════════════════════════════════════════════════════
 // LOADING SCREEN
 // ═════════════════════════════════════════════════════════════════════════════
-const LOAD_STATUSES = [
-    'INITIALIZING WEBGL CONTEXT',
-    'LOADING GEOMETRY BUFFERS',
-    'COMPILING SHADER PROGRAMS',
-    'UPLOADING TEXTURE DATA',
-    'BUILDING SCENE GRAPH',
-    'CALIBRATING CAMERA PATH',
-    'SYSTEM READY',
-]
-const SEGMENTS = 22
-
-function LoadingScreen() {
+function EliteLoader() {
     const { progress, active } = useProgress()
-    const [gone, setGone] = useState(false)
-    const [exit, setExit] = useState(false)
+    const [displayProgress, setDisplayProgress] = useState(0)
+    const [isFading, setIsFading] = useState(false)
+    const [isHidden, setIsHidden] = useState(false)
 
+    // Smoothly interpolate the progress number
+    useEffect(() => {
+        let rafId
+        const updateProgress = () => {
+            setDisplayProgress((prev) => {
+                const diff = progress - prev
+                if (Math.abs(diff) < 0.1) return progress
+                return prev + diff * 0.08
+            })
+            rafId = requestAnimationFrame(updateProgress)
+        }
+        updateProgress()
+        return () => cancelAnimationFrame(rafId)
+    }, [progress])
+
+    // Handle fade out sequence
     useEffect(() => {
         if (progress >= 100 && !active) {
-            const t1 = setTimeout(() => setExit(true), 350)
-            const t2 = setTimeout(() => setGone(true), 1300)
-            return () => { clearTimeout(t1); clearTimeout(t2) }
+            const fadeTimer = setTimeout(() => setIsFading(true), 600)
+            const hideTimer = setTimeout(() => setIsHidden(true), 1600)
+            return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
         }
     }, [progress, active])
 
-    if (gone) return null
+    if (isHidden) return null
 
-    const filled = Math.round((progress / 100) * SEGMENTS)
-    const msgIdx = Math.min(Math.floor((progress / 100) * LOAD_STATUSES.length), LOAD_STATUSES.length - 1)
+    const letters = "LOADING".split('')
 
     return (
-        <div className="loader-root" style={{ opacity: exit ? 0 : 1 }}>
-            <div className="loader-scanlines" />
-            <div className="loader-corner tl" />
-            <div className="loader-corner tr" />
-            <div className="loader-corner bl" />
-            <div className="loader-corner br" />
+        <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            backgroundColor: '#02040a', zIndex: 9999, overflow: 'hidden',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            opacity: isFading ? 0 : 1, transition: 'opacity 1s cubic-bezier(0.87, 0, 0.13, 1)',
+            pointerEvents: 'none', fontFamily: '"Oxanium", monospace', color: '#8899cc'
+        }}>
+            <style>{`
+                @keyframes kinetic-wave {
+                    0%, 100% { transform: translateY(0); color: rgba(136, 153, 204, 0.4); text-shadow: none; }
+                    50% { transform: translateY(-10px); color: #ffffff; text-shadow: 0 0 15px #ff00ff, 0 0 30px #00aaff; }
+                }
+                .kinetic-letter {
+                    display: inline-block;
+                    font-size: 64px;
+                    font-weight: 200;
+                    letter-spacing: 0.2em;
+                    animation: kinetic-wave 2s ease-in-out infinite;
+                }
+                .loader-bg-grid {
+                    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                    background-image: 
+                        linear-gradient(rgba(136, 153, 204, 0.05) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(136, 153, 204, 0.05) 1px, transparent 1px);
+                    background-size: 40px 40px;
+                    z-index: -2;
+                }
+                @keyframes sweep {
+                    0% { top: -10%; }
+                    100% { top: 110%; }
+                }
+                .loader-sweep {
+                    position: absolute; left: 0; width: 100%; height: 2px;
+                    background: linear-gradient(90deg, transparent, rgba(255, 0, 255, 0.5), rgba(0, 170, 255, 0.5), transparent);
+                    animation: sweep 4s linear infinite;
+                    z-index: -1;
+                    box-shadow: 0 0 20px rgba(0, 170, 255, 0.4);
+                }
+                .loader-orb {
+                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    width: 300px; height: 300px; border-radius: 50%;
+                    background: radial-gradient(circle, rgba(255, 0, 255, 0.08) 0%, transparent 70%);
+                    z-index: -1;
+                    filter: blur(20px);
+                }
+                .loader-corner-tl { position: absolute; top: 40px; left: 40px; width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-tr { position: absolute; top: 40px; right: 40px; width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-bl { position: absolute; bottom: 40px; left: 40px; width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-br { position: absolute; bottom: 40px; right: 40px; width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
+            `}</style>
 
-            <div className="loader-center">
-                <div className="loader-eyebrow">SYS://PORTFOLIO_2026 · IDENTITY_UNRESOLVED</div>
-                <div className="loader-title" data-text="PORTFOLIO">PORTFOLIO</div>
-                <div className="loader-rule" />
-                <div className="loader-bar-wrap">
-                    {Array.from({ length: SEGMENTS }, (_, i) => (
-                        <div key={i} className={`loader-seg${i < filled ? ' active' : ''}`} />
-                    ))}
-                </div>
-                <div className="loader-meta">
-                    <span className="loader-pct">{Math.round(progress).toString().padStart(3, '0')}%</span>
-                    <span className="loader-status">{LOAD_STATUSES[msgIdx]}</span>
-                </div>
+            <div className="loader-bg-grid" />
+            <div className="loader-sweep" />
+            <div className="loader-orb" />
+
+            <div className="loader-corner-tl" />
+            <div className="loader-corner-tr" />
+            <div className="loader-corner-bl" />
+            <div className="loader-corner-br" />
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                {letters.map((char, i) => (
+                    <span key={i} className="kinetic-letter" style={{ animationDelay: `${i * 0.15}s` }}>
+                        {char}
+                    </span>
+                ))}
             </div>
 
-            <div className="loader-bottom">
-                <span>RENDER ENGINE // THREE.JS r{THREE.REVISION}</span>
-                <span>WEBGL 2.0 · 60FPS TARGET</span>
+            <div style={{ fontSize: '11px', letterSpacing: '0.4em', opacity: 0.5, position: 'relative', zIndex: 1 }}>
+                SYS // INITIALIZING GRAPHICS
+            </div>
+
+            <div style={{ marginTop: '30px', color: '#ffffff', fontSize: '18px', fontWeight: 200, letterSpacing: '0.15em' }}>
+                {displayProgress < 10 ? `00${displayProgress.toFixed(2)}` : displayProgress < 100 ? `0${displayProgress.toFixed(2)}` : displayProgress.toFixed(2)} %
             </div>
         </div>
     )
@@ -4561,25 +4949,101 @@ function CursorOrb() {
  */
 function SceneCursorLight() {
     const lightRef = useRef()
-    const { viewport, camera } = useThree()
+    const _dir = useMemo(() => new THREE.Vector3(), [])
 
     useFrame((state) => {
         if (!lightRef.current) return
-
-        // Convert mouse (-1 to 1) to 3D world space at a specific depth
-        const x = (state.mouse.x * viewport.width) / 2
-        const y = (state.mouse.y * viewport.height) / 2
-
-        // Float the light slightly in front of the typical object plane (z ~ 5)
-        lightRef.current.position.set(x, y, 8)
+        // Unproject mouse into a ray from the camera, place light 18 units ahead
+        // This works at any camera position/depth — hero, nexus, or dossier
+        _dir.set(state.pointer.x, state.pointer.y, 0.5).unproject(state.camera)
+        _dir.sub(state.camera.position).normalize()
+        lightRef.current.position.copy(state.camera.position).addScaledVector(_dir, 18)
     })
 
-    return <pointLight ref={lightRef} intensity={15} color="#ff00ff" distance={20} decay={2} />
+    return <pointLight ref={lightRef} intensity={15} color="#ff00ff" distance={30} decay={2} />
+}
+
+function HeroSubtextCard({ scrollRef }) {
+    const [show, setShow] = useState(false)
+    const [inHero, setInHero] = useState(true)
+    const inHeroRef = useRef(true)
+
+    useEffect(() => {
+        const id = setInterval(() => {
+            if (heroIntroState.phase === 'done') { setShow(true); clearInterval(id) }
+        }, 100)
+        return () => clearInterval(id)
+    }, [])
+
+    useEffect(() => {
+        let rafId
+        const tick = () => {
+            const next = (scrollRef.current ?? 0) < 0.08
+            if (next !== inHeroRef.current) { inHeroRef.current = next; setInHero(next) }
+            rafId = requestAnimationFrame(tick)
+        }
+        rafId = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(rafId)
+    }, [scrollRef])
+
+    const visible = show && inHero
+
+    return (
+        <div style={{
+            position: 'absolute',
+            bottom: '12%',
+            left: '50%',
+            transform: `translateX(-50%) translateY(${visible ? '0px' : '80px'})`,
+            opacity: visible ? 1 : 0,
+            transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.4s cubic-bezier(0.16, 1, 0.3, 1)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            pointerEvents: 'none',
+            zIndex: 10,
+        }}>
+            {/* Card */}
+            <div style={{
+                background: 'rgba(10, 12, 30, 0.65)',
+                border: '1px solid rgba(100, 140, 220, 0.25)',
+                backdropFilter: 'blur(12px)',
+                borderRadius: '12px',
+                padding: '18px 32px',
+                maxWidth: '420px',
+                textAlign: 'center',
+                boxShadow: '0 0 40px rgba(80, 120, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}>
+                <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '13px',
+                    letterSpacing: '0.08em',
+                    lineHeight: 1.7,
+                    color: '#8899cc',
+                }}>
+                    I am a product designer and sometimes a frontend developer.
+                </div>
+            </div>
+
+            {/* Hand placeholder */}
+            <div style={{
+                marginTop: '-2px',
+                fontSize: '48px',
+                lineHeight: 1,
+                filter: 'drop-shadow(0 4px 12px rgba(80,120,255,0.3))',
+                userSelect: 'none',
+            }}>
+                🤚
+            </div>
+        </div>
+    )
 }
 
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
+    const [activeProject, setActiveProject] = useState(null)
+    const activeProjectRef = useRef(null)
+    useEffect(() => { activeProjectRef.current = activeProject }, [activeProject])
 
     // Global UI hover tracker
     useEffect(() => {
@@ -4595,16 +5059,23 @@ export default function Portfolio() {
         }
     }, [])
 
-    // Wheel-to-section snapping — one section per gesture, locked until settled
+    // Wheel-to-section snapping — one section per gesture, locked until scroll idle
     useEffect(() => {
         let wheelAccum = 0
         let locked = false
+        let unlockTimer = null
 
         const onWheel = (e) => {
+            // Allow native scroll inside the case study drawer
+            if (e.target.closest('.cs-drawer')) return
             e.preventDefault()
+            if (activeProjectRef.current) return
+
+            if (unlockTimer) clearTimeout(unlockTimer)
+            unlockTimer = setTimeout(() => { locked = false; wheelAccum = 0 }, 600)
+
             if (locked) return
 
-            // Normalize across deltaMode: pixels (0) → as-is, lines (1) → ×40, pages (2) → ×800
             const normalized = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY
             wheelAccum += normalized
 
@@ -4612,17 +5083,15 @@ export default function Portfolio() {
                 wheelAccum = 0
                 locked = true
                 currentSectionRef.current = Math.min(currentSectionRef.current + 1, SECTION_STOPS.length - 1)
-                setTimeout(() => { locked = false }, 800)
             } else if (wheelAccum <= -WHEEL_THRESHOLD) {
                 wheelAccum = 0
                 locked = true
                 currentSectionRef.current = Math.max(currentSectionRef.current - 1, 0)
-                setTimeout(() => { locked = false }, 800)
             }
         }
 
         window.addEventListener('wheel', onWheel, { passive: false })
-        return () => window.removeEventListener('wheel', onWheel)
+        return () => { window.removeEventListener('wheel', onWheel); clearTimeout(unlockTimer) }
     }, [])
 
     return (
@@ -4634,7 +5103,7 @@ export default function Portfolio() {
             cursor: 'none' // Hide native to show Orb
         }}>
             <CursorOrb />
-            <LoadingScreen />
+            <EliteLoader />
 
             {/* GLOBAL HUD */}
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0 40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
@@ -4656,6 +5125,7 @@ export default function Portfolio() {
                 </div>
             </div>
 
+            <HeroSubtextCard />
             <ScrollHint scrollRef={scrollRef} />
             <EthosOverlay scrollRef={scrollRef} />
             <BioOverlay scrollRef={scrollRef} />
@@ -4665,9 +5135,11 @@ export default function Portfolio() {
             <Canvas camera={{ position: [0, -4, 14], fov: 65 }} dpr={[1, 1.5]} style={{ zIndex: 1 }}>
                 <React.Suspense fallback={null}>
                     <SceneCursorLight />
-                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
+                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={setActiveProject} />
                 </React.Suspense>
             </Canvas>
+
+            <CaseStudyOverlay project={activeProject} onClose={() => setActiveProject(null)} />
         </div>
     )
 }

@@ -32,6 +32,7 @@ skills
 tmp_script.js
 export_curve.py
 organize_fonts.py
+todo.txt
 
 # Large unused public assets
 public/*.blend
