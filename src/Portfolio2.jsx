@@ -3982,10 +3982,8 @@ const PHOTO_PATHS = [
     '/photos/E8BBA5C7-1659-4C8E-9044-9555075F11A0.png',
     '/photos/IMG_1830.png',
     '/photos/IMG_3979.png',
-    '/photos/IMG_7194.png',
     '/photos/IMG_7737.png',
     '/photos/IMG_8804.png',
-    '/photos/PXL_20250318_174316350.png',
     '/photos/PXL_20250318_174319952 (1).png',
     '/photos/PXL_20251026_025829577.png',
     '/photos/exported_8647493E-CA66-4175-AA6D-9ACDC7C9E1A2.png'
@@ -5004,14 +5002,14 @@ function HeroSubtextCard({ scrollRef }) {
         }}>
             {/* Card */}
             <div style={{
-                background: 'rgba(10, 12, 30, 0.65)',
-                border: '1px solid rgba(100, 140, 220, 0.25)',
-                backdropFilter: 'blur(12px)',
+                background: 'rgba(10, 12, 30, 0.28)',
+                border: '1px solid rgba(100, 140, 220, 0.12)',
+                backdropFilter: 'blur(6px)',
                 borderRadius: '12px',
                 padding: '18px 32px',
                 maxWidth: '420px',
                 textAlign: 'center',
-                boxShadow: '0 0 40px rgba(80, 120, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.05)',
+                boxShadow: '0 0 30px rgba(80, 120, 255, 0.04)',
             }}>
                 <div style={{
                     fontFamily: 'var(--font-mono)',
@@ -5020,7 +5018,7 @@ function HeroSubtextCard({ scrollRef }) {
                     lineHeight: 1.7,
                     color: '#8899cc',
                 }}>
-                    I am a product designer and sometimes a frontend developer.
+                    Product Designer @ Dell, UX Engineer @ UT Austin
                 </div>
             </div>
 
@@ -5125,7 +5123,7 @@ export default function Portfolio() {
                 </div>
             </div>
 
-            <HeroSubtextCard />
+            <HeroSubtextCard scrollRef={scrollRef} />
             <ScrollHint scrollRef={scrollRef} />
             <EthosOverlay scrollRef={scrollRef} />
             <BioOverlay scrollRef={scrollRef} />
