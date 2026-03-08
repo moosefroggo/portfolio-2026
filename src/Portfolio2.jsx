@@ -1,10 +1,10 @@
-import React, { useRef, useMemo, useState, useEffect } from 'react'
+import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react'
 import { sfx, useSFX } from './sfx'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html, RoundedBox } from '@react-three/drei'
 import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
 import * as THREE from 'three'
-// import { useControls } from 'leva'
+import { useControls } from 'leva'
 
 // Enable Draco decoder for compressed GLBs
 useGLTF.setDecoderPath('/draco/')
@@ -78,7 +78,7 @@ const SECTION_STOPS = [
     1.10,   // dossier (close-up camera on bust + resume panel)
 ]
 const WHEEL_THRESHOLD = 300  // deltaY pixels to trigger a section advance
-const SECTION_LABELS = ['HERO', 'ETHOS', 'NEXUS', 'Workflows', 'BIO', 'DOSSIER']
+const SECTION_LABELS = ['HERO', 'ETHOS', 'NEXUS', 'Workflows', 'EXPERIENCE', 'DOSSIER']
 // Visual positions in the nav bar (independent of scroll stops)
 const SECTION_BAR_POSITIONS = [0.00, 0.13, 0.30, 0.47, 0.67, 1.00]
 
@@ -382,7 +382,9 @@ function CameraController({ scrollRef }) {
                 t < 0.44 ? (t - 0.38) / 0.06 :
                     t <= 0.70 ? 1 - (Math.max(0, t - 0.62) / 0.08) :
                         t < 0.86 ? 0 :
-                            t < 0.93 ? (t - 0.86) / 0.07 : 1,
+                            t < 0.93 ? (t - 0.86) / 0.07 :
+                                t < 1.00 ? 1 :
+                                    t < 1.06 ? 1 - (t - 1.00) / 0.06 : 0,
             0, 1
         )
         const mx = uiHoveredRef.current ? 0 : clamp(state.pointer.x, -1, 1)
@@ -1045,11 +1047,6 @@ function HudPanel({ stats, tech, color, appeared, side = 'left' }) {
     const groupRef = useRef()
     const opacityRef = useRef(0)
     const matsRef = useRef([])
-    const [blink, setBlink] = useState(true)
-    useEffect(() => {
-        const id = setInterval(() => setBlink(b => !b), 530)
-        return () => clearInterval(id)
-    }, [])
 
     useFrame((_, delta) => {
         if (!groupRef.current) return
@@ -1071,7 +1068,7 @@ function HudPanel({ stats, tech, color, appeared, side = 'left' }) {
             <Text position={[0, 0.02, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.year}</Text>
             <Text position={[0, -0.28, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>Company ─────────────────</Text>
             <Text position={[0, -0.44, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.company}</Text>
-            <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1} material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')} {blink ? '|' : ' '}</Text>
+            <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1} material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')}</Text>
         </group>
     )
 }
@@ -2007,38 +2004,6 @@ function RotatingBust({ url, position, tiltAxis, rotSpeed = 0.3, scale = 1 }) {
 }
 
 
-// ─── Sigil model (sigil.glb) ───────────────────────────────────────────────────
-function SigilModel({ position = [0, 0, 0], scale = 1 }) {
-    const { scene } = useGLTF('/sigil.glb')
-    const sigilMat = useMemo(() => new THREE.MeshPhysicalMaterial({
-        color: '#b8d6ff',
-        metalness: 1.0,
-        roughness: 0.02,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.0,
-        toneMapped: false,
-    }), [])
-    const cloned = useMemo(() => {
-        const c = scene.clone(true)
-        c.traverse(child => { if (child.isMesh) child.material = sigilMat })
-        // Center so rotation spins around visual center
-        const box = new THREE.Box3().setFromObject(c)
-        const center = new THREE.Vector3()
-        box.getCenter(center)
-        c.position.sub(center)
-        return c
-    }, [scene, sigilMat])
-    const spinRef = useRef()
-    useFrame((state) => { if (spinRef.current) spinRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.2 - 0.25 })
-    return (
-        <group position={position} scale={scale}>
-            <group rotation={[-0.4, 0.7, 0.9]}>
-                <group ref={spinRef}><primitive object={cloned} /></group>
-            </group>
-        </group>
-    )
-}
-useGLTF.preload('/sigil.glb')
 
 // ─── Pillar with bust on top ───────────────────────────────────────────────────
 function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
@@ -2517,10 +2482,10 @@ function BioGrid({ active }) {
 }
 
 // ScrollBar shows all sections except the last (DOSSIER lives outside the progress arc)
-const SCROLLBAR_STOPS = SECTION_STOPS.slice(0, -1)
-const SCROLLBAR_LABELS = SECTION_LABELS.slice(0, -1)
-const SCROLLBAR_VISUAL_PERCENTS = [0, 22, 44, 73, 100] // Custom spacing to handle wide labels like 'Workflows'
-const SCROLLBAR_HIDE_T = SECTION_STOPS[SECTION_STOPS.length - 2] + 0.05
+const SCROLLBAR_STOPS = SECTION_STOPS
+const SCROLLBAR_LABELS = SECTION_LABELS
+const SCROLLBAR_VISUAL_PERCENTS = [0, 17, 34, 53, 74, 100]
+const SCROLLBAR_HIDE_T = SECTION_STOPS[SECTION_STOPS.length - 1] + 0.1
 
 function ScrollBar({ scrollRef, currentSectionRef }) {
     const fillRef = useRef()
@@ -2544,7 +2509,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
             opacityRef.current += (targetOp - opacityRef.current) * 0.08
             if (wrapRef.current) wrapRef.current.style.opacity = opacityRef.current
 
-            const stops = SECTION_STOPS.slice(0, -1)
+            const stops = SECTION_STOPS
             const maxT = stops[stops.length - 1]
             const currT = Math.min(t, maxT)
 
@@ -3166,7 +3131,7 @@ const ABOUT_CSS = `
 }
 .about-panel {
     position: fixed;
-    right: 48px; top: 50%;
+    right: 80px; top: 50%;
     transform: translateY(-50%);
     width: min(360px, 32vw);
     background: transparent;
@@ -3211,8 +3176,8 @@ const ABOUT_CSS = `
 }
 .about-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
 .about-skill {
-    font-family: var(--font-mono); font-size: 7px; letter-spacing: 0.14em;
-    color: rgba(100,140,220,0.6); padding: 3px 9px;
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em;
+    color: rgba(100,140,220,0.6); padding: 4px 10px;
     border: 1px solid rgba(80,110,200,0.18); border-radius: 2px;
     text-transform: uppercase;
 }
@@ -3220,9 +3185,9 @@ const ABOUT_CSS = `
     display: flex; gap: 12px;
 }
 .about-contact-btn {
-    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.22em;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em;
     color: rgba(136,160,255,0.6); text-transform: uppercase; text-decoration: none;
-    padding: 8px 14px; border: 1px solid rgba(100,130,220,0.2); border-radius: 2px;
+    padding: 10px 16px; border: 1px solid rgba(100,130,220,0.2); border-radius: 2px;
     background: transparent; cursor: pointer;
     transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
@@ -3230,7 +3195,7 @@ const ABOUT_CSS = `
 .about-contact-btn.copied { background: rgba(0,80,40,0.22); color: #00ff88; border-color: rgba(0,200,100,0.2); }
 `
 
-const CONTACT_EMAIL = 'mustafa.akbar.me@gmail.com'
+const CONTACT_EMAIL = 'hello@mstf.work'
 
 function DossierOverlay({ scrollRef }) {
     const panelRef = useRef()
@@ -3272,13 +3237,10 @@ function DossierOverlay({ scrollRef }) {
                 <div className="about-role">Senior Product Designer</div>
 
                 <p className="about-bio">
-                    I design at the intersection of <strong>systems thinking</strong> and <strong>motion</strong> — building products that feel alive without getting in the way.
+                    I design at the intersection of <strong>systems thinking</strong> and <strong>motion</strong> — building products that feel alive without getting in the way. Currently at <strong>Dell</strong>, previously <strong>Motive</strong> and <strong>CBRE</strong>.
                 </p>
                 <p className="about-bio">
-                    Currently at <strong>Dell</strong> (UT Austin capstone), designing an AI-based cooling leak detection system for PowerEdge servers. Previously at <strong>Motive</strong> and <strong>CBRE</strong>, leading UX across enterprise and spatial computing domains.
-                </p>
-                <p className="about-bio">
-                    I prototype in code, obsess over interaction timing, and believe the gap between design and engineering is where the best work happens.
+                    I prototype in code and believe the gap between design and engineering is where the best work happens.
                 </p>
 
                 <div className="about-divider" />
@@ -3321,12 +3283,19 @@ const LOGO_TEXTURES = {
     'educative': '/textures/logos/educative-logo.png',
     'dell':      '/textures/logos/dell-log.png',
 }
-// Preload all logos so useTexture never triggers a mid-render load
-Object.values(LOGO_TEXTURES).forEach(p => useTexture.preload(p))
 
 // Company card — holographic logo display, label to the left, data readout to the right
 function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
-    const texture = useTexture(LOGO_TEXTURES[config.id])
+    const texture = useMemo(() => {
+        const path = LOGO_TEXTURES[config.id]
+        if (!path) return null
+        return new THREE.TextureLoader().load(
+            path,
+            undefined,
+            undefined,
+            (err) => console.warn('Logo load failed:', config.id, err)
+        )
+    }, [config.id])
     const meshRef = useRef()
     const groupRef = useRef()
     const [hovered, setHovered] = useState(false)
@@ -3781,10 +3750,16 @@ function ModularResumePatch({ visible, currentSectionRef }) {
         groupRef.current.position.y = dampValue(groupRef.current.position.y, visible ? 0 : 10, 4, delta)
     })
 
+    // Clear active company when clicking empty space
+    const onBackgroundClick = useCallback((e) => {
+        // Only if the click wasn't on a SynthNode (they stopPropagation)
+        setActiveId(null)
+    }, [])
+
     if (!visible) return null
 
     return (
-        <group ref={groupRef} position-y={10}>
+        <group ref={groupRef} position-y={10} onClick={onBackgroundClick}>
             {/* Company → Resume spine chains */}
             {COMPANY_NODES.map((node, i) => {
                 // Determine target speed for this company chain
@@ -4232,11 +4207,246 @@ function exportSigilSVG() {
 }
 
 
+// ─── Procedural TechnoSigil — animated ring, star, rune strokes ──────────────
+
+function TechnoSigil({ position = [0, 0, 0], scale = 1 }) {
+    const groupRef = useRef()
+    const outerRef = useRef()
+    const innerRef = useRef()
+    const strokesRef = useRef()
+
+    // Shared base material
+    const baseMat = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#001122',
+        emissive: '#00aaff',
+        emissiveIntensity: 2.2,
+        metalness: 0.9,
+        roughness: 0.08,
+        toneMapped: false,
+        side: THREE.DoubleSide,
+    }), [])
+
+    // 1. Outer segmented ring — 8 arcs
+    const arcGeos = useMemo(() => {
+        const R = 2.2
+        return Array.from({ length: 8 }, (_, i) => {
+            const startRad = THREE.MathUtils.degToRad(i * 45 + 3.5)
+            const endRad = THREE.MathUtils.degToRad(i * 45 + 41.5)
+            const pts = Array.from({ length: 12 }, (_, j) => {
+                const a = startRad + (endRad - startRad) * (j / 11)
+                return new THREE.Vector3(Math.cos(a) * R, Math.sin(a) * R, 0)
+            })
+            const curve = new THREE.CatmullRomCurve3(pts)
+            return new THREE.TubeGeometry(curve, 12, 0.045, 8, false)
+        })
+    }, [])
+
+    // 2. Tick marks — 8 positions at gap midpoints
+    const tickTransforms = useMemo(() =>
+        Array.from({ length: 8 }, (_, i) => {
+            const a = THREE.MathUtils.degToRad(i * 45)
+            return { pos: [Math.cos(a) * 2.55, Math.sin(a) * 2.55, 0], rot: [0, 0, a] }
+        }), [])
+
+    // 3. Star shape
+    const starGeo = useMemo(() => {
+        const shape = new THREE.Shape()
+        shape.moveTo(0, 1.8)
+        shape.quadraticCurveTo(0.18, 0.18, 0.9, 0)
+        shape.quadraticCurveTo(0.18, -0.18, 0, -1.8)
+        shape.quadraticCurveTo(-0.18, -0.18, -0.9, 0)
+        shape.quadraticCurveTo(-0.18, 0.18, 0, 1.8)
+        return new THREE.ExtrudeGeometry(shape, { depth: 0.07, bevelEnabled: false })
+    }, [])
+
+    // 4. Rune stroke geometries
+    const runeGeos = useMemo(() =>
+        RUNE_PATHS.map(pts => {
+            const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)))
+            return new THREE.TubeGeometry(curve, 20, 0.028, 6, false)
+        }), [])
+
+    // 5. Rune materials (cloned so they can pulse independently)
+    const runeMats = useMemo(() =>
+        RUNE_PATHS.map(() => baseMat.clone()), [baseMat])
+
+    useFrame((state) => {
+        const delta = Math.min(state.clock.getDelta(), 0.05)
+        const elapsed = state.clock.elapsedTime
+        if (outerRef.current) outerRef.current.rotation.y += delta * 0.12
+        if (innerRef.current) innerRef.current.rotation.y -= delta * 0.22
+        // Rune pulse
+        runeMats.forEach((m, i) => {
+            m.emissiveIntensity = 2.0 + Math.sin(elapsed * 1.3 + i * 1.1) * 0.7
+        })
+        // Whole-group wobble
+        if (groupRef.current) {
+            groupRef.current.rotation.x = Math.sin(elapsed * 0.25) * 0.08
+        }
+    })
+
+    return (
+        <group ref={groupRef} position={position} scale={scale}>
+            {/* Outer ring + ticks — rotate together */}
+            <group ref={outerRef}>
+                {arcGeos.map((geo, i) => (
+                    <mesh key={`arc-${i}`} geometry={geo} material={baseMat} raycast={() => null} />
+                ))}
+                {tickTransforms.map((t, i) => (
+                    <mesh key={`tick-${i}`} position={t.pos} rotation={t.rot} raycast={() => null}>
+                        <boxGeometry args={[0.06, 0.22, 0.04]} />
+                        <primitive object={baseMat} attach="material" />
+                    </mesh>
+                ))}
+            </group>
+
+            {/* Inner star + pip — counter-rotate */}
+            <group ref={innerRef}>
+                <mesh geometry={starGeo} material={baseMat} position={[0, 0, -0.035]} raycast={() => null} />
+                <mesh raycast={() => null}>
+                    <octahedronGeometry args={[0.2, 0]} />
+                    <primitive object={baseMat} attach="material" />
+                </mesh>
+            </group>
+
+            {/* Rune strokes — pulse independently */}
+            <group ref={strokesRef}>
+                {runeGeos.map((geo, i) => (
+                    <mesh key={`rune-${i}`} geometry={geo} material={runeMats[i]} raycast={() => null} />
+                ))}
+            </group>
+        </group>
+    )
+}
+
+// ─── Sigil model (sigil.glb) ───────────────────────────────────────────────────
+function SigilModel({ position = [0, 0, 0], scale = 1 }) {
+    const { scene } = useGLTF('/sigil.glb')
+    const sigilMat = useMemo(() => new THREE.MeshPhysicalMaterial({
+        color: '#d8e8f8',
+        metalness: 0.7,
+        roughness: 0.2,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+        side: THREE.DoubleSide,
+    }), [])
+    const cloned = useMemo(() => {
+        const c = scene.clone(true)
+        c.traverse(child => { if (child.isMesh) child.material = sigilMat })
+        const box = new THREE.Box3().setFromObject(c)
+        const center = new THREE.Vector3()
+        box.getCenter(center)
+        c.position.sub(center)
+        return c
+    }, [scene, sigilMat])
+    const spinRef = useRef()
+    const floatRef = useRef()
+    const tiltRef = useRef()
+    useFrame((state, delta) => {
+        const t = state.clock.elapsedTime
+        if (spinRef.current) spinRef.current.rotation.y = Math.sin(t * 0.1) * 0.2 - 0.25
+        if (floatRef.current) floatRef.current.rotation.y = Math.sin(t * 0.4) * 0.3
+        if (tiltRef.current) {
+            const mx = clamp(state.pointer.x, -1, 1)
+            const my = clamp(state.pointer.y, -1, 1)
+            tiltRef.current.rotation.y = dampValue(tiltRef.current.rotation.y, mx * 0.28, 2.5, delta)
+            tiltRef.current.rotation.x = dampValue(tiltRef.current.rotation.x, -my * 0.18, 2.5, delta)
+        }
+    })
+    return (
+        <group position={position} scale={scale}>
+            <group ref={tiltRef}>
+                <group ref={floatRef}>
+                    <group rotation={[-0.4, 0.7, 0.9]}>
+                        <group ref={spinRef}><primitive object={cloned} /></group>
+                    </group>
+                </group>
+            </group>
+        </group>
+    )
+}
+useGLTF.preload('/sigil.glb')
+
+// ─── Glass accent orbs for Dossier section ───────────────────────────────────
+function DossierGlassAccents() {
+    const glassMat = useMemo(() => new THREE.MeshPhysicalMaterial({
+        color: '#aacfff',
+        transmission: 0.93,
+        roughness: 0.03,
+        metalness: 0.05,
+        ior: 1.5,
+        thickness: 4.0,
+        transparent: true,
+        toneMapped: false,
+    }), [])
+
+    const accents = useMemo(() => [
+        { type: 'sphere', pos: [-18, 12, -200], r: 5.5, phase: 0.0, speed: 0.48 },
+        { type: 'sphere', pos: [-68, -8,  -225], r: 4.0, phase: 1.7, speed: 0.52 },
+        { type: 'sphere', pos: [-32, -38, -260], r: 3.5, phase: 3.1, speed: 0.44 },
+        { type: 'torus',  pos: [-45,  8, -215], r: 11, tube: 0.9, phase: 0.8, speed: 0.38 },
+        { type: 'sphere', pos: [-55, 25, -240], r: 2.5, phase: 2.4, speed: 0.60 },
+    ], [])
+
+    const refsArr = useRef([])
+    useFrame((state) => {
+        const t = state.clock.elapsedTime
+        refsArr.current.forEach((ref, i) => {
+            if (!ref) return
+            const a = accents[i]
+            ref.position.y = a.pos[1] + Math.sin(t * a.speed + a.phase) * 3
+            ref.rotation.y = t * (0.08 + i * 0.025)
+            ref.rotation.x = t * (0.05 + i * 0.015)
+        })
+    })
+
+    return (
+        <group>
+            {accents.map((a, i) => (
+                <mesh
+                    key={i}
+                    position={a.pos}
+                    ref={el => { refsArr.current[i] = el }}
+                    material={glassMat}
+                    raycast={() => null}
+                >
+                    {a.type === 'sphere'
+                        ? <sphereGeometry args={[a.r, 32, 32]} />
+                        : <torusGeometry args={[a.r, a.tube, 16, 64]} />
+                    }
+                </mesh>
+            ))}
+        </group>
+    )
+}
+
 function BustDiptych({ scrollRef }) {
     const opRef = useRef()
     const [appeared, setAppeared] = useState(false)
     const appearedRef = useRef(false)
     const [focusedIdx, setFocusedIdx] = useState(-1)
+
+    const {
+        k_x, k_y, k_z, k_intensity, k_color,
+        r_x, r_y, r_z, r_intensity, r_color,
+        f_x, f_y, f_z, f_intensity, f_color,
+    } = useControls('Sigil Lights', {
+        k_x: { value: -67,  min: -300, max: 300, step: 1, label: 'Key X' },
+        k_y: { value: -5,   min: -300, max: 300, step: 1, label: 'Key Y' },
+        k_z: { value: -160, min: -400, max: 0,   step: 1, label: 'Key Z' },
+        k_intensity: { value: 2000, min: 0, max: 2000, step: 10, label: 'Key Intensity' },
+        k_color: { value: '#0079ff', label: 'Key Color' },
+        r_x: { value: -62,  min: -300, max: 300, step: 1, label: 'Rim X' },
+        r_y: { value: -66,  min: -300, max: 300, step: 1, label: 'Rim Y' },
+        r_z: { value: -222, min: -400, max: 0,   step: 1, label: 'Rim Z' },
+        r_intensity: { value: 2000, min: 0, max: 2000, step: 10, label: 'Rim Intensity' },
+        r_color: { value: '#6d50ff', label: 'Rim Color' },
+        f_x: { value: -110, min: -300, max: 300, step: 1, label: 'Fill X' },
+        f_y: { value: 39,   min: -300, max: 300, step: 1, label: 'Fill Y' },
+        f_z: { value: -191, min: -400, max: 0,   step: 1, label: 'Fill Z' },
+        f_intensity: { value: 2000, min: 0, max: 2000, step: 10, label: 'Fill Intensity' },
+        f_color: { value: '#a200ff', label: 'Fill Color' },
+    })
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
@@ -4252,9 +4462,11 @@ function BustDiptych({ scrollRef }) {
     })
 
     return (
-        <group ref={opRef} position={[0, 0, -85]} scale={0}>
-            {/* GlitchBust hidden — revert: uncomment below */}
-            {/* <GlitchBust position={[-9, -3, -20]} scale={6} rotSpeed={0.04} dimmed={focusedIdx !== -1} /> */}
+        <group ref={opRef} position={[0, 0, -100]} scale={0}>
+            {/* Sigil lights — controlled via Leva 'Sigil Lights' panel */}
+            <pointLight position={[k_x, k_y, k_z]} intensity={k_intensity} color={k_color} distance={120} decay={2} />
+            <pointLight position={[r_x, r_y, r_z]} intensity={r_intensity} color={r_color} distance={100} decay={2} />
+            <pointLight position={[f_x, f_y, f_z]} intensity={f_intensity} color={f_color} distance={90} decay={2} />
             <SigilModel position={[-40, -20, -250]} scale={9} />
             <PhotoRing appeared={appeared} focusedIdx={focusedIdx} setFocusedIdx={setFocusedIdx} />
 
@@ -4601,24 +4813,39 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
 // ═════════════════════════════════════════════════════════════════════════════
 function EliteLoader() {
     const { progress, active } = useProgress()
-    const [displayProgress, setDisplayProgress] = useState(0)
     const [isFading, setIsFading] = useState(false)
     const [isHidden, setIsHidden] = useState(false)
+    const progressTargetRef = useRef(0)
+    const displayProgressRef = useRef(0)
+    const progressTextRef = useRef(null)
 
-    // Smoothly interpolate the progress number
+    // Keep target ref in sync with actual progress (no re-render)
+    useEffect(() => {
+        progressTargetRef.current = progress
+    }, [progress])
+
+    // Single persistent RAF — lerp toward target, write directly to DOM
     useEffect(() => {
         let rafId
-        const updateProgress = () => {
-            setDisplayProgress((prev) => {
-                const diff = progress - prev
-                if (Math.abs(diff) < 0.1) return progress
-                return prev + diff * 0.08
-            })
-            rafId = requestAnimationFrame(updateProgress)
+        const tick = () => {
+            const target = progressTargetRef.current
+            const cur = displayProgressRef.current
+            const diff = target - cur
+            const next = Math.abs(diff) < 0.05 ? target : cur + diff * 0.08
+            displayProgressRef.current = next
+            if (progressTextRef.current) {
+                const formatted = next < 10
+                    ? `00${next.toFixed(2)}`
+                    : next < 100
+                        ? `0${next.toFixed(2)}`
+                        : next.toFixed(2)
+                progressTextRef.current.textContent = `${formatted} %`
+            }
+            rafId = requestAnimationFrame(tick)
         }
-        updateProgress()
+        rafId = requestAnimationFrame(tick)
         return () => cancelAnimationFrame(rafId)
-    }, [progress])
+    }, [])
 
     // Handle fade out sequence
     useEffect(() => {
@@ -4706,8 +4933,8 @@ function EliteLoader() {
                 SYS // INITIALIZING GRAPHICS
             </div>
 
-            <div style={{ marginTop: '30px', color: '#ffffff', fontSize: '18px', fontWeight: 200, letterSpacing: '0.15em' }}>
-                {displayProgress < 10 ? `00${displayProgress.toFixed(2)}` : displayProgress < 100 ? `0${displayProgress.toFixed(2)}` : displayProgress.toFixed(2)} %
+            <div ref={progressTextRef} style={{ marginTop: '30px', color: '#ffffff', fontSize: '18px', fontWeight: 200, letterSpacing: '0.15em' }}>
+                00.00 %
             </div>
         </div>
     )
@@ -4891,25 +5118,40 @@ function GlitchLink({ href, children, ...props }) {
 
 function CursorOrb() {
     const orbRef = useRef()
-    const [hovered, setHovered] = useState(false)
+    const soulRef = useRef()
+    const coreRef = useRef()
     const mouse = useRef({ x: 0, y: 0 })
+    const hoveredRef = useRef(false)
 
     useEffect(() => {
         const onMove = (e) => {
             mouse.current.x = e.clientX
             mouse.current.y = e.clientY
 
-            // Auto-detect hover by checking computed cursor style
-            const target = e.target
-            const cursor = window.getComputedStyle(target).cursor
-            setHovered(cursor === 'pointer' || cursor === 'crosshair')
+            const cursor = window.getComputedStyle(e.target).cursor
+            const isHover = cursor === 'pointer' || cursor === 'crosshair'
+            if (isHover !== hoveredRef.current) {
+                hoveredRef.current = isHover
+                if (soulRef.current) {
+                    const s = isHover ? '32px' : '24px'
+                    soulRef.current.style.width = s
+                    soulRef.current.style.height = s
+                    soulRef.current.style.boxShadow = isHover
+                        ? '0 0 25px #ff00ff, 0 0 45px #ff00ff'
+                        : '0 0 12px #ff00ff, 0 0 20px #ff00ff'
+                }
+                if (coreRef.current) {
+                    const c = isHover ? '6px' : '4px'
+                    coreRef.current.style.width = c
+                    coreRef.current.style.height = c
+                }
+            }
         }
         window.addEventListener('mousemove', onMove)
 
         let raf
         const update = () => {
             if (orbRef.current) {
-                // translate3d is hardware accelerated
                 orbRef.current.style.transform = `translate3d(${mouse.current.x}px, ${mouse.current.y}px, 0)`
             }
             raf = requestAnimationFrame(update)
@@ -4939,24 +5181,24 @@ function CursorOrb() {
                 mixBlendMode: 'screen'
             }}
         >
-            {/* The "Soul" - Identical to original SVG but dynamic */}
-            <div style={{
-                width: hovered ? '32px' : '24px',
-                height: hovered ? '32px' : '24px',
+            <div ref={soulRef} style={{
+                width: '24px',
+                height: '24px',
                 borderRadius: '50%',
                 background: 'rgba(255, 0, 255, 0.4)',
-                boxShadow: `0 0 ${hovered ? '25px' : '12px'} #ff00ff, 0 0 ${hovered ? '45px' : '20px'} #ff00ff`,
+                boxShadow: '0 0 12px #ff00ff, 0 0 20px #ff00ff',
                 transition: 'width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
             }}>
-                <div style={{
-                    width: hovered ? '6px' : '4px',
-                    height: hovered ? '6px' : '4px',
+                <div ref={coreRef} style={{
+                    width: '4px',
+                    height: '4px',
                     borderRadius: '50%',
                     background: '#fff',
-                    boxShadow: '0 0 10px #fff'
+                    boxShadow: '0 0 10px #fff',
+                    transition: 'width 0.3s ease, height 0.3s ease'
                 }} />
             </div>
         </div>
@@ -4992,7 +5234,9 @@ function HeroSubtextCard({ scrollRef }) {
         const id = setInterval(() => {
             if (heroIntroState.phase === 'done') { setShow(true); clearInterval(id) }
         }, 100)
-        return () => clearInterval(id)
+        // Fallback: show after 8s in case phase gets stuck
+        const fallback = setTimeout(() => setShow(true), 8000)
+        return () => { clearInterval(id); clearTimeout(fallback) }
     }, [])
 
     useEffect(() => {
@@ -5009,52 +5253,56 @@ function HeroSubtextCard({ scrollRef }) {
     const visible = show && inHero
 
     return (
-        <div style={{
-            position: 'absolute',
-            bottom: '12%',
-            left: '50%',
-            transform: `translateX(-50%) translateY(${visible ? '0px' : '80px'})`,
-            opacity: visible ? 1 : 0,
-            transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.4s cubic-bezier(0.16, 1, 0.3, 1)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            pointerEvents: 'none',
-            zIndex: 10,
-        }}>
-            {/* Card */}
+        <>
+            {/* "Hello, I AM" — above the 3D MUSTAFA text */}
             <div style={{
-                background: 'rgba(10, 12, 30, 0.28)',
-                border: '1px solid rgba(100, 140, 220, 0.12)',
-                backdropFilter: 'blur(6px)',
-                borderRadius: '12px',
-                padding: '18px 32px',
-                maxWidth: '420px',
+                position: 'absolute',
+                top: '18%',
+                left: '50%',
+                transform: `translateX(-50%) translateY(${visible ? '0px' : '-40px'})`,
+                opacity: visible ? 1 : 0,
+                transition: 'opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1), transform 1.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                pointerEvents: 'none',
+                zIndex: 40,
                 textAlign: 'center',
-                boxShadow: '0 0 30px rgba(80, 120, 255, 0.04)',
             }}>
                 <div style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: '13px',
-                    letterSpacing: '0.08em',
-                    lineHeight: 1.7,
-                    color: '#8899cc',
+                    fontSize: '16px',
+                    letterSpacing: '0.22em',
+                    textTransform: 'uppercase',
+                    color: '#506088',
                 }}>
-                    Product Designer @ Dell, UX Engineer @ UT Austin
+                    Hello, I am
                 </div>
             </div>
 
-            {/* Hand placeholder */}
+            {/* Subtext card — below the 3D MUSTAFA text */}
             <div style={{
-                marginTop: '-2px',
-                fontSize: '48px',
-                lineHeight: 1,
-                filter: 'drop-shadow(0 4px 12px rgba(80,120,255,0.3))',
-                userSelect: 'none',
+                position: 'absolute',
+                bottom: '12%',
+                left: '50%',
+                transform: `translateX(-50%) translateY(${visible ? '0px' : '60px'})`,
+                opacity: visible ? 1 : 0,
+                transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s, transform 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                pointerEvents: 'none',
+                zIndex: 40,
             }}>
-                🤚
+                <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '14px',
+                    letterSpacing: '0.08em',
+                    lineHeight: 1.6,
+                    color: '#6677aa',
+                    textTransform: 'uppercase',
+                }}>
+                    Product Designer @ Dell &nbsp;·&nbsp; UX Engineer @ UT Austin
+                </div>
             </div>
-        </div>
+        </>
     )
 }
 
