@@ -5133,9 +5133,7 @@ export default function Portfolio() {
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0 40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '13px', pointerEvents: 'auto', padding: '24px 0' }}>
                     <img src="/2/27/Logo.svg" alt="Mustafa" style={{ height: '28px', display: 'block', opacity: 0.9 }} />
-                    <div>
-                        Open for work
-                    </div>
+
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', pointerEvents: 'auto', padding: '24px 0' }}>
                     <div style={{ display: 'flex', gap: '20px' }}>
