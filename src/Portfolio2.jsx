@@ -3142,7 +3142,7 @@ const ABOUT_CSS = `
 .about-panel.hidden { opacity: 0; pointer-events: none; }
 .about-panel:not(.hidden) { animation: about-in 0.55s cubic-bezier(0.16,1,0.3,1) both; }
 .about-label {
-    font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.32em;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.32em;
     color: rgba(136,160,255,0.4); text-transform: uppercase;
     display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
 }
@@ -3161,7 +3161,7 @@ const ABOUT_CSS = `
     color: #eef2ff; margin: 0 0 4px; font-weight: 400;
 }
 .about-role {
-    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.26em;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.26em;
     color: rgba(136,160,255,0.45); margin: 0 0 28px; text-transform: uppercase;
 }
 .about-bio {
@@ -3176,7 +3176,7 @@ const ABOUT_CSS = `
 }
 .about-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
 .about-skill {
-    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
     color: rgba(100,140,220,0.6); padding: 4px 10px;
     border: 1px solid rgba(80,110,200,0.18); border-radius: 2px;
     text-transform: uppercase;
@@ -3185,7 +3185,7 @@ const ABOUT_CSS = `
     display: flex; gap: 12px;
 }
 .about-contact-btn {
-    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
     color: rgba(136,160,255,0.6); text-transform: uppercase; text-decoration: none;
     padding: 10px 16px; border: 1px solid rgba(100,130,220,0.2); border-radius: 2px;
     background: transparent; cursor: pointer;
@@ -3947,6 +3947,76 @@ const RESUME_CSS = `
 .dossier .skills { font-size:9px; color:#444; line-height:2; letter-spacing:0.04em }
 `
 
+// ─── Photo Ring intro animation ───────────────────────────────────────────────
+// All positions in PhotoRing LOCAL space (ring center = [0,0,0], ring radius = 70).
+// Path: off-screen bottom-left → sweep to ring center → wide orbit → return.
+const INTRO_CURVE = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-280, -200, 150),
+    new THREE.Vector3(-160, -110,  80),
+    new THREE.Vector3( -60,  -45,  25),
+    new THREE.Vector3(  10,   -5, -15),
+    new THREE.Vector3( 130,   15, -55),
+    new THREE.Vector3(  90,  105, -35),
+    new THREE.Vector3(   0,  130,   5),
+    new THREE.Vector3(-110,   85,  25),
+    new THREE.Vector3(-130,    0,  35),
+    new THREE.Vector3( -60,  -90,  10),
+    new THREE.Vector3(  10,   -5, -15),
+], false)
+
+const CARD_INTERVAL  = 0.25   // seconds between each card's departure
+const TRAVEL_SEC     = 2.4    // seconds a card travels before arriving at ring
+const DETACH_FRAC    = 0.82   // fraction of TRAVEL_SEC at which card detaches from spine
+const SPINE_FADE_SEC = (9 - 1) * CARD_INTERVAL + TRAVEL_SEC * DETACH_FRAC
+const INTRO_DONE_SEC = (9 - 1) * CARD_INTERVAL + TRAVEL_SEC + 0.6
+
+// ─── Wavy spine — glowing guide that leads the cards in ───────────────────────
+const SPINE_N = 200
+const _spinePts = INTRO_CURVE.getPoints(SPINE_N - 1)  // cached base positions
+
+function WavySpine({ introTRef }) {
+    const lineRef = useRef()
+    const posArr = useMemo(() => new Float32Array(SPINE_N * 3), [])
+
+    useFrame((state) => {
+        if (!lineRef.current) return
+        const t   = state.clock.elapsedTime
+        const iT  = introTRef.current
+
+        // Head advances along path
+        const headFrac = clamp(iT / (TRAVEL_SEC * 0.65), 0, 1)
+        const headIdx  = Math.floor(headFrac * (SPINE_N - 1))
+
+        for (let i = 0; i < SPINE_N; i++) {
+            if (i > headIdx) {
+                posArr[i * 3]     = posArr[headIdx * 3]
+                posArr[i * 3 + 1] = posArr[headIdx * 3 + 1]
+                posArr[i * 3 + 2] = posArr[headIdx * 3 + 2]
+                continue
+            }
+            const frac = i / (SPINE_N - 1)
+            const p    = _spinePts[i]
+            const amp  = 10 * Math.sin(frac * Math.PI * 0.9 + 0.1)
+            posArr[i * 3]     = p.x + Math.cos(frac * 11 - t * 3) * amp * 0.5
+            posArr[i * 3 + 1] = p.y + Math.sin(frac * 16 - t * 5) * amp
+            posArr[i * 3 + 2] = p.z
+        }
+        lineRef.current.geometry.attributes.position.needsUpdate = true
+        lineRef.current.material.opacity = iT < SPINE_FADE_SEC
+            ? 1
+            : Math.max(0, 1 - (iT - SPINE_FADE_SEC) / 0.5)
+    })
+
+    return (
+        <line ref={lineRef}>
+            <bufferGeometry>
+                <bufferAttribute attach="attributes-position" array={posArr} count={SPINE_N} itemSize={3} />
+            </bufferGeometry>
+            <lineBasicMaterial color="#00eeff" transparent opacity={1} toneMapped={false} />
+        </line>
+    )
+}
+
 // ─── Photo Ring — circular gallery of images for the Dossier section ──────────
 const PHOTO_PATHS = [
     '/photos/DSCN3675 (1).png',
@@ -3960,7 +4030,7 @@ const PHOTO_PATHS = [
     '/photos/exported_8647493E-CA66-4175-AA6D-9ACDC7C9E1A2.png'
 ]
 
-function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused }) {
+function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused, introTRef }) {
     const meshRef = useRef()
     const opRef = useRef(0)
     const scaleRef = useRef(1)
@@ -4024,56 +4094,79 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         outlineOpRef.current = dampValue(outlineOpRef.current, isHovered ? 0.8 : 0, 10, delta)
         if (outlineRef.current) outlineRef.current.material.opacity = outlineOpRef.current
 
-        let targetOp = appeared ? 1.0 : 0
-        if (isAnyFocused) {
-            targetOp = focused ? 1.0 : 0.3
-        }
+        const t           = state.clock.elapsedTime
+        const iT          = introTRef?.current ?? INTRO_DONE_SEC + 1
+        const cardStart   = index * CARD_INTERVAL
+        const cardElapsed = iT - cardStart
+        const cardFrac    = clamp(cardElapsed / TRAVEL_SEC, 0, 1)
+        const inTravel    = appeared && cardElapsed >= 0 && cardFrac < DETACH_FRAC
+        const inDetach    = appeared && cardFrac >= DETACH_FRAC && iT < INTRO_DONE_SEC
 
-        opRef.current = dampValue(opRef.current, targetOp, 12, delta)
+        let targetX, targetY, targetZ, targetOp
+        let clothTarget = 0.18
+        let faceCam = false
 
-        // Tick cloth shader time + animate hover pull
-        if (shaderRef.current) {
-            shaderRef.current.uniforms.uTime.value = state.clock.elapsedTime
-            const targetStrength = isHovered ? 1.2 : 0.0
-            shaderRef.current.uniforms.uHoverStrength.value = dampValue(shaderRef.current.uniforms.uHoverStrength.value, targetStrength, 6, delta)
-        }
-
-        let targetScale = 1.8
-        if (focused) targetScale = 2.2
-
-        scaleRef.current = dampValue(scaleRef.current, targetScale, 10, delta)
-
-        // When focused: move to camera center-view.
-        let targetX, targetY, targetZ
         if (focused) {
-            // Compute 8 units in front of camera in world space, then convert to local group space
+            // Focus: fly to front of camera
             state.camera.getWorldDirection(_camDir)
             _worldTarget.copy(state.camera.position).addScaledVector(_camDir, 8)
             if (meshRef.current.parent) meshRef.current.parent.worldToLocal(_worldTarget)
             targetX = _worldTarget.x
             targetY = _worldTarget.y
             targetZ = _worldTarget.z
+            targetOp = 1.0
+            faceCam = true
+        } else if (!appeared || cardElapsed < 0) {
+            // Not yet visible — park at path entry, hidden
+            const ep = INTRO_CURVE.getPointAt(0)
+            targetX = ep.x; targetY = ep.y; targetZ = ep.z
+            targetOp = 0
+        } else if (inTravel) {
+            // Riding the wavy spine toward ring
+            const pathT = (cardFrac / DETACH_FRAC) * 0.9
+            const p     = INTRO_CURVE.getPointAt(pathT)
+            const amp   = 10 * Math.sin(pathT * Math.PI * 0.9 + 0.1)
+            targetX = p.x + Math.cos(pathT * 11 - t * 3) * amp * 0.5
+            targetY = p.y + Math.sin(pathT * 16 - t * 5) * amp
+            targetZ = p.z
+            targetOp   = clamp(cardFrac / 0.08, 0, 1)
+            clothTarget = 0.55
+            faceCam    = true
         } else {
-            // Standard orbital position
+            // Settled in ring (detach easing or steady state)
             targetX = Math.cos(angle) * radius
-            targetY = Math.sin(state.clock.elapsedTime + index * 0.5) * 0.5
+            targetY = inDetach ? 0 : Math.sin(t + index * 0.5) * 0.5
             targetZ = Math.sin(angle) * radius
+            targetOp = isAnyFocused ? 0.3 : 1.0
         }
+
+        opRef.current = dampValue(opRef.current, targetOp, 12, delta)
+
+        if (shaderRef.current) {
+            shaderRef.current.uniforms.uTime.value = t
+            shaderRef.current.uniforms.uHoverStrength.value = dampValue(
+                shaderRef.current.uniforms.uHoverStrength.value,
+                isHovered ? 1.2 : 0.0, 6, delta)
+            shaderRef.current.uniforms.uClothAmp.value = dampValue(
+                shaderRef.current.uniforms.uClothAmp.value,
+                clothTarget, 4, delta)
+        }
+
+        scaleRef.current = dampValue(scaleRef.current, focused ? 2.2 : 1.8, 10, delta)
 
         posRef.current.x = dampValue(posRef.current.x, targetX, 8, delta)
         posRef.current.y = dampValue(posRef.current.y, targetY, 8, delta)
         posRef.current.z = dampValue(posRef.current.z, targetZ, 8, delta)
 
         meshRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
-        if (focused) {
+        if (faceCam) {
             meshRef.current.lookAt(state.camera.position)
         } else {
-            // Face outward from ring center — bends panels around the arc
             meshRef.current.rotation.set(0, Math.PI / 2 - angle, 0)
         }
         meshRef.current.scale.setScalar(scaleRef.current)
         meshRef.current.material.opacity = opRef.current
-        meshRef.current.material.emissiveIntensity = 0.15 + (isHovered || focused ? 0.35 : 0) + Math.sin(state.clock.elapsedTime * 4 + index) * 0.05
+        meshRef.current.material.emissiveIntensity = 0.15 + (isHovered || focused ? 0.35 : 0) + Math.sin(t * 4 + index) * 0.05
     })
 
     return (
@@ -4108,15 +4201,30 @@ function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
     const groupRef = useRef()
     const radius = 70
     const center = [-80, 9, -200]
+    const introTRef      = useRef(0)
+    const prevAppearedRef = useRef(false)
 
     useFrame((_, delta) => {
-        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1) {
+        // Reset / advance intro timer
+        if (!appeared) {
+            introTRef.current = 0
+            prevAppearedRef.current = false
+        } else if (!prevAppearedRef.current) {
+            prevAppearedRef.current = true
+            introTRef.current = 0
+        } else {
+            introTRef.current += delta
+        }
+
+        // Spin ring only after all cards have settled
+        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1 && introTRef.current > INTRO_DONE_SEC) {
             groupRef.current.rotation.y += delta * 0.1
         }
     })
 
     return (
         <group ref={groupRef} position={center} rotation={[0.3, 0.7, 0.3]}>
+            {appeared && <WavySpine introTRef={introTRef} />}
             {PHOTO_PATHS.map((path, i) => {
                 const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
                 return (
@@ -4132,6 +4240,7 @@ function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
                         focused={focusedIdx === i}
                         isAnyFocused={focusedIdx !== -1}
                         onFocus={setFocusedIdx}
+                        introTRef={introTRef}
                     />
                 )
             })}
