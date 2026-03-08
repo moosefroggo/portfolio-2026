@@ -3286,15 +3286,13 @@ const LOGO_TEXTURES = {
 
 // Company card — holographic logo display, label to the left, data readout to the right
 function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
-    const texture = useMemo(() => {
+    const [texture, setTexture] = useState(null)
+    useEffect(() => {
         const path = LOGO_TEXTURES[config.id]
-        if (!path) return null
-        return new THREE.TextureLoader().load(
-            path,
-            undefined,
-            undefined,
-            (err) => console.warn('Logo load failed:', config.id, err)
-        )
+        if (!path) return
+        const loader = new THREE.TextureLoader()
+        loader.load(path, setTexture, undefined,
+            (err) => console.warn('Logo load failed:', config.id, err))
     }, [config.id])
     const meshRef = useRef()
     const groupRef = useRef()
@@ -3947,72 +3945,82 @@ const RESUME_CSS = `
 .dossier .skills { font-size:9px; color:#444; line-height:2; letter-spacing:0.04em }
 `
 
-// ─── Photo Ring intro animation ───────────────────────────────────────────────
-// All positions in PhotoRing LOCAL space (ring center = [0,0,0], ring radius = 70).
-// Path: off-screen bottom-left → sweep to ring center → wide orbit → return.
-const INTRO_CURVE = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-280, -200, 150),
-    new THREE.Vector3(-160, -110,  80),
-    new THREE.Vector3( -60,  -45,  25),
-    new THREE.Vector3(  10,   -5, -15),
-    new THREE.Vector3( 130,   15, -55),
-    new THREE.Vector3(  90,  105, -35),
-    new THREE.Vector3(   0,  130,   5),
-    new THREE.Vector3(-110,   85,  25),
-    new THREE.Vector3(-130,    0,  35),
-    new THREE.Vector3( -60,  -90,  10),
-    new THREE.Vector3(  10,   -5, -15),
-], false)
+// ─── Photo Ring train intro ────────────────────────────────────────────────────
+// Track: straight from off-screen bottom-left → joint → one full ring orbit.
+// All coords in PhotoRing LOCAL space (ring center=[0,0,0], ring in XZ plane, r=70).
+//
+// Joint = photo 8's ring position so the rear bogey detaches first as it enters.
+// Circle goes CCW (increasing angle); photos encountered in order 8,0,1,2,3,4,5,6,7.
+// Train order engine→rear: engine, photo0, photo1, …, photo8.
+// Detach order rear→front: photo8 first, photo0 last.
+const TRAIN_N_STR = 50, TRAIN_N_CIR = 120, TRAIN_N_TOT = 170
+const TRAIN_JOINT_ANGLE = (8 / 9) * Math.PI * 2          // ≈ 320° — photo 8's ring pos
 
-const CARD_INTERVAL  = 0.25   // seconds between each card's departure
-const TRAVEL_SEC     = 2.4    // seconds a card travels before arriving at ring
-const DETACH_FRAC    = 0.82   // fraction of TRAVEL_SEC at which card detaches from spine
-const SPINE_FADE_SEC = (9 - 1) * CARD_INTERVAL + TRAVEL_SEC * DETACH_FRAC
-const INTRO_DONE_SEC = (9 - 1) * CARD_INTERVAL + TRAVEL_SEC + 0.6
+const TRAIN_PATH = (() => {
+    const pts = new Float32Array(TRAIN_N_TOT * 3)
+    const jx = Math.cos(TRAIN_JOINT_ANGLE) * 70   // ≈  53.6
+    const jz = Math.sin(TRAIN_JOINT_ANGLE) * 70   // ≈ -45.0
+    for (let i = 0; i < TRAIN_N_STR; i++) {
+        const t = i / (TRAIN_N_STR - 1)
+        pts[i*3]   = THREE.MathUtils.lerp(-200, jx, t)
+        pts[i*3+1] = THREE.MathUtils.lerp(-160, 0, t)
+        pts[i*3+2] = THREE.MathUtils.lerp(120, jz, t)
+    }
+    for (let i = 0; i < TRAIN_N_CIR; i++) {
+        const a = TRAIN_JOINT_ANGLE + (i / TRAIN_N_CIR) * Math.PI * 2
+        pts[(TRAIN_N_STR + i)*3]   = Math.cos(a) * 70
+        pts[(TRAIN_N_STR + i)*3+1] = 0
+        pts[(TRAIN_N_STR + i)*3+2] = Math.sin(a) * 70
+    }
+    return pts
+})()
 
-// ─── Wavy spine — glowing guide that leads the cards in ───────────────────────
-const SPINE_N = 200
-const _spinePts = INTRO_CURVE.getPoints(SPINE_N - 1)  // cached base positions
+const BOGEY_SPACING   = 0.04   // path-fraction gap: engine leads, photo i is (i+1) steps back
+const TRAIN_RATE      = 0.28   // path-fraction per second
+const DETACH_START    = 0.70   // trainHead when photo 8 (rear bogey) detaches
+const DETACH_STEP     = 0.07   // trainHead increment between successive detachments
+const SPINE_FADE_HEAD = DETACH_START + 8 * DETACH_STEP   // ≈ 1.26
+const TRAIN_DONE_SEC  = (SPINE_FADE_HEAD + 0.5) / TRAIN_RATE + 0.5  // ≈ 6.3 s
+
+const _spineWaveBuf = new Float32Array(TRAIN_N_TOT * 3)
 
 function WavySpine({ introTRef }) {
     const lineRef = useRef()
-    const posArr = useMemo(() => new Float32Array(SPINE_N * 3), [])
 
     useFrame((state) => {
         if (!lineRef.current) return
-        const t   = state.clock.elapsedTime
-        const iT  = introTRef.current
+        const t  = state.clock.elapsedTime
+        const th = introTRef.current * TRAIN_RATE
 
-        // Head advances along path
-        const headFrac = clamp(iT / (TRAVEL_SEC * 0.65), 0, 1)
-        const headIdx  = Math.floor(headFrac * (SPINE_N - 1))
+        const headIdx = Math.min(Math.floor(clamp(th, 0, 1) * (TRAIN_N_TOT - 1)), TRAIN_N_TOT - 1)
+        const tailIdx = Math.max(Math.floor(clamp(th - 9 * BOGEY_SPACING, 0, 1) * (TRAIN_N_TOT - 1)), 0)
 
-        for (let i = 0; i < SPINE_N; i++) {
-            if (i > headIdx) {
-                posArr[i * 3]     = posArr[headIdx * 3]
-                posArr[i * 3 + 1] = posArr[headIdx * 3 + 1]
-                posArr[i * 3 + 2] = posArr[headIdx * 3 + 2]
+        for (let i = 0; i < TRAIN_N_TOT; i++) {
+            const px = TRAIN_PATH[i*3], py = TRAIN_PATH[i*3+1], pz = TRAIN_PATH[i*3+2]
+            if (i < tailIdx || i > headIdx) {
+                _spineWaveBuf[i*3] = px; _spineWaveBuf[i*3+1] = py; _spineWaveBuf[i*3+2] = pz
                 continue
             }
-            const frac = i / (SPINE_N - 1)
-            const p    = _spinePts[i]
-            const amp  = 10 * Math.sin(frac * Math.PI * 0.9 + 0.1)
-            posArr[i * 3]     = p.x + Math.cos(frac * 11 - t * 3) * amp * 0.5
-            posArr[i * 3 + 1] = p.y + Math.sin(frac * 16 - t * 5) * amp
-            posArr[i * 3 + 2] = p.z
+            const frac = i / (TRAIN_N_TOT - 1)
+            const amp  = i < TRAIN_N_STR ? 12 * (frac / (TRAIN_N_STR / TRAIN_N_TOT)) : 5
+            _spineWaveBuf[i*3]   = px + Math.cos(frac * 11 - t * 3) * amp * 0.5
+            _spineWaveBuf[i*3+1] = py + Math.sin(frac * 16 - t * 5) * amp
+            _spineWaveBuf[i*3+2] = pz
         }
         lineRef.current.geometry.attributes.position.needsUpdate = true
-        lineRef.current.material.opacity = iT < SPINE_FADE_SEC
-            ? 1
-            : Math.max(0, 1 - (iT - SPINE_FADE_SEC) / 0.5)
+
+        const opacity = th < 0.05 ? 0
+            : th < SPINE_FADE_HEAD ? 1
+            : Math.max(0, 1 - (th - SPINE_FADE_HEAD) / 0.4)
+        lineRef.current.material.opacity = opacity
     })
 
     return (
         <line ref={lineRef}>
             <bufferGeometry>
-                <bufferAttribute attach="attributes-position" array={posArr} count={SPINE_N} itemSize={3} />
+                <bufferAttribute attach="attributes-position" array={_spineWaveBuf} count={TRAIN_N_TOT} itemSize={3} />
             </bufferGeometry>
-            <lineBasicMaterial color="#00eeff" transparent opacity={1} toneMapped={false} />
+            <lineBasicMaterial color="#00eeff" transparent opacity={0} toneMapped={false} />
         </line>
     )
 }
@@ -4094,48 +4102,43 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         outlineOpRef.current = dampValue(outlineOpRef.current, isHovered ? 0.8 : 0, 10, delta)
         if (outlineRef.current) outlineRef.current.material.opacity = outlineOpRef.current
 
-        const t           = state.clock.elapsedTime
-        const iT          = introTRef?.current ?? INTRO_DONE_SEC + 1
-        const cardStart   = index * CARD_INTERVAL
-        const cardElapsed = iT - cardStart
-        const cardFrac    = clamp(cardElapsed / TRAVEL_SEC, 0, 1)
-        const inTravel    = appeared && cardElapsed >= 0 && cardFrac < DETACH_FRAC
-        const inDetach    = appeared && cardFrac >= DETACH_FRAC && iT < INTRO_DONE_SEC
+        const t  = state.clock.elapsedTime
+        const th = (introTRef?.current ?? (TRAIN_DONE_SEC + 1)) * TRAIN_RATE  // trainHead
+
+        // photo i is (i+1) BOGEY_SPACING steps behind the engine
+        const photoPathFrac = clamp(th - (index + 1) * BOGEY_SPACING, 0, 1)
+        // Rear bogey (index 8) detaches first; front bogey (index 0) detaches last
+        const isDetached = appeared && th >= DETACH_START + (8 - index) * DETACH_STEP
 
         let targetX, targetY, targetZ, targetOp
         let clothTarget = 0.18
         let faceCam = false
 
         if (focused) {
-            // Focus: fly to front of camera
             state.camera.getWorldDirection(_camDir)
             _worldTarget.copy(state.camera.position).addScaledVector(_camDir, 8)
             if (meshRef.current.parent) meshRef.current.parent.worldToLocal(_worldTarget)
-            targetX = _worldTarget.x
-            targetY = _worldTarget.y
-            targetZ = _worldTarget.z
+            targetX = _worldTarget.x; targetY = _worldTarget.y; targetZ = _worldTarget.z
             targetOp = 1.0
-            faceCam = true
-        } else if (!appeared || cardElapsed < 0) {
-            // Not yet visible — park at path entry, hidden
-            const ep = INTRO_CURVE.getPointAt(0)
-            targetX = ep.x; targetY = ep.y; targetZ = ep.z
+        } else if (!appeared || th <= 0) {
+            targetX = TRAIN_PATH[0]; targetY = TRAIN_PATH[1]; targetZ = TRAIN_PATH[2]
             targetOp = 0
-        } else if (inTravel) {
-            // Riding the wavy spine toward ring
-            const pathT = (cardFrac / DETACH_FRAC) * 0.9
-            const p     = INTRO_CURVE.getPointAt(pathT)
-            const amp   = 10 * Math.sin(pathT * Math.PI * 0.9 + 0.1)
-            targetX = p.x + Math.cos(pathT * 11 - t * 3) * amp * 0.5
-            targetY = p.y + Math.sin(pathT * 16 - t * 5) * amp
-            targetZ = p.z
-            targetOp   = clamp(cardFrac / 0.08, 0, 1)
-            clothTarget = 0.55
+        } else if (!isDetached) {
+            // Riding the train — follow the wavy path
+            const idx  = Math.floor(photoPathFrac * (TRAIN_N_TOT - 1))
+            const frac = photoPathFrac
+            const amp  = frac < (TRAIN_N_STR / TRAIN_N_TOT)
+                ? 12 * (frac / (TRAIN_N_STR / TRAIN_N_TOT)) : 5
+            targetX = TRAIN_PATH[idx*3]   + Math.cos(frac * 11 - t * 3) * amp * 0.5
+            targetY = TRAIN_PATH[idx*3+1] + Math.sin(frac * 16 - t * 5) * amp
+            targetZ = TRAIN_PATH[idx*3+2]
+            targetOp   = clamp(photoPathFrac / 0.05, 0, 1)
+            clothTarget = 0.50
             faceCam    = true
         } else {
-            // Settled in ring (detach easing or steady state)
+            // Settled in ring
             targetX = Math.cos(angle) * radius
-            targetY = inDetach ? 0 : Math.sin(t + index * 0.5) * 0.5
+            targetY = Math.sin(t + index * 0.5) * 0.5
             targetZ = Math.sin(angle) * radius
             targetOp = isAnyFocused ? 0.3 : 1.0
         }
@@ -4145,11 +4148,9 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         if (shaderRef.current) {
             shaderRef.current.uniforms.uTime.value = t
             shaderRef.current.uniforms.uHoverStrength.value = dampValue(
-                shaderRef.current.uniforms.uHoverStrength.value,
-                isHovered ? 1.2 : 0.0, 6, delta)
+                shaderRef.current.uniforms.uHoverStrength.value, isHovered ? 1.2 : 0.0, 6, delta)
             shaderRef.current.uniforms.uClothAmp.value = dampValue(
-                shaderRef.current.uniforms.uClothAmp.value,
-                clothTarget, 4, delta)
+                shaderRef.current.uniforms.uClothAmp.value, clothTarget, 4, delta)
         }
 
         scaleRef.current = dampValue(scaleRef.current, focused ? 2.2 : 1.8, 10, delta)
@@ -4159,7 +4160,7 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         posRef.current.z = dampValue(posRef.current.z, targetZ, 8, delta)
 
         meshRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
-        if (faceCam) {
+        if (faceCam || focused) {
             meshRef.current.lookAt(state.camera.position)
         } else {
             meshRef.current.rotation.set(0, Math.PI / 2 - angle, 0)
@@ -4217,7 +4218,7 @@ function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
         }
 
         // Spin ring only after all cards have settled
-        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1 && introTRef.current > INTRO_DONE_SEC) {
+        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1 && introTRef.current > TRAIN_DONE_SEC) {
             groupRef.current.rotation.y += delta * 0.1
         }
     })
