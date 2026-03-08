@@ -2552,7 +2552,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
     return (
         <div ref={wrapRef} style={{
             position: 'fixed', bottom: '16px', left: '50%',
-            transform: 'translateX(-50%)', width: 'min(420px, 45vw)',
+            transform: 'translateX(-50%)', width: 'min(520px, 55vw)',
             zIndex: 100, pointerEvents: 'none', transition: 'none',
             // Liquid Glass Container
             background: 'rgba(0, 0, 0, 0)',
@@ -2605,8 +2605,10 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                         }} />
                         {/* Label */}
                         <div ref={el => lblRefs.current[i] = el} style={{
-                            position: 'absolute', top: '13px', left: '50%',
-                            transform: 'translateX(-50%)',
+                            position: 'absolute', top: '13px',
+                            left: i === SCROLLBAR_LABELS.length - 1 ? 'auto' : '50%',
+                            right: i === SCROLLBAR_LABELS.length - 1 ? '0' : 'auto',
+                            transform: i === 0 ? 'translateX(-10%)' : i === SCROLLBAR_LABELS.length - 1 ? 'none' : 'translateX(-50%)',
                             fontSize: '8px', letterSpacing: '2px',
                             color: '#2d4070', fontFamily: 'var(--font-mono)',
                             whiteSpace: 'nowrap', userSelect: 'none',
@@ -3445,8 +3447,8 @@ function ResumeHub({ currentSectionRef }) {
     )
 }
 
-// Locked cube — represents the next role; click to reveal message
-function LockedCube({ clicked, onCubeClick, onHover, onHoverOut }) {
+// Locked cube — represents the next role
+function LockedCube({ onHover, onHoverOut }) {
     const meshRef = useRef()
     const wireRef = useRef()
     const [hovered, setHovered] = useState(false)
@@ -3468,55 +3470,45 @@ function LockedCube({ clicked, onCubeClick, onHover, onHoverOut }) {
             onPointerEnter={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
             onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
         >
-            <mesh
-                ref={meshRef}
-                onClick={e => { e.stopPropagation(); onCubeClick() }}
-            >
+            <mesh ref={meshRef}>
                 <boxGeometry args={[1.1, 1.1, 1.1]} />
                 <meshStandardMaterial
                     color="#06060f"
-                    emissive={clicked ? '#3366ff' : (hovered ? '#112244' : '#000011')}
-                    emissiveIntensity={clicked ? 0.8 : (hovered ? 0.4 : 0.15)}
+                    emissive={hovered ? '#112244' : '#000011'}
+                    emissiveIntensity={hovered ? 0.4 : 0.15}
                     metalness={0.9} roughness={0.15} toneMapped={false}
                 />
             </mesh>
             <mesh ref={wireRef}>
                 <boxGeometry args={[1.16, 1.16, 1.16]} />
                 <meshBasicMaterial
-                    color={clicked ? '#3366ff' : (hovered ? '#334466' : '#1a2233')}
+                    color={hovered ? '#334466' : '#1a2233'}
                     wireframe transparent
-                    opacity={clicked ? 0.9 : (hovered ? 0.55 : 0.28)}
+                    opacity={hovered ? 0.55 : 0.28}
                     toneMapped={false}
                 />
             </mesh>
-
-            {clicked && <pointLight color="#3366ff" intensity={3} distance={6} />}
 
             {/* Label below */}
             <Text position={[0, -0.9, 0]}
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.22} letterSpacing={0.1} anchorX="center" anchorY="middle"
-                color={clicked ? '#3366ff' : (hovered ? '#334466' : '#1a2233')}
+                color={hovered ? '#334466' : '#1a2233'}
                 material-toneMapped={false}
-            >{clicked ? 'NEXT_ROLE' : '???'}</Text>
-
-            {/* "Hire me" reveal text */}
-            {clicked && (
-                <Text position={[0, 1.3, 0]}
-                    font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
-                    fontSize={0.21} lineHeight={1.5} anchorX="center" anchorY="bottom"
-                    color="#00ff88" maxWidth={4}
-                    material-toneMapped={false} material-transparent={true}
-                >{'HIRE ME TO\nUNLOCK THIS'}</Text>
-            )}
+            >{'???'}</Text>
 
             {/* Hover hint */}
-            {!clicked && hovered && (
-                <Text position={[0, 1.0, 0]}
-                    font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
-                    fontSize={0.15} anchorX="center" anchorY="bottom"
-                    color="#334466" material-toneMapped={false}
-                >[ CLICK ]</Text>
+            {hovered && (
+                <group>
+                    <Line points={[[0.55, 0, 0], [1.0, 0.5, 0], [1.5, 0.5, 0]]}
+                        color="#3366ff" lineWidth={0.7} transparent opacity={0.5} />
+                    <Text position={[1.6, 0.5, 0.5]}
+                        font={SUBTITLE_FONT}
+                        fontSize={0.14} lineHeight={1.5} anchorX="left" anchorY="middle"
+                        color="#aabbcc" material-toneMapped={false} material-transparent={true}
+                        material-depthTest={false} renderOrder={5}
+                    >{'NEXT_ROLE.EXE\n???.???.????'}</Text>
+                </group>
             )}
         </group>
     )
@@ -3620,7 +3612,7 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
                     quaternion={t.quat}
                     onPointerOver={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}
                     onPointerMove={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}>
-                    <group ref={el => { if (el) { el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
+                    <group ref={el => { if (el) { if (!spinRefs.current[i]) el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
                         <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
                     </group>
                 </group>
@@ -3708,7 +3700,7 @@ function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', 
                     quaternion={t.quat}
                     onPointerOver={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}
                     onPointerMove={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}>
-                    <group ref={el => { if (el) { el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
+                    <group ref={el => { if (el) { if (!spinRefs.current[i]) el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
                         <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
                     </group>
                 </group>
@@ -3720,7 +3712,6 @@ function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', 
 function ModularResumePatch({ visible, currentSectionRef }) {
     const groupRef = useRef()
     const [activeId, setActiveId] = useState(null)
-    const [cubeClicked, setCubeClicked] = useState(false)
     const [hoveredNodeId, setHoveredNodeId] = useState(null)
     const [cubeHovered, setCubeHovered] = useState(false)
     const [companyPaused, setCompanyPaused] = useState(() => COMPANY_NODES.map(() => false))
@@ -3794,7 +3785,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                     <SpineChain
                         start={HUB_POS} end={CUBE_POS} mid={[2.75, -2.0, 0]}
                         color="#3366ff"
-                        active={cubeClicked}
+                        active={false}
                         targetSpeed={cubeTargetSpeed}
                     />
                 )
@@ -3812,8 +3803,6 @@ function ModularResumePatch({ visible, currentSectionRef }) {
 
             <ResumeHub currentSectionRef={currentSectionRef} />
             <LockedCube
-                clicked={cubeClicked}
-                onCubeClick={() => setCubeClicked(true)}
                 onHover={() => setCubeHovered(true)}
                 onHoverOut={() => setCubeHovered(false)}
             />
@@ -4976,7 +4965,7 @@ function EliteLoader() {
             backgroundColor: '#02040a', zIndex: 9999, overflow: 'hidden',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             opacity: isFading ? 0 : 1, transition: 'opacity 1s cubic-bezier(0.87, 0, 0.13, 1)',
-            pointerEvents: 'none', fontFamily: '"Oxanium", monospace', color: '#8899cc'
+            pointerEvents: 'none', fontFamily: 'var(--font-mono)', color: '#8899cc'
         }}>
             <style>{`
                 @keyframes kinetic-wave {
@@ -5188,9 +5177,6 @@ function ScrollHint({ scrollRef }) {
     return (
         <div ref={elRef} className="scroll-hint">
             <style>{SCROLL_HINT_CSS}</style>
-            <div className="scroll-hint-mouse">
-                <div className="scroll-hint-wheel" />
-            </div>
             <div className="scroll-hint-label">SCROLL</div>
         </div>
     )
@@ -5377,20 +5363,20 @@ function HeroSubtextCard({ scrollRef }) {
                 textAlign: 'center',
             }}>
                 <div style={{
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: "'Space Mono', monospace",
                     fontSize: '16px',
                     letterSpacing: '0.22em',
                     textTransform: 'uppercase',
                     color: '#506088',
                 }}>
-                    Hello, I am
+                    Product Designer @ Dell &nbsp;·&nbsp; UX Engineer @ iSchool
                 </div>
             </div>
 
             {/* Subtext card — below the 3D MUSTAFA text */}
             <div style={{
                 position: 'absolute',
-                bottom: '12%',
+                bottom: '22%',
                 left: '50%',
                 transform: `translateX(-50%) translateY(${visible ? '0px' : '60px'})`,
                 opacity: visible ? 1 : 0,
@@ -5399,17 +5385,18 @@ function HeroSubtextCard({ scrollRef }) {
                 flexDirection: 'column',
                 alignItems: 'center',
                 pointerEvents: 'none',
+                
                 zIndex: 40,
             }}>
                 <div style={{
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: "'Space Mono', monospace",
                     fontSize: '14px',
                     letterSpacing: '0.08em',
                     lineHeight: 1.6,
                     color: '#6677aa',
-                    textTransform: 'uppercase',
+                    //textTransform: 'uppercase',
                 }}>
-                    Product Designer @ Dell &nbsp;·&nbsp; UX Engineer @ UT Austin
+                    Currently building a capstone recruitment system at School of Information. Previously, I revamped CBRE's visual language.
                 </div>
             </div>
         </>
