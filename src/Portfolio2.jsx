@@ -1,4 +1,5 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
+import { sfx, useSFX } from './sfx'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html } from '@react-three/drei'
 import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
@@ -4721,11 +4722,12 @@ function CopyEmailHud() {
     const copy = () => {
         navigator.clipboard.writeText(CONTACT_EMAIL)
         setCopied(true)
+        sfx.ping()
         setTimeout(() => setCopied(false), 1600)
     }
     return (
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-            onMouseEnter={() => setHovered(true)}
+            onMouseEnter={() => { setHovered(true); sfx.hover() }}
             onMouseLeave={() => setHovered(false)}>
             <button onClick={copy} title="Copy email" style={{
                 position: 'absolute', right: '100%', marginRight: 8,
@@ -4856,6 +4858,28 @@ function ScrollHint({ scrollRef }) {
             </div>
             <div className="scroll-hint-label">SCROLL</div>
         </div>
+    )
+}
+
+function MuteButton() {
+    const { muted, toggleMute } = useSFX()
+    return (
+        <button
+            onClick={toggleMute}
+            title={muted ? 'Unmute sound' : 'Mute sound'}
+            style={{
+                position: 'fixed', bottom: '28px', right: '28px', zIndex: 200,
+                background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.2)',
+                backdropFilter: 'blur(8px)', borderRadius: '50%',
+                width: '36px', height: '36px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: muted ? 'rgba(136,153,204,0.35)' : 'rgba(136,153,204,0.85)',
+                fontSize: '15px', transition: 'color 0.2s, border-color 0.2s',
+                padding: 0,
+            }}
+        >
+            {muted ? '🔇' : '🔊'}
+        </button>
     )
 }
 
@@ -5081,10 +5105,12 @@ export default function Portfolio() {
                 wheelAccum = 0
                 locked = true
                 currentSectionRef.current = Math.min(currentSectionRef.current + 1, SECTION_STOPS.length - 1)
+                sfx.snap()
             } else if (wheelAccum <= -WHEEL_THRESHOLD) {
                 wheelAccum = 0
                 locked = true
                 currentSectionRef.current = Math.max(currentSectionRef.current - 1, 0)
+                sfx.snap()
             }
         }
 
@@ -5123,6 +5149,7 @@ export default function Portfolio() {
                 </div>
             </div>
 
+            <MuteButton />
             <HeroSubtextCard scrollRef={scrollRef} />
             <ScrollHint scrollRef={scrollRef} />
             <EthosOverlay scrollRef={scrollRef} />
