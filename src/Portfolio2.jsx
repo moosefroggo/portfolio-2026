@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { sfx, useSFX } from './sfx'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html } from '@react-three/drei'
+import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html, RoundedBox } from '@react-three/drei'
 import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
 import * as THREE from 'three'
 // import { useControls } from 'leva'
@@ -63,7 +63,8 @@ const CAMERA_PATH = [
     { t: 0.86, pos: [140, 0, -2], look: [140, -3.2, -30], fov: 54, roll: 0 },
     { t: 0.93, pos: [140, 0, -12], look: [140, -3.2, -30], fov: 52, roll: 0 },
     { t: 1.00, pos: [140, 0, -20], look: [140, -3.2, -30], fov: 50, roll: 0 },
-    // ── Dossier — shifted deep to Z=-100 to clear Bio debris ──
+    // ── Dossier — eased approach: mid-waypoint to soften the deep Z plunge ──
+    { t: 1.05, pos: [140, -1.8, -58], look: [140, -3.2, -72], fov: 44, roll: 0 },
     { t: 1.10, pos: [140, -3.2, -100], look: [140, -3.2, -110], fov: 36, roll: 0 },
 ]
 
@@ -1356,7 +1357,7 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
 
             <Text position={[0, 2.15, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
             <Text position={[0, 1.75, 0.1]} fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
-            <Text position={[0, -1.35, 0.1]} font={SUBTITLE_FONT} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0}>{config.desc}</Text>
+            <Text position={[0, -1.35, 3.5]} font={SUBTITLE_FONT} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0} material-depthTest={false} renderOrder={5}>{config.desc}</Text>
 
             {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
         </group>
@@ -3308,7 +3309,7 @@ function DossierOverlay({ scrollRef }) {
 const COMPANY_NODES = [
     { id: 'dell', pos: [-5.5, 2.4, 0], title: 'DELL', desc: 'CAPSTONE // NOW\nSCHOOL OF INFO', color: '#0076CE' },
     { id: 'cbre', pos: [-5.5, 0.8, 0], title: 'CBRE', desc: 'VISUAL LANG // 2025\nINTERACTION DESIGN', color: '#003F2D' },
-    { id: 'motive', pos: [-5.5, -0.8, 0], title: 'MOTIVE', desc: 'PRODUCT UX // 2024\nENTERPRISE SYSTEMS', color: '#444444' },
+    { id: 'motive', pos: [-5.5, -0.8, 0], title: 'MOTIVE', desc: 'PRODUCT UX // 2024\nENTERPRISE SYSTEMS', color: '#FF6B00' },
     { id: 'educative', pos: [-5.5, -2.4, 0], title: 'EDUCATIVE', desc: 'UX DESIGN // 2023\nLEARNING SYSTEMS', color: '#5553FF' },
 ]
 const HUB_POS = [0, 0, 0]
@@ -3345,67 +3346,55 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
 
     return (
         <group position={config.pos} ref={groupRef}>
-            {/* Semi-transparent cube body */}
-            <mesh
+            {/* Bevelled cube body */}
+            <RoundedBox
                 ref={meshRef}
+                args={[0.75, 0.75, 0.75]} radius={0.09} smoothness={4}
                 onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
                 onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
                 onClick={e => { e.stopPropagation(); onClick() }}
             >
-                <boxGeometry args={[0.75, 0.75, 0.75]} />
                 <meshStandardMaterial
                     color="#0a0a1a"
                     emissive={config.color}
-                    emissiveIntensity={isActive ? 0.25 : (hovered ? 0.1 : 0.03)}
-                    metalness={0.7} roughness={0.15}
-                    transparent opacity={isActive ? 0.55 : (hovered ? 0.45 : 0.35)}
+                    emissiveIntensity={isActive ? 0.35 : (hovered ? 0.15 : 0.05)}
+                    metalness={0.85} roughness={0.08}
+                    transparent opacity={isActive ? 0.6 : (hovered ? 0.5 : 0.38)}
                     toneMapped={false}
                 />
-            </mesh>
+            </RoundedBox>
 
             {/* Point light inside the cube */}
             <pointLight
-                color="#ffffff"
-                intensity={isActive ? 1.8 : (hovered ? 0.9 : 0.4)}
+                color={config.color}
+                intensity={isActive ? 2.2 : (hovered ? 1.1 : 0.5)}
                 distance={2.5}
                 decay={2}
             />
 
-            {/* Logo planes on front and back — emissive map so logo glows */}
+            {/* Logo planes on front and back — flat emissive so dark logos still glow */}
             {[0.38, -0.38].map((z, idx) => (
                 <mesh key={idx} position={[0, 0, z]} rotation={[0, idx === 1 ? Math.PI : 0, 0]}>
                     <planeGeometry args={[0.45, 0.45]} />
                     <meshStandardMaterial
                         map={texture}
-                        emissiveMap={texture}
-                        emissive={'#ffffff'}
-                        emissiveIntensity={isActive ? 1.4 : (hovered ? 0.9 : 0.5)}
+                        emissive={config.color}
+                        emissiveIntensity={isActive ? 1.8 : (hovered ? 1.1 : 0.6)}
                         transparent alphaTest={0.05}
-                        metalness={0.2} roughness={0.4}
+                        metalness={0.1} roughness={0.3}
                         toneMapped={false}
                     />
                 </mesh>
             ))}
 
-            {/* Glowing edge frame */}
-            <mesh position={[0, 0, 0.01]}>
-                <planeGeometry args={[0.85, 0.85]} />
+            {/* Wireframe box outline — sci-fi bevel edge highlight */}
+            <mesh>
+                <boxGeometry args={[0.84, 0.84, 0.84]} />
                 <meshBasicMaterial
                     color={config.color}
                     wireframe
                     transparent
-                    opacity={isActive ? 0.8 : (hovered ? 0.5 : 0.25)}
-                    toneMapped={false}
-                />
-            </mesh>
-
-            {/* Inner glow ring */}
-            <mesh position={[0, 0, 0.02]}>
-                <ringGeometry args={[0.38, 0.42, 32]} />
-                <meshBasicMaterial
-                    color={config.color}
-                    transparent
-                    opacity={isActive ? 0.6 : (hovered ? 0.3 : 0.1)}
+                    opacity={isActive ? 0.75 : (hovered ? 0.45 : 0.18)}
                     toneMapped={false}
                 />
             </mesh>
@@ -3414,11 +3403,13 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
 
             {/* Label — to the left of the jack */}
             <Text
-                position={[-0.7, 0, 0]}
+                position={[-0.7, 0, 0.5]}
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.2} letterSpacing={0.08} anchorX="right" anchorY="middle"
                 color={hovered || isActive ? config.color : '#2a3d55'}
                 material-toneMapped={false}
+                material-depthTest={false}
+                renderOrder={5}
             >{config.title}</Text>
 
             {/* Data readout — to the right, toward the resume hub */}
@@ -3427,10 +3418,12 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
                     <Line points={[[0.5, 0, 0], [1.0, 0.5, 0], [1.5, 0.5, 0]]}
                         color={config.color} lineWidth={0.7} transparent opacity={0.5} />
                     <Text
-                        position={[1.6, 0.5, 0]}
+                        position={[1.6, 0.5, 0.5]}
                         font={SUBTITLE_FONT}
                         fontSize={0.14} lineHeight={1.5} anchorX="left" anchorY="middle"
                         color="#aabbcc" material-toneMapped={false} material-transparent={true}
+                        material-depthTest={false}
+                        renderOrder={5}
                     >{config.desc}</Text>
                 </group>
             )}
@@ -3469,15 +3462,17 @@ function ResumeHub({ currentSectionRef }) {
                 <meshBasicMaterial color="#3366ff" transparent opacity={0.45} toneMapped={false} />
             </mesh>
             <pointLight color="#3366ff" intensity={2.5} distance={7} />
-            <Text position={[0, -1.1, 0]}
+            <Text position={[0, -1.1, 0.5]}
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.22} letterSpacing={0.1} anchorX="center" anchorY="middle"
                 color="#ffffff" material-toneMapped={false}
+                material-depthTest={false} renderOrder={5}
             >RESUME.SYS</Text>
-            <Text position={[0, -1.45, 0]}
+            <Text position={[0, -1.45, 0.5]}
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.13} letterSpacing={0.05} anchorX="center" anchorY="middle"
                 color="#3a5080" material-toneMapped={false}
+                material-depthTest={false} renderOrder={5}
             >MUSTAFA ALI AKBAR // UX designer</Text>
         </group>
     )
@@ -3789,7 +3784,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
     if (!visible) return null
 
     return (
-        <group ref={groupRef}>
+        <group ref={groupRef} position-y={10}>
             {/* Company → Resume spine chains */}
             {COMPANY_NODES.map((node, i) => {
                 // Determine target speed for this company chain
@@ -4240,12 +4235,13 @@ function exportSigilSVG() {
 function BustDiptych({ scrollRef }) {
     const opRef = useRef()
     const [appeared, setAppeared] = useState(false)
+    const appearedRef = useRef(false)
     const [focusedIdx, setFocusedIdx] = useState(-1)
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
         const show = t >= DIPTYCH_ENTER
-        if (appeared !== show) setAppeared(show)
+        if (appearedRef.current !== show) { appearedRef.current = show; setAppeared(show) }
         if (opRef.current) {
             const targetScale = show ? 1 : 0
             const s = dampValue(opRef.current.scale.x, targetScale, 4, delta)
@@ -4306,7 +4302,9 @@ function BioSection({ scrollRef, currentSectionRef }) {
             <CollapseFlash active={flashActive} />
             <RaveAfterglowLights active={patchVisible} />
             <BioGrid active={patchVisible} />
-            <ModularResumePatch visible={patchVisible} currentSectionRef={currentSectionRef} />
+            <group position={[0, 1.8, 0]}>
+                <ModularResumePatch visible={patchVisible} currentSectionRef={currentSectionRef} />
+            </group>
             <BustDiptych scrollRef={scrollRef} />
         </group>
     )
@@ -5090,8 +5088,9 @@ export default function Portfolio() {
         const onWheel = (e) => {
             // Allow native scroll inside the case study drawer
             if (e.target.closest('.cs-drawer')) return
-            e.preventDefault()
+            // Don't block scroll when a project drawer is open
             if (activeProjectRef.current) return
+            e.preventDefault()
 
             if (unlockTimer) clearTimeout(unlockTimer)
             unlockTimer = setTimeout(() => { locked = false; wheelAccum = 0 }, 600)
