@@ -39,3 +39,6 @@ public/*.blend
 public/studio-light.exr
 public/textures
 public/fonts/ALL FONTS FLAT
+
+# Archived unused assets
+archive/

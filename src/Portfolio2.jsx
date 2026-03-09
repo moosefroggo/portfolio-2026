@@ -103,7 +103,7 @@ const PROJECT_CARDS = [
         title: 'Workflows', subtitle: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         desc: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
-        stats: { role: 'UX Design & Strategy', year: '2023', company: 'Educative' },
+        stats: { role: 'Product Design', year: '2023', company: 'Educative' },
         objectType: 'workflows',
         video: '/demos/wf-noborder.mp4',
         caseStudy: {
@@ -910,7 +910,7 @@ function VideoScreen({
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, letterSpacing: '0.15em', color: colorHex }}>
                             <span className="hud-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: colorHex, display: 'inline-block' }} />
-                            MISSION BRIEFING
+                            CASE STUDY
                         </div>
                         <a href={buildUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 8, color: `rgba(${colorRgb},0.55)`, letterSpacing: '0.1em', textDecoration: 'none', cursor: 'pointer' }} onMouseOver={e => e.target.style.color = colorHex} onMouseOut={e => e.target.style.color = `rgba(${colorRgb},0.55)`}>{buildText}</a>
                     </div>
@@ -1503,7 +1503,7 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
 
             <Text position={[0, 2.15, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
-            <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.05} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>
+            <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.05} textAlign="center" material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>
 
             {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
         </group>
@@ -1992,7 +1992,7 @@ const ETHOS_EXIT = 0.32   // scroll fraction: ethos ends
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'Build products that solve human problems, look delightful, are fun to use.',
+        text: 'Build things that solve problems, look delightful, are fun to use.',
     },
     {
         label: 'SYSTEMS',
@@ -2219,7 +2219,7 @@ function EthosSnakeSpine({ trigger }) {
         new THREE.Vector3(50, 40, -30) // 🏁 Exit Point (Fly away!)
     ], false), []) // ⬅️ Closed set to false
 
-    const segments = 160
+    const segments = 80
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
     useFrame((state, delta) => {
@@ -2237,8 +2237,8 @@ function EthosSnakeSpine({ trigger }) {
 
         const p = progressRef.current
         const curveLength = curve.getLength()
-        // Space them by ~2.8 units for a tighter "solid" look
-        const stepU = 2.8 / curveLength
+        // Space them by ~3.8 units for a shorter, less dense chain
+        const stepU = 3.8 / curveLength
 
         // 🐍 One-shot traversal logic: stop when the tail clears the path (1.0)
         // Max progress needed is ~1.0 + (segments * stepU)
@@ -2274,7 +2274,7 @@ function EthosSnakeSpine({ trigger }) {
     })
 
     return (
-        <instancedMesh ref={meshRef} args={[geometry, material, segments]} frustumCulled={false} />
+        <instancedMesh ref={meshRef} args={[geometry, material, 80]} frustumCulled={false} />
     )
 }
 
@@ -2787,7 +2787,7 @@ const CASE_STUDY_CSS = `
     border-bottom: 1px solid rgba(100, 130, 220, 0.12);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
 }
 .cs-close-btn {
     background: none;
@@ -2795,9 +2795,16 @@ const CASE_STUDY_CSS = `
     color: #8899cc;
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.2s ease;
 }
 .cs-close-btn:hover {
@@ -2966,7 +2973,7 @@ const CASE_STUDY_CSS_NEON = `
     border-bottom: 1px solid rgba(0, 255, 255, 0.4);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     background: linear-gradient(135deg, rgba(0, 255, 255, 0.05) 0%, transparent 100%);
     box-shadow: 0 4px 15px rgba(0, 255, 255, 0.15);
 }
@@ -2976,9 +2983,16 @@ const CASE_STUDY_CSS_NEON = `
     color: #00ffff;
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
     border-radius: 2px;
     cursor: pointer;
     font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.2s ease;
     text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
 }
@@ -3195,7 +3209,7 @@ function CaseStudyOverlay({ project, onClose }) {
                     <div className="cs-header">
                         <div>
                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color, letterSpacing: '0.08em' }}>{displayProject.title}</div>
-                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#556688', marginTop: '6px', lineHeight: 1.5 }}>{displayProject.subtitle}</div>
+                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '13px', letterSpacing: '0.08em', color: '#556688', marginTop: '6px', lineHeight: 1.5 }}>{displayProject.subtitle}</div>
                         </div>
                         <button className="cs-close-btn" onClick={onClose}>&times;</button>
                     </div>
@@ -3305,10 +3319,10 @@ const ABOUT_CSS = `
     height: 1px; background: linear-gradient(to right, rgba(100,130,220,0.2), transparent);
     margin: 0 0 22px;
 }
-.about-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
+.about-skills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 28px; }
 .about-skill {
-    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
-    color: rgba(100,140,220,0.6); padding: 4px 10px;
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em;
+    color: rgba(100,140,220,0.6); padding: 3px 7px;
     border: 1px solid rgba(80,110,200,0.18); border-radius: 2px;
     text-transform: uppercase;
 }
@@ -5020,7 +5034,7 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
                 <VideoScreen
                     src="/demos/ei-noborder.mp4"
                     opRef={eiVideoOpRef}
-                    buildText="BUILD 7bf4176 · 2026-03-03"
+                    buildText=""
                     buildUrl="https://github.com/moosefroggo/portfolio-2026/commit/7bf4176"
                     cornerLabel="SIG 2/5"
                     footerLabel="5M+ Vehicles Secured"
@@ -5360,8 +5374,13 @@ function CursorOrb() {
 
     useEffect(() => {
         const onMove = (e) => {
-            mouse.current.x = e.clientX
-            mouse.current.y = e.clientY
+            // e.pageX/Y are unaffected by CSS 3D transforms (unlike clientX/Y in drei <Html>)
+            const x = e.pageX ?? e.clientX
+            const y = e.pageY ?? e.clientY
+            // Clamp to viewport to prevent runaway from synthetic/transformed events
+            if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return
+            mouse.current.x = x
+            mouse.current.y = y
 
             const cursor = window.getComputedStyle(e.target).cursor
             const isHover = cursor === 'pointer'
@@ -5620,6 +5639,8 @@ export default function Portfolio() {
     }, [])
 
     return (
+        <>
+        <CursorOrb />
         <div style={{
             width: '100vw',
             height: '100vh',
@@ -5627,7 +5648,6 @@ export default function Portfolio() {
             overflow: 'hidden',
             cursor: 'none' // Hide native to show Orb
         }}>
-            <CursorOrb />
             <EliteLoader />
 
             {/* GLOBAL HUD */}
@@ -5661,5 +5681,6 @@ export default function Portfolio() {
 
             <CaseStudyOverlay project={activeProject} onClose={() => setActiveProject(null)} />
         </div>
+        </>
     )
 }
