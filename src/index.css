@@ -587,7 +587,7 @@ button:hover~.precision-crosshair .cross-center,
   display: block;
   font-size: 10px;
   letter-spacing: 0.3em;
-  color: #ff3366;
+  color: #00aaff;
   text-transform: uppercase;
   margin-bottom: 12px;
 }
@@ -621,8 +621,8 @@ button:hover~.precision-crosshair .cross-center,
 
 .ethos-line {
   width: 100%;
-  background: linear-gradient(180deg, #3366ff 0%, #ff3366 100%);
-  box-shadow: 0 0 8px rgba(51, 102, 255, 0.4), 0 0 20px rgba(255, 51, 102, 0.15);
+  background: linear-gradient(180deg, #00aaff 0%, #0055aa 100%);
+  box-shadow: 0 0 8px rgba(0, 170, 255, 0.4), 0 0 20px rgba(0, 170, 255, 0.15);
   transition: height 0.1s linear;
   border-radius: 0 0 1px 1px;
 }
@@ -665,8 +665,8 @@ button:hover~.precision-crosshair .cross-center,
 }
 
 .ethos-bullet.active {
-  border-color: #3366ff;
-  box-shadow: 0 0 10px rgba(51, 102, 255, 0.5), 0 0 25px rgba(51, 102, 255, 0.2);
+  border-color: #00aaff;
+  box-shadow: 0 0 10px rgba(0, 170, 255, 0.5), 0 0 25px rgba(0, 170, 255, 0.2);
   animation: ethos-bullet-pulse 2s ease-in-out infinite;
 }
 
@@ -679,19 +679,19 @@ button:hover~.precision-crosshair .cross-center,
 }
 
 .ethos-bullet.active .ethos-bullet-inner {
-  background: #ff3366;
-  box-shadow: 0 0 6px rgba(255, 51, 102, 0.7);
+  background: #00aaff;
+  box-shadow: 0 0 6px rgba(0, 170, 255, 0.7);
 }
 
 @keyframes ethos-bullet-pulse {
 
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(51, 102, 255, 0.5), 0 0 25px rgba(51, 102, 255, 0.2);
+    box-shadow: 0 0 10px rgba(0, 170, 255, 0.5), 0 0 25px rgba(0, 170, 255, 0.2);
   }
 
   50% {
-    box-shadow: 0 0 16px rgba(51, 102, 255, 0.7), 0 0 35px rgba(51, 102, 255, 0.3);
+    box-shadow: 0 0 16px rgba(0, 170, 255, 0.7), 0 0 35px rgba(0, 170, 255, 0.3);
   }
 }
 
@@ -721,7 +721,7 @@ button:hover~.precision-crosshair .cross-center,
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.25em;
-  color: #3366ff;
+  color: #00aaff;
   display: flex;
   overflow: hidden;
 }
@@ -750,8 +750,8 @@ button:hover~.precision-crosshair .cross-center,
 
 /* Body text — slides up and fades in when checkpoint becomes active */
 .ethos-text {
-  font-family: var(--font-body);
-  font-size: 13px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
   color: rgba(180, 200, 230, 0.55);
   line-height: 1.8;
   min-height: 48px;

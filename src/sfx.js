@@ -160,6 +160,19 @@ const sounds = {
     },
 }
 
+// ─── Background track ────────────────────────────────────────────────────────
+
+let _bgAudio = null
+
+function getBgAudio() {
+    if (!_bgAudio) {
+        _bgAudio = new Audio('/sounds/main-track.m4a')
+        _bgAudio.loop = true
+        _bgAudio.volume = 0.11
+    }
+    return _bgAudio
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const sfx = {
@@ -168,9 +181,61 @@ export const sfx = {
     /** play by name: sfx.play('snap') */
     play(name) { sounds[name]?.() },
 
+    /** Spine startup whoosh — machinery spinning up */
+    spineStart() {
+        if (_muted) return
+        sweepOsc('sawtooth', 40, 180, { attack: 0.04, decay: 0.6, peak: 0.35 })
+        sweepOsc('sine', 200, 800, { attack: 0.06, decay: 0.5, peak: 0.18 })
+        noise({ attack: 0.01, decay: 0.3, peak: 0.12, bandpass: 1200 })
+    },
+
+    /** Sustained mechanical hum — returns a stop() function */
+    mechanicalHum() {
+        if (_muted) return () => {}
+        const ac = ctx()
+        const g = ac.createGain()
+        g.gain.setValueAtTime(0, ac.currentTime)
+        g.gain.linearRampToValueAtTime(0.12, ac.currentTime + 0.8)
+        g.connect(master())
+
+        const o1 = ac.createOscillator()
+        o1.type = 'sawtooth'
+        o1.frequency.value = 72
+        o1.connect(g)
+        o1.start()
+
+        const o2 = ac.createOscillator()
+        o2.type = 'square'
+        o2.frequency.value = 108
+        o2.connect(g)
+        o2.start()
+
+        return function stop() {
+            const now = ac.currentTime
+            g.gain.cancelScheduledValues(now)
+            g.gain.setTargetAtTime(0, now, 0.4)
+            setTimeout(() => { try { o1.stop(); o2.stop() } catch (_) {} }, 1500)
+        }
+    },
+
+    /** Soft cog emergence tick */
+    cogTick() {
+        if (_muted) return
+        osc('square', 1800, { attack: 0.001, decay: 0.022, peak: 0.09 })
+        noise({ attack: 0.001, decay: 0.01, peak: 0.06, bandpass: 4500 })
+    },
+
+    /** Start looping background track — call after a user gesture */
+    startBgTrack() {
+        const audio = getBgAudio()
+        audio.muted = _muted
+        audio.play().catch(() => {}) // browsers may block autoplay; silently ignore
+    },
+
     toggleMute() {
         _muted = !_muted
         if (_master) _master.gain.setTargetAtTime(_muted ? 0 : 0.4, ctx().currentTime, 0.05)
+        if (_bgAudio) _bgAudio.muted = _muted
         _notifyMute()
     },
 
@@ -178,6 +243,7 @@ export const sfx = {
         if (_muted === val) return
         _muted = val
         if (_master) _master.gain.setTargetAtTime(_muted ? 0 : 0.4, ctx().currentTime, 0.05)
+        if (_bgAudio) _bgAudio.muted = _muted
         _notifyMute()
     },
 

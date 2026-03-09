@@ -4,7 +4,6 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html, RoundedBox } from '@react-three/drei'
 import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import { useControls } from 'leva'
 
 // Enable Draco decoder for compressed GLBs
 useGLTF.setDecoderPath('/draco/')
@@ -765,7 +764,49 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
     return { clone, mats }
 }
 
-function TruckImmobilizerScene({ hovered, appeared, cardIndex, onOpen }) {
+// WiFi arc waves expanding from immobilizer, fading before reaching truck
+const _wifiTarget = new THREE.Vector3()
+function WifiWaves({ origin, toward, color = '#ffaa22', visible = true }) {
+    const COUNT = 4
+    const groupRef = useRef()
+    const waveRefs = useRef([])
+    const phases = useMemo(() => Array.from({ length: COUNT }, (_, i) => i / COUNT), [])
+
+    const mats = useMemo(() => Array.from({ length: COUNT }, () => new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0, side: THREE.DoubleSide, toneMapped: false,
+    })), [])
+
+    useFrame((state) => {
+        phases.forEach((phase, i) => {
+            const mesh = waveRefs.current[i]
+            if (!mesh) return
+            const p = (state.clock.elapsedTime * 0.65 + phase) % 1
+            // Travel from origin toward truck, fade out before arriving
+            const fade = p < 0.65 ? Math.sin((p / 0.65) * Math.PI) : 0
+            mats[i].opacity = visible ? fade * 0.9 : 0
+            // Lerp position along origin→toward
+            mesh.position.set(
+                origin[0] + (toward[0] - origin[0]) * p,
+                origin[1] + (toward[1] - origin[1]) * p,
+                origin[2] + (toward[2] - origin[2]) * p,
+            )
+            const s = visible ? 0.04 + fade * 0.06 : 0
+            mesh.scale.setScalar(s)
+        })
+    })
+
+    return (
+        <group>
+            {phases.map((_, i) => (
+                <mesh key={i} ref={el => waveRefs.current[i] = el} material={mats[i]}>
+                    <sphereGeometry args={[1, 8, 8]} />
+                </mesh>
+            ))}
+        </group>
+    )
+}
+
+function TruckImmobilizerScene({ appeared, cardIndex, onOpen }) {
     const { scene: truckScene } = useGLTF('/Truck.glb')
     const { scene: immScene } = useGLTF('/Engine Immobilizer.glb')
 
@@ -801,7 +842,7 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex, onOpen }) {
     return (
         <group onClick={e => { e.stopPropagation(); onOpen?.() }}>
             {/* Truck — textured hologram, center-left */}
-            <group ref={truckGroupRef} position={[-0.4, -1.5, 0]}>
+            <group ref={truckGroupRef} position={[0, -0.3, 0.9]}>
                 <primitive object={truckClone} />
             </group>
 
@@ -811,19 +852,13 @@ function TruckImmobilizerScene({ hovered, appeared, cardIndex, onOpen }) {
                 <pointLight color="#ffaa22" intensity={appeared ? 2.5 : 0} distance={4} decay={2} />
             </group>
 
-            {/* Signal spine link immobilizer → truck */}
-            {appeared && (
-                <SpineChain
-                    start={[1.6, 0.9, 0.3]}
-                    end={[-0.4, -1.5, 0]}
-                    mid={[0.6, -0.3, 0.15]}
-                    color="#ffaa22"
-                    active={hovered}
-                    interactive={false}
-                    segments={12}
-                    cogScale={0.15}
-                />
-            )}
+            {/* WiFi waves — signal radiating from immobilizer toward truck */}
+            <WifiWaves
+                origin={[1.6, 0.9, 0.3]}
+                toward={[0, -0.3, 0.9]}
+                color="#ffaa22"
+                visible={appeared}
+            />
         </group>
     )
 }
@@ -932,20 +967,129 @@ function VideoScreen({
     )
 }
 
-function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
-    const { scene: wfScene } = useGLTF('/workflows.glb')
+// ─── Brain hologram sub-components ──────────────────────────────────────────
 
+function BrainPlatform({ opRef }) {
+    const { boxMat, hexMat, edgeMat, traceMat } = useMemo(() => ({
+        boxMat: new THREE.MeshStandardMaterial({
+            color: '#c2d4e6', metalness: 0.92, roughness: 0.06, transparent: true, opacity: 0,
+        }),
+        hexMat: new THREE.MeshStandardMaterial({
+            color: '#001133', emissive: new THREE.Color('#00ccff'), emissiveIntensity: 2.8,
+            metalness: 0.8, roughness: 0.1, transparent: true, opacity: 0, toneMapped: false,
+        }),
+        edgeMat: new THREE.LineBasicMaterial({ color: new THREE.Color(0, 0.8, 1.0), transparent: true, opacity: 0 }),
+        traceMat: new THREE.LineBasicMaterial({ color: new THREE.Color(0, 0.55, 0.85), transparent: true, opacity: 0 }),
+    }), [])
+
+    useFrame(() => {
+        const op = opRef.current
+        boxMat.opacity = op; hexMat.opacity = op; edgeMat.opacity = op; traceMat.opacity = op
+    })
+
+    const { boxGeo, edgeGeo, hexGeo, traceGeo } = useMemo(() => {
+        const box = new THREE.BoxGeometry(3.2, 0.3, 3.2)
+        const pts = new Float32Array([
+            -1.1, 0.152, 0.35,  -0.55, 0.152, 0.35,
+            -0.55, 0.152, 0.35, -0.55, 0.152, 0.0,
+             1.1, 0.152, -0.35,  0.55, 0.152, -0.35,
+             0.55, 0.152, -0.35, 0.55, 0.152,  0.0,
+            -0.3, 0.152,  1.1,  -0.3, 0.152,  0.5,
+            -0.3, 0.152,  0.5,   0.3, 0.152,  0.5,
+             0.3, 0.152,  0.5,   0.3, 0.152,  1.1,
+            -0.55, 0.152, 0.31, -0.55, 0.152, 0.39,
+             0.55, 0.152,-0.31,  0.55, 0.152,-0.39,
+        ])
+        const traceGeo = new THREE.BufferGeometry()
+        traceGeo.setAttribute('position', new THREE.BufferAttribute(pts, 3))
+        return { boxGeo: box, edgeGeo: new THREE.EdgesGeometry(box), hexGeo: new THREE.CylinderGeometry(0.17, 0.17, 0.1, 6), traceGeo }
+    }, [])
+
+    return (
+        <group>
+            <mesh geometry={boxGeo} material={boxMat} />
+            <lineSegments geometry={edgeGeo} material={edgeMat} />
+            <lineSegments geometry={traceGeo} material={traceMat} />
+            {[[ 1.1, 0.2, 1.1], [-1.1, 0.2, 1.1], [1.1, 0.2, -1.1], [-1.1, 0.2, -1.1]].map((pos, i) => (
+                <mesh key={i} geometry={hexGeo} material={hexMat} position={pos} />
+            ))}
+        </group>
+    )
+}
+
+// per-wire pulse params: [speed, phase, baseIntensity, amplitude]
+const WIRE_PULSE = [
+    [1.1, 0.0,  3.2, 1.4],  // center — bright, steady
+    [1.7, 0.8,  1.6, 2.2],  // front-right — fast flicker
+    [1.3, 2.1,  2.4, 1.6],  // front-left  — medium
+    [0.9, 1.4,  1.0, 2.8],  // back-right  — slow deep pulse
+    [2.2, 3.0,  1.8, 1.2],  // back-left   — fastest, subtle
+    [0.7, 0.5,  0.8, 1.8],  // trailing 1  — dim, slow fade
+    [1.9, 1.8,  0.6, 2.4],  // trailing 2  — erratic flicker
+    [1.2, 3.5,  1.1, 1.5],  // trailing 3  — medium dim
+    [0.5, 2.2,  0.5, 1.0],  // trailing 4  — barely alive
+]
+
+function BrainWires({ opRef }) {
+    const { tubes, mats } = useMemo(() => {
+        const wireDefs = [
+            // center — slight lazy droop
+            [new THREE.Vector3(0, 1.82, 0.0), new THREE.Vector3(0.12, 0.95, 0.12), new THREE.Vector3(0, 0.25, 0.0)],
+            // front-right — heavy droop, midpoint close to center
+            [new THREE.Vector3( 1.1, 0.26,  1.1), new THREE.Vector3( 0.18, 0.55,  0.18), new THREE.Vector3( 0.18, 1.72,  0.18)],
+            // front-left — medium droop
+            [new THREE.Vector3(-1.1, 0.26,  1.1), new THREE.Vector3(-0.35, 0.70,  0.35), new THREE.Vector3(-0.18, 1.72,  0.18)],
+            // back-right — light droop, stays fairly taut
+            [new THREE.Vector3( 1.1, 0.26, -1.1), new THREE.Vector3( 0.60, 0.88, -0.60), new THREE.Vector3( 0.18, 1.72, -0.18)],
+            // back-left — very heavy droop, almost touches platform midway
+            [new THREE.Vector3(-1.1, 0.26, -1.1), new THREE.Vector3(-0.10, 0.38, -0.10), new THREE.Vector3(-0.18, 1.72, -0.18)],
+            // trailing wires — arc over platform edges and dangle below
+            [new THREE.Vector3( 0.10, 1.65,  0.05), new THREE.Vector3( 1.0,  0.5,  0.05), new THREE.Vector3( 1.9,  0.05,  0.1),  new THREE.Vector3( 2.4, -1.2,  0.3)],
+            [new THREE.Vector3(-0.05, 1.60,  0.15), new THREE.Vector3(-0.1,  0.5,  1.0),  new THREE.Vector3( 0.1,  0.05,  2.1),  new THREE.Vector3(-0.2, -1.4,  2.4)],
+            [new THREE.Vector3( 0.15, 1.58, -0.10), new THREE.Vector3( 0.1,  0.5, -1.0),  new THREE.Vector3(-0.1,  0.05, -2.1),  new THREE.Vector3( 0.3, -1.6, -2.4)],
+            [new THREE.Vector3(-0.08, 1.70, -0.05), new THREE.Vector3(-1.0,  0.5, -0.05), new THREE.Vector3(-2.1,  0.05, -0.1),  new THREE.Vector3(-2.4, -1.0, -0.4)],
+        ]
+        const mats = wireDefs.map(() => new THREE.MeshStandardMaterial({
+            color: '#001133', emissive: new THREE.Color('#00aaff'), emissiveIntensity: 2.2,
+            metalness: 0.5, roughness: 0.3, transparent: true, opacity: 0, toneMapped: false,
+        }))
+        return { mats, tubes: wireDefs.map(p => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(p), 12, 0.022, 5, false)) }
+    }, [])
+
+    useFrame((state) => {
+        const op = opRef.current
+        const t = state.clock.elapsedTime
+        mats.forEach((m, i) => {
+            const [speed, phase, base, amp] = WIRE_PULSE[i]
+            m.opacity = op
+            m.emissiveIntensity = (base + Math.sin(t * speed + phase) * amp) * op
+        })
+    })
+
+    return (
+        <group>
+            {tubes.map((geo, i) => <mesh key={i} geometry={geo} material={mats[i]} />)}
+        </group>
+    )
+}
+
+// ─── Workflows card 3D scene ─────────────────────────────────────────────────
+
+function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
+    const { scene: brainScene } = useGLTF('/brain_hologram.glb')
     const groupRef = useRef()
     const opRef = useRef(0)
     const autoRotY = useRef(0)
 
-    const { clone: wfClone, mats: wfMats } =
-        useMemo(() => makeTexturedHologramClone(wfScene, '#44ff88', 2.8), [wfScene])
+    const { clone: brainClone, mats: brainMats } =
+        useMemo(() => makeTexturedHologramClone(brainScene, '#00ccff', 2.2), [brainScene])
 
-    useFrame((_, delta) => {
-        opRef.current = dampValue(opRef.current, appeared ? 0.9 : 0, 5, delta)
+    useFrame((state, delta) => {
+        opRef.current = dampValue(opRef.current, appeared ? 0.88 : 0, 5, delta)
         wfVideoOpRef.current = opRef.current
-        wfMats.forEach(m => { m.opacity = opRef.current })
+        const op = opRef.current
+        const pulse = 0.14 + Math.sin(state.clock.elapsedTime * 1.8) * 0.07
+        brainMats.forEach(m => { m.opacity = op; m.emissiveIntensity = pulse })
         if (groupRef.current) {
             if (!dragRotState.isDragging || dragRotState.cardIndex !== cardIndex)
                 autoRotY.current += delta * 0.18
@@ -956,15 +1100,20 @@ function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
 
     return (
         <group onClick={e => { e.stopPropagation(); onOpen?.() }}>
-            <group ref={groupRef} position={[0, -1.2, 0]}>
-                <primitive object={wfClone} />
-                <pointLight color="#44ff88" intensity={appeared ? 1.2 : 0} distance={8} decay={2} />
+            <group ref={groupRef} position={[0, -1, -0.5]} scale={0.55}>
+                <BrainPlatform opRef={opRef} />
+                <BrainWires opRef={opRef} />
+                <group position={[0, 1.85, 0]}>
+                    <primitive object={brainClone} />
+                </group>
+                <pointLight color="#00ccff" intensity={appeared ? 1.8 : 0} distance={7} decay={2} position={[0, 1.5, 0]} />
+                <pointLight color="#ffffff" intensity={appeared ? 0.6 : 0} distance={5} decay={2} position={[0, 2.5, 2]} />
             </group>
         </group>
     )
 }
 
-useGLTF.preload('/workflows.glb')
+useGLTF.preload('/brain_hologram.glb')
 
 function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex, onOpen }) {
     const meshRef = useRef()
@@ -1169,7 +1318,7 @@ function NexusHubCore({ scrollRef }) {
     })
 
     return (
-        <group ref={groupRef} position={[120, 1.5, -32]}>
+        <group ref={groupRef} position={[170, 5.5, -195]}>
             <mesh ref={coreRef}>
                 <sphereGeometry args={[4, 32, 32]} />
                 <meshStandardMaterial color="#00aaff" emissive="#00aaff" emissiveIntensity={4} wireframe transparent opacity={0.4} />
@@ -1231,7 +1380,7 @@ function NexusDataStreams({ scrollRef }) {
 
 function ProjectPedestal({ color, appeared }) {
     return (
-        <group position={[0, -2.6, 0]} scale={appeared ? 1 : 0}>
+        <group position={[0, -1, 0]} scale={appeared ? 1 : 0}>
             <mesh rotation-x={-Math.PI / 2}>
                 <cylinderGeometry args={[2.8, 2.8, 0.15, 32]} />
                 <meshStandardMaterial color={color} transparent opacity={0.08} metalness={1} roughness={0.1} />
@@ -1361,6 +1510,13 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
     )
 }
 
+// Scratch objects — module-level so they're shared (useFrame runs sequentially, never in parallel)
+const _wslMorphPos = new THREE.Vector3()
+const _wslFlat = new THREE.Vector3()
+const _wslFallback = new THREE.Vector3()
+const _wslCamQuat = new THREE.Quaternion()
+const _wslFwdQuat = new THREE.Quaternion()
+
 function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0, 0], delay = 0, cogScale = 0.72, isHighlighted = false, highlightRotation = 0 }) {
     const instancedRef = useRef()
     const offsetRef = useRef(0)
@@ -1465,47 +1621,48 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             const spr = spreadOffsetsRef.current[i]
 
             // Apply morphing - scatter cogs dramatically, then gather into formation
-            let morphPos = new THREE.Vector3(px, py + spr, pz)
+            _wslMorphPos.set(px, py + spr, pz)
             if (isMorphing) {
                 // Scatter only in XY plane — zeroing Z prevents cogs from flying into the camera near-plane
                 const spreadDist = morphProgress * 6.5
-                const flat = new THREE.Vector3(axis.x, axis.y, 0)
-                const flatLen = flat.length()
+                _wslFlat.set(axis.x, axis.y, 0)
+                const flatLen = _wslFlat.length()
                 if (flatLen > 0.001) {
-                    morphPos.add(flat.divideScalar(flatLen).multiplyScalar(spreadDist))
+                    _wslMorphPos.add(_wslFlat.divideScalar(flatLen).multiplyScalar(spreadDist))
                 } else {
                     // Fallback: scatter using index to ensure unique direction
-                    morphPos.add(new THREE.Vector3(Math.cos(i * 2.4), Math.sin(i * 2.4), 0).multiplyScalar(spreadDist))
+                    _wslFallback.set(Math.cos(i * 2.4), Math.sin(i * 2.4), 0).multiplyScalar(spreadDist)
+                    _wslMorphPos.add(_wslFallback)
                 }
             }
 
-            dummyMatrix.position.copy(morphPos)
+            dummyMatrix.position.copy(_wslMorphPos)
 
             // Calculate the two target orientations
             dummyMatrix.lookAt(state.camera.position)
-            const cameraLookQuat = dummyMatrix.quaternion.clone()
+            _wslCamQuat.copy(dummyMatrix.quaternion)
 
-            dummyMatrix.lookAt(morphPos.x, morphPos.y, morphPos.z + 10)
-            const forwardLookQuat = dummyMatrix.quaternion.clone()
+            dummyMatrix.lookAt(_wslMorphPos.x, _wslMorphPos.y, _wslMorphPos.z + 10)
+            _wslFwdQuat.copy(dummyMatrix.quaternion)
 
             // Smoothly transition from tracking camera to facing forward over the last 15% of the morph
             if (heroIntroState.phase !== 'done') {
                 if (morphProgress < 0.15) {
                     // map 0.15 -> 0 to 0 -> 1 for the slerp amount
                     const lookAlpha = 1 - (morphProgress / 0.15)
-                    dummyMatrix.quaternion.copy(cameraLookQuat).slerp(forwardLookQuat, lookAlpha)
+                    dummyMatrix.quaternion.copy(_wslCamQuat).slerp(_wslFwdQuat, lookAlpha)
                 } else {
-                    dummyMatrix.quaternion.copy(cameraLookQuat)
+                    dummyMatrix.quaternion.copy(_wslCamQuat)
                 }
             } else {
-                dummyMatrix.quaternion.copy(forwardLookQuat)
+                dummyMatrix.quaternion.copy(_wslFwdQuat)
             }
 
             // Apply highlight rotation (around Z axis of the character)
             if (isHighlighted && highlightRotation > 0) {
                 // Find true geometric center of character path
-                const rx = morphPos.x - centerP.x
-                const ry = morphPos.y - centerP.y
+                const rx = _wslMorphPos.x - centerP.x
+                const ry = _wslMorphPos.y - centerP.y
                 const distFromCenter = Math.sqrt(rx * rx + ry * ry)
                 if (distFromCenter > 0.001) {
                     const angle = Math.atan2(ry, rx) + highlightRotation
@@ -1515,7 +1672,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
             }
 
             // Rotate around random axis
-            dummyMatrix.rotateOnWorldAxis(axis, state.clock.elapsedTime * 1.5)
+            dummyMatrix.rotateOnWorldAxis(axis, state.clock.elapsedTime * 0.5)
 
             if (t > drawProgressRef.current) {
                 dummyMatrix.scale.set(0, 0, 0)
@@ -1523,19 +1680,6 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
                 // Smoothly lerp scale from 0.7 (scattered) to 1.0 (formed) using morphProgress
                 const scaleMultiplier = 0.7 + 0.3 * (1 - Math.min(morphProgress, 1))
                 dummyMatrix.scale.set(cogScale * scaleMultiplier, cogScale * scaleMultiplier, cogScale * scaleMultiplier)
-            }
-
-            if (heroIntroState.morphProgress > 0.0 && heroIntroState.morphProgress < 0.02 && i === 0) {
-                console.log('APPROACHING ANIMATION END (SpineCog 0):', {
-                    morphProgress: heroIntroState.morphProgress,
-                    highlightRotation,
-                    px: dummyMatrix.position.x,
-                    py: dummyMatrix.position.y,
-                    pz: dummyMatrix.position.z,
-                    rx: dummyMatrix.rotation.x,
-                    ry: dummyMatrix.rotation.y,
-                    rz: dummyMatrix.rotation.z
-                })
             }
 
             dummyMatrix.updateMatrix()
@@ -2037,32 +2181,6 @@ function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
     )
 }
 
-// ─── Controlled Straight Chain (with Leva sliders) ────────────────────────────
-function ControlledStraightChain({ name, defaults }) {
-    const { px, py, pz, rx, ry, rz, scale, segments, cogScale } = useControls(
-        `Chains / ${name}`,
-        {
-            px: { value: defaults.pos[0], min: -20, max: 20, step: 0.1 },
-            py: { value: defaults.pos[1], min: -20, max: 20, step: 0.1 },
-            pz: { value: defaults.pos[2], min: -20, max: 20, step: 0.1 },
-            rx: { value: defaults.rot[0], min: -Math.PI, max: Math.PI, step: 0.01 },
-            ry: { value: defaults.rot[1], min: -Math.PI, max: Math.PI, step: 0.01 },
-            rz: { value: defaults.rot[2], min: -Math.PI, max: Math.PI, step: 0.01 },
-            scale: { value: defaults.scale, min: 0.1, max: 5, step: 0.05 },
-            segments: { value: defaults.segments, min: 4, max: 40, step: 1 },
-            cogScale: { value: defaults.cogScale, min: 0.1, max: 1, step: 0.01 },
-        }
-    )
-    return (
-        <group position={[px, py, pz]} rotation={[rx, ry, rz]} scale={scale}>
-            <StraightChain
-                start={[0, 0, 0]} end={[1, 0, 0]}
-                color="#3366ff" active={false} interactive={false}
-                segments={segments} cogScale={cogScale} rotationSpeed={1.5}
-            />
-        </group>
-    )
-}
 
 // ─── Main Ethos Section (3D) ──────────────────────────────────────────────────
 const ETHOS_CENTER = [0, 0, 0]
@@ -2072,7 +2190,6 @@ function EthosSnakeSpine({ trigger }) {
     const { scene } = useGLTF('/spine.glb')
     const meshRef = useRef()
     const progressRef = useRef(0)
-
     // Extract geometry and material from the loaded scene
     const { geometry, material } = useMemo(() => {
         let g, m
@@ -2496,7 +2613,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
 
     useEffect(() => {
         let raf
-        const ACCENT = '#00aaff'
+        const ACCENT = '#3a6a99'
         const PAST = '#1e3a66'
         const IDLE = '#08111f'
 
@@ -2530,17 +2647,14 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                 if (!dot) return
                 const isActive = i === active
                 const isPast = SCROLLBAR_STOPS[i] < t + 0.01
+                const isHome = i === 0
                 dot.style.background = isActive ? ACCENT : isPast ? PAST : IDLE
                 dot.style.borderColor = isActive ? ACCENT : isPast ? '#2a4a88' : '#182440'
                 dot.style.boxShadow = isActive ? `0 0 10px ${ACCENT}, 0 0 22px ${ACCENT}55` : isPast ? `0 0 5px #1e3a6688` : 'none'
-                dot.style.transform = `translate(-50%,-50%) rotate(45deg) scale(${isActive ? 1.6 : 1})`
-            })
-
-            lblRefs.current.forEach((lbl, i) => {
-                if (!lbl) return
-                const isActive = i === active
-                lbl.style.color = isActive ? ACCENT : '#6677aa'
-                lbl.style.opacity = isActive ? '1' : '0.7'
+                const scale = isActive ? 1.6 : 1
+                dot.style.transform = isHome
+                    ? `scale(${scale})`
+                    : `rotate(45deg) scale(${scale})`
             })
 
             raf = requestAnimationFrame(loop)
@@ -2559,7 +2673,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             borderRadius: '16px',
-            padding: '24px 40px 40px 30px', // Extra bottom padding for labels
+            padding: '18px 40px 18px 30px',
             //border: '1px solid rgba(255, 255, 255, 0.12)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
             display: 'flex',
@@ -2589,33 +2703,37 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                     <div key={i} style={{
                         position: 'absolute', left: `${SCROLLBAR_VISUAL_PERCENTS[i]}%`, top: 0,
                         pointerEvents: 'auto', cursor: 'pointer',
-                    }} onClick={() => { currentSectionRef.current = i }}>
-                        {/* Tick above track */}
-                        <div style={{
-                            position: 'absolute', width: '1px', height: '5px',
-                            background: 'rgba(60,100,180,0.35)',
-                            left: 0, top: '-5px', transform: 'translateX(-50%)',
-                        }} />
-                        {/* Diamond */}
+                        padding: '16px 18px',
+                        transform: 'translate(-50%, -50%)',
+                        marginTop: '1px',
+                    }}
+                    onClick={() => { currentSectionRef.current = i }}
+                    onMouseEnter={() => {
+                        const dot = dotRefs.current[i]
+                        if (dot) { dot.style.borderColor = '#00aaff'; dot.style.boxShadow = '0 0 8px #00aaff88' }
+                    }}
+                    onMouseLeave={() => {
+                        const dot = dotRefs.current[i]
+                        if (dot) { dot.style.borderColor = ''; dot.style.boxShadow = '' }
+                    }}>
+                        {/* Diamond (circle for home) */}
                         <div ref={el => dotRefs.current[i] = el} style={{
-                            position: 'absolute', width: '7px', height: '7px',
+                            width: '11px', height: '11px',
                             border: '1px solid #182440', background: '#08111f',
-                            transform: 'translate(-50%,-50%) rotate(45deg)',
+                            borderRadius: i === 0 ? '50%' : '0',
+                            transform: i === 0 ? 'rotate(0deg)' : 'rotate(45deg)',
                             transition: 'background 0.25s, box-shadow 0.25s, transform 0.25s, border-color 0.25s',
                         }} />
-                        {/* Label */}
-                        <div ref={el => lblRefs.current[i] = el} style={{
-                            position: 'absolute', top: '13px',
-                            left: i === SCROLLBAR_LABELS.length - 1 ? 'auto' : '50%',
-                            right: i === SCROLLBAR_LABELS.length - 1 ? '0' : 'auto',
-                            transform: i === 0 ? 'translateX(-10%)' : i === SCROLLBAR_LABELS.length - 1 ? 'none' : 'translateX(-50%)',
-                            fontSize: '8px', letterSpacing: '2px',
-                            color: '#2d4070', fontFamily: 'var(--font-mono)',
-                            whiteSpace: 'nowrap', userSelect: 'none',
-                            transition: 'color 0.25s, opacity 0.25s',
-                        }}>
-                            {SECTION_LABELS[i]}
-                        </div>
+                        {/* Home indicator */}
+                        {i === 0 && (
+                            <div style={{
+                                position: 'absolute', top: '20px', left: '50%',
+                                transform: 'translateX(-50%)',
+                                fontSize: '8px', color: '#3a5a90',
+                                fontFamily: 'var(--font-mono)', userSelect: 'none',
+                                letterSpacing: '1px', opacity: 0.7,
+                            }}>⌂</div>
+                        )}
                     </div>
                 ))}
             </div>
@@ -3947,13 +4065,19 @@ const TRAIN_JOINT_ANGLE = (8 / 9) * Math.PI * 2          // ≈ 320° — photo 
 
 const TRAIN_PATH = (() => {
     const pts = new Float32Array(TRAIN_N_TOT * 3)
-    const jx = Math.cos(TRAIN_JOINT_ANGLE) * 70   // ≈  53.6
-    const jz = Math.sin(TRAIN_JOINT_ANGLE) * 70   // ≈ -45.0
+    const jx = Math.cos(TRAIN_JOINT_ANGLE) * 70
+    const jz = Math.sin(TRAIN_JOINT_ANGLE) * 70
+    // Tangent direction at joint angle (CCW circle tangent = perpendicular to radius)
+    const tx = -Math.sin(TRAIN_JOINT_ANGLE)
+    const tz =  Math.cos(TRAIN_JOINT_ANGLE)
+    // Straight approach: arrive tangentially from just outside the ring edge, no big sweep
     for (let i = 0; i < TRAIN_N_STR; i++) {
         const t = i / (TRAIN_N_STR - 1)
-        pts[i*3]   = THREE.MathUtils.lerp(-200, jx, t)
-        pts[i*3+1] = THREE.MathUtils.lerp(-160, 0, t)
-        pts[i*3+2] = THREE.MathUtils.lerp(120, jz, t)
+        // ease-in so first appearance is slow
+        const ease = t * t
+        pts[i*3]   = THREE.MathUtils.lerp(jx - tx * 55, jx, ease)
+        pts[i*3+1] = THREE.MathUtils.lerp(-18, 0, ease)
+        pts[i*3+2] = THREE.MathUtils.lerp(jz - tz * 55, jz, ease)
     }
     for (let i = 0; i < TRAIN_N_CIR; i++) {
         const a = TRAIN_JOINT_ANGLE + (i / TRAIN_N_CIR) * Math.PI * 2
@@ -3964,12 +4088,12 @@ const TRAIN_PATH = (() => {
     return pts
 })()
 
-const BOGEY_SPACING   = 0.04   // path-fraction gap: engine leads, photo i is (i+1) steps back
-const TRAIN_RATE      = 0.28   // path-fraction per second
+const BOGEY_SPACING   = 0.014  // tighter — cards stay close together, less card-deck spread
+const TRAIN_RATE      = 0.13   // slower — smooth, unhurried entrance
 const DETACH_START    = 0.70   // trainHead when photo 8 (rear bogey) detaches
 const DETACH_STEP     = 0.07   // trainHead increment between successive detachments
 const SPINE_FADE_HEAD = DETACH_START + 8 * DETACH_STEP   // ≈ 1.26
-const TRAIN_DONE_SEC  = (SPINE_FADE_HEAD + 0.5) / TRAIN_RATE + 0.5  // ≈ 6.3 s
+const TRAIN_DONE_SEC  = (SPINE_FADE_HEAD + 0.5) / TRAIN_RATE + 0.5
 
 const _spineWaveBuf = new Float32Array(TRAIN_N_TOT * 3)
 
@@ -4024,24 +4148,61 @@ const PHOTO_PATHS = [
     '/photos/IMG_8804.png',
     '/photos/PXL_20250318_174319952 (1).png',
     '/photos/PXL_20251026_025829577.png',
-    '/photos/exported_8647493E-CA66-4175-AA6D-9ACDC7C9E1A2.png'
+    { type: 'video', src: '/photos/guitar-vid.webm' },
 ]
 
-function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused, introTRef }) {
+function useVideoTexture(src) {
+    const [tex, setTex] = useState(null)
+    useEffect(() => {
+        const vid = document.createElement('video')
+        vid.src = src
+        vid.loop = true
+        vid.muted = true
+        vid.playsInline = true
+        vid.autoplay = true
+        vid.play().catch(() => {})
+        const t = new THREE.VideoTexture(vid)
+        t.colorSpace = THREE.SRGBColorSpace
+        setTex(t)
+        return () => { vid.pause(); t.dispose() }
+    }, [src])
+    return tex
+}
+
+function SinglePhotoImage({ path, ...rest }) {
+    const tex = useTexture(path)
+    return <SinglePhotoInner tex={tex} isVideo={false} {...rest} />
+}
+
+function SinglePhotoVideo({ src, ...rest }) {
+    const tex = useVideoTexture(src)
+    if (!tex) return null
+    return <SinglePhotoInner tex={tex} isVideo={true} {...rest} />
+}
+
+function SinglePhoto({ path, ...rest }) {
+    if (path && typeof path === 'object' && path.type === 'video') {
+        return <SinglePhotoVideo src={path.src} {...rest} />
+    }
+    return <SinglePhotoImage path={path} {...rest} />
+}
+
+function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused, introTRef }) {
     const meshRef = useRef()
     const opRef = useRef(0)
     const scaleRef = useRef(1)
     const posRef = useRef({ x: 0, y: 0, z: 0 })
+    const detachBlendRef = useRef(0)
     const outlineRef = useRef()
     const outlineOpRef = useRef(0)
-    const tex = useTexture(path)
     const _camDir = useMemo(() => new THREE.Vector3(), [])
     const _worldTarget = useMemo(() => new THREE.Vector3(), [])
 
     const shaderRef = useRef()
     const mat = useMemo(() => {
         const m = new THREE.MeshStandardMaterial({
-            map: tex, emissiveMap: tex, emissive: new THREE.Color('#00ccff'),
+            map: tex,
+            ...(isVideo ? {} : { emissiveMap: tex, emissive: new THREE.Color('#00ccff') }),
             transparent: true, opacity: 0, side: THREE.DoubleSide,
             toneMapped: false, depthWrite: false,
         })
@@ -4082,10 +4243,11 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
             )
         }
         return m
-    }, [tex, radius])
+    }, [tex, radius, isVideo])
 
     useFrame((state, delta) => {
         if (!meshRef.current) return
+        if (isVideo && tex) tex.needsUpdate = true
 
         const isHovered = hoveredIdx === index
         outlineOpRef.current = dampValue(outlineOpRef.current, isHovered ? 0.8 : 0, 10, delta)
@@ -4149,10 +4311,20 @@ function SinglePhoto({ path, angle, radius, hoveredIdx, setHoveredIdx, index, ap
         posRef.current.z = dampValue(posRef.current.z, targetZ, 8, delta)
 
         meshRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
-        if (faceCam || focused) {
+
+        // Blend detach: 0 = facing camera, 1 = settled ring rotation
+        detachBlendRef.current = dampValue(detachBlendRef.current, (isDetached && !focused) ? 1 : 0, 3, delta)
+        const blend = detachBlendRef.current
+        if (blend < 0.01 || focused) {
             meshRef.current.lookAt(state.camera.position)
-        } else {
+        } else if (blend > 0.99) {
             meshRef.current.rotation.set(0, Math.PI / 2 - angle, 0)
+        } else {
+            meshRef.current.lookAt(state.camera.position)
+            const camQuat = meshRef.current.quaternion.clone()
+            const ringEuler = new THREE.Euler(0, Math.PI / 2 - angle, 0)
+            const ringQuat = new THREE.Quaternion().setFromEuler(ringEuler)
+            meshRef.current.quaternion.slerpQuaternions(camQuat, ringQuat, blend)
         }
         meshRef.current.scale.setScalar(scaleRef.current)
         meshRef.current.material.opacity = opRef.current
@@ -4525,27 +4697,9 @@ function BustDiptych({ scrollRef }) {
     const appearedRef = useRef(false)
     const [focusedIdx, setFocusedIdx] = useState(-1)
 
-    const {
-        k_x, k_y, k_z, k_intensity, k_color,
-        r_x, r_y, r_z, r_intensity, r_color,
-        f_x, f_y, f_z, f_intensity, f_color,
-    } = useControls('Sigil Lights', {
-        k_x: { value: -67,  min: -300, max: 300, step: 1, label: 'Key X' },
-        k_y: { value: -5,   min: -300, max: 300, step: 1, label: 'Key Y' },
-        k_z: { value: -160, min: -400, max: 0,   step: 1, label: 'Key Z' },
-        k_intensity: { value: 2000, min: 0, max: 2000, step: 10, label: 'Key Intensity' },
-        k_color: { value: '#0079ff', label: 'Key Color' },
-        r_x: { value: -62,  min: -300, max: 300, step: 1, label: 'Rim X' },
-        r_y: { value: -66,  min: -300, max: 300, step: 1, label: 'Rim Y' },
-        r_z: { value: -222, min: -400, max: 0,   step: 1, label: 'Rim Z' },
-        r_intensity: { value: 2000, min: 0, max: 2000, step: 10, label: 'Rim Intensity' },
-        r_color: { value: '#6d50ff', label: 'Rim Color' },
-        f_x: { value: -110, min: -300, max: 300, step: 1, label: 'Fill X' },
-        f_y: { value: 39,   min: -300, max: 300, step: 1, label: 'Fill Y' },
-        f_z: { value: -191, min: -400, max: 0,   step: 1, label: 'Fill Z' },
-        f_intensity: { value: 2000, min: 0, max: 2000, step: 10, label: 'Fill Intensity' },
-        f_color: { value: '#a200ff', label: 'Fill Color' },
-    })
+    const k_x = -67, k_y = -5,   k_z = -160, k_intensity = 2000, k_color = '#0079ff'
+    const r_x = -62, r_y = -66,  r_z = -222, r_intensity = 2000, r_color = '#6d50ff'
+    const f_x = -110, f_y = 39,  f_z = -191, f_intensity = 2000, f_color = '#a200ff'
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
@@ -5367,7 +5521,7 @@ function HeroSubtextCard({ scrollRef }) {
                     fontSize: '16px',
                     letterSpacing: '0.22em',
                     textTransform: 'uppercase',
-                    color: '#506088',
+                    color: '#8899cc',
                 }}>
                     Product Designer @ Dell &nbsp;·&nbsp; UX Engineer @ iSchool
                 </div>
@@ -5376,7 +5530,7 @@ function HeroSubtextCard({ scrollRef }) {
             {/* Subtext card — below the 3D MUSTAFA text */}
             <div style={{
                 position: 'absolute',
-                bottom: '22%',
+                bottom: '20%',
                 left: '50%',
                 transform: `translateX(-50%) translateY(${visible ? '0px' : '60px'})`,
                 opacity: visible ? 1 : 0,
@@ -5393,11 +5547,10 @@ function HeroSubtextCard({ scrollRef }) {
                     fontSize: '14px',
                     letterSpacing: '0.08em',
                     lineHeight: 1.6,
-                    color: '#6677aa',
-                    //textTransform: 'uppercase',
+                    color: '#99aacc',
+                    textAlign: 'center',
                 }}>
-                    Currently building a capstone recruitment system at School of Information. Previously, I revamped CBRE's visual language.
-                </div>
+                Product designer focused on systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE. </div>
             </div>
         </>
     )
@@ -5409,6 +5562,24 @@ export default function Portfolio() {
     const [activeProject, setActiveProject] = useState(null)
     const activeProjectRef = useRef(null)
     useEffect(() => { activeProjectRef.current = activeProject }, [activeProject])
+
+    // Start background track on first user gesture (required by browser autoplay policy)
+    useEffect(() => {
+        let started = false
+        const start = () => {
+            if (started) return
+            started = true
+            sfx.startBgTrack()
+        }
+        window.addEventListener('click', start, { once: true })
+        window.addEventListener('wheel', start, { once: true })
+        window.addEventListener('keydown', start, { once: true })
+        return () => {
+            window.removeEventListener('click', start)
+            window.removeEventListener('wheel', start)
+            window.removeEventListener('keydown', start)
+        }
+    }, [])
 
     // Global UI hover tracker
     useEffect(() => {
@@ -5433,6 +5604,8 @@ export default function Portfolio() {
         const onWheel = (e) => {
             // Allow native scroll inside the case study drawer
             if (e.target.closest('.cs-drawer')) return
+            // Don't allow scrolling until hero intro animation is complete
+            if (heroIntroState.phase !== 'done') { e.preventDefault(); return }
             // Don't block scroll when a project drawer is open
             if (activeProjectRef.current) return
             e.preventDefault()
@@ -5475,20 +5648,16 @@ export default function Portfolio() {
 
             {/* GLOBAL HUD */}
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0 40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#fff', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '13px', pointerEvents: 'auto', padding: '24px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pointerEvents: 'auto', padding: '24px 0' }}>
                     <img src="/2/27/Logo.svg" alt="Mustafa" style={{ height: '28px', display: 'block', opacity: 0.9 }} />
-
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', pointerEvents: 'auto', padding: '24px 0' }}>
-                    <div style={{ display: 'flex', gap: '20px' }}>
-                        <GlitchLink href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing">RESUME</GlitchLink>
-                        <GlitchLink href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/">LINKEDIN</GlitchLink>
-                        <GlitchLink href="https://github.com/moosefroggo">GITHUB</GlitchLink>
-                    </div>
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                        <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
+                        <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
+                        <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
                         <CopyEmailHud />
                     </div>
                 </div>
+                <div />
             </div>
 
             <MuteButton />
