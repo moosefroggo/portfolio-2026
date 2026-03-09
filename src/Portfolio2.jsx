@@ -1058,12 +1058,11 @@ function BrainWires({ opRef }) {
     }, [])
 
     useFrame((state) => {
-        const op = opRef.current
         const t = state.clock.elapsedTime
         mats.forEach((m, i) => {
             const [speed, phase, base, amp] = WIRE_PULSE[i]
-            m.opacity = op
-            m.emissiveIntensity = (base + Math.sin(t * speed + phase) * amp) * op
+            m.opacity = 0.88
+            m.emissiveIntensity = base + Math.sin(t * speed + phase) * amp
         })
     })
 
@@ -1992,15 +1991,15 @@ const ETHOS_EXIT = 0.32   // scroll fraction: ethos ends
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'Build things that solve problems, look delightful, are fun to use.',
+        text: 'Combine product, design, and eningeering to create tangible impact',
     },
     {
         label: 'SYSTEMS',
-        text: 'I break the product down to its individual cogs, then I rebuild and rearrange those cogs to solve problems.',
+        text: 'On the hunt for complex problem spaces with multi-modal experiences',
     },
     {
         label: 'VISION',
-        text: 'Design is a neccessity and it is everywhere, I look at the tangible world around me for inspiration to build products for the future.',
+        text: 'Partner with AI agents to build cool things that push boundaries',
     },
 ]
 
@@ -2666,14 +2665,14 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
     return (
         <div ref={wrapRef} style={{
             position: 'fixed', bottom: '16px', left: '50%',
-            transform: 'translateX(-50%)', width: 'min(520px, 55vw)',
+            transform: 'translateX(-50%)', width: 'min(440px, 48vw)',
             zIndex: 100, pointerEvents: 'none', transition: 'none',
             // Liquid Glass Container
             background: 'rgba(0, 0, 0, 0)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            borderRadius: '16px',
-            padding: '18px 40px 18px 30px',
+            borderRadius: '12px',
+            padding: '14px 32px 14px 24px',
             //border: '1px solid rgba(255, 255, 255, 0.12)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
             display: 'flex',
@@ -2718,8 +2717,8 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                     }}>
                         {/* Diamond (circle for home) */}
                         <div ref={el => dotRefs.current[i] = el} style={{
-                            width: '11px', height: '11px',
-                            border: '1px solid #182440', background: '#08111f',
+                            width: '7px', height: '7px',
+                            border: '1px solid #2a3a5a', background: '#08111f',
                             borderRadius: i === 0 ? '50%' : '0',
                             transform: i === 0 ? 'rotate(0deg)' : 'rotate(45deg)',
                             transition: 'background 0.25s, box-shadow 0.25s, transform 0.25s, border-color 0.25s',
@@ -5319,7 +5318,6 @@ function ScrollHint({ scrollRef }) {
     return (
         <div ref={elRef} className="scroll-hint">
             <style>{SCROLL_HINT_CSS}</style>
-            <div className="scroll-hint-label">SCROLL</div>
         </div>
     )
 }
@@ -5331,7 +5329,7 @@ function MuteButton() {
             onClick={toggleMute}
             title={muted ? 'Unmute sound' : 'Mute sound'}
             style={{
-                position: 'fixed', bottom: '28px', right: '28px', zIndex: 200,
+                position: 'fixed', bottom: '16px', right: '40px', zIndex: 200,
                 background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.2)',
                 backdropFilter: 'blur(8px)', borderRadius: '50%',
                 width: '36px', height: '36px', cursor: 'pointer',
@@ -5374,10 +5372,9 @@ function CursorOrb() {
 
     useEffect(() => {
         const onMove = (e) => {
-            // e.pageX/Y are unaffected by CSS 3D transforms (unlike clientX/Y in drei <Html>)
-            const x = e.pageX ?? e.clientX
-            const y = e.pageY ?? e.clientY
-            // Clamp to viewport to prevent runaway from synthetic/transformed events
+            const x = e.clientX
+            const y = e.clientY
+            // Reject out-of-viewport coords (synthetic events from drei <Html transform>)
             if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return
             mouse.current.x = x
             mouse.current.y = y
@@ -5575,9 +5572,13 @@ export default function Portfolio() {
         let started = false
         const start = () => {
             if (started) return
-            started = true
             sfx.setMuted(false)
-            sfx.startBgTrack()
+            const p = sfx.startBgTrack()
+            if (p && typeof p.then === 'function') {
+                p.then(() => { started = true }).catch(() => {})
+            } else {
+                started = true
+            }
         }
         const events = ['click', 'wheel', 'keydown', 'mousemove', 'touchstart', 'scroll']
         events.forEach(e => window.addEventListener(e, start))
@@ -5652,9 +5653,8 @@ export default function Portfolio() {
 
             {/* GLOBAL HUD */}
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0 40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pointerEvents: 'auto', padding: '24px 0' }}>
-                    <img src="/2/27/Logo.svg" alt="Mustafa" style={{ height: '28px', display: 'block', opacity: 0.9 }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', pointerEvents: 'auto', height: '36px', marginTop: '28px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase' }}>
                         <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
                         <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
                         <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>

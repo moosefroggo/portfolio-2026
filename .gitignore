@@ -37,7 +37,8 @@ todo.txt
 # Large unused public assets
 public/*.blend
 public/studio-light.exr
-public/textures
+public/textures/*.exr
+public/textures/*.hdr
 public/fonts/ALL FONTS FLAT
 
 # Archived unused assets

@@ -229,7 +229,7 @@ export const sfx = {
     startBgTrack() {
         const audio = getBgAudio()
         audio.muted = _muted
-        audio.play().catch(() => {}) // browsers may block autoplay; silently ignore
+        return audio.play() // return promise so caller can detect if autoplay was blocked
     },
 
     toggleMute() {
