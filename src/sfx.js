@@ -26,7 +26,7 @@ function ctx() {
 
 // ─── Mute state (module-level, shared across all hook instances) ─────────────
 
-let _muted = false
+let _muted = true
 const _listeners = new Set()
 function _notifyMute() { _listeners.forEach(fn => fn()) }
 

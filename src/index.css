@@ -1,10 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500&display=swap');
-
 @font-face {
   font-family: 'RocketCommandExpand';
   src: url('/fonts/Rocket%20Command/rocketcommandexpand.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/Space_Mono/SpaceMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/Space_Mono/SpaceMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/Space_Mono/SpaceMono-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
 }
 
 * {
@@ -82,7 +101,7 @@ body::after {
 
 /* ─── Variables ───────────────────────────────────────────────────────────── */
 :root {
-  --font-mono: 'RocketCommandExpand', 'Space Mono', monospace;
+  --font-mono: 'Space Mono', monospace;
   --font-body: 'Inter', system-ui, sans-serif;
   --color-text: #c8d4e8;
   --color-text-muted: rgba(180, 200, 230, 0.45);

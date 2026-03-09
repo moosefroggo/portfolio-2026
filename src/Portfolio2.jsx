@@ -90,7 +90,7 @@ const SUBTITLE_FONT = '/fonts/Oxanium-VariableFont_wght.ttf'
 const PROJECT_CARDS = [
     {
         pos: [100, 0, 0], rot: [0, 0, 0], color: '#00aaff', appear: 0.44,
-        title: 'Engine Immobilizer', subtitle: '01 // Motive',
+        title: 'Engine Immobilizer', subtitle: 'Allowing managers to remotely immobilize stolen vehicles',
         desc: 'Allowing managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
         stats: { role: 'Senior Product Designer', year: '2024', company: 'Motive' },
@@ -100,7 +100,7 @@ const PROJECT_CARDS = [
     },
     {
         pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
-        title: 'Workflows', subtitle: '02 // Educative',
+        title: 'Workflows', subtitle: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         desc: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
         stats: { role: 'UX Design & Strategy', year: '2023', company: 'Educative' },
@@ -766,7 +766,7 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
 
 // WiFi arc waves expanding from immobilizer, fading before reaching truck
 const _wifiTarget = new THREE.Vector3()
-function WifiWaves({ origin, toward, color = '#ffaa22', visible = true }) {
+function WifiWaves({ origin, toward, color = '#aa66ff', visible = true }) {
     const COUNT = 4
     const groupRef = useRef()
     const waveRefs = useRef([])
@@ -780,7 +780,7 @@ function WifiWaves({ origin, toward, color = '#ffaa22', visible = true }) {
         phases.forEach((phase, i) => {
             const mesh = waveRefs.current[i]
             if (!mesh) return
-            const p = (state.clock.elapsedTime * 0.65 + phase) % 1
+            const p = (state.clock.elapsedTime * 0.35 + phase) % 1
             // Travel from origin toward truck, fade out before arriving
             const fade = p < 0.65 ? Math.sin((p / 0.65) * Math.PI) : 0
             mats[i].opacity = visible ? fade * 0.9 : 0
@@ -820,7 +820,7 @@ function TruckImmobilizerScene({ appeared, cardIndex, onOpen }) {
         useMemo(() => makeTexturedHologramClone(truckScene, '#00aaff', 2.2), [truckScene])
 
     const { clone: immClone, mats: immMats } =
-        useMemo(() => makeTexturedHologramClone(immScene, '#ffaa22', 1.0), [immScene])
+        useMemo(() => makeTexturedHologramClone(immScene, '#aa66ff', 1.0), [immScene])
 
     useFrame((state, delta) => {
         truckOpRef.current = dampValue(truckOpRef.current, appeared ? 0.5 : 0, 5, delta)
@@ -849,14 +849,14 @@ function TruckImmobilizerScene({ appeared, cardIndex, onOpen }) {
             {/* Engine Immobilizer — textured hologram, upper-right */}
             <group ref={immGroupRef} position={[1.6, 0.9, 0.3]}>
                 <primitive object={immClone} />
-                <pointLight color="#ffaa22" intensity={appeared ? 2.5 : 0} distance={4} decay={2} />
+                <pointLight color="#aa66ff" intensity={appeared ? 2.5 : 0} distance={4} decay={2} />
             </group>
 
             {/* WiFi waves — signal radiating from immobilizer toward truck */}
             <WifiWaves
                 origin={[1.6, 0.9, 0.3]}
                 toward={[0, -0.3, 0.9]}
-                color="#ffaa22"
+                color="#aa66ff"
                 visible={appeared}
             />
         </group>
@@ -879,7 +879,8 @@ function VideoScreen({
     cornerLabel = "SIG 4/5",
     footerLabel = "$1M Customer Acquired",
     colorHex = "#44ff88",
-    colorRgb = "68,255,136"
+    colorRgb = "68,255,136",
+    onOpen = null,
 }) {
     const containerRef = useRef()
 
@@ -889,8 +890,8 @@ function VideoScreen({
 
     return (
         <group position={[3.4, 0.15, 0.9]} rotation={[0, -0.42, 0]}>
-            <Html transform occlude={false} style={{ pointerEvents: 'none' }} distanceFactor={3.5}>
-                <div ref={containerRef} style={{ opacity: 0, fontFamily: "'Courier New', monospace", userSelect: 'none', width: '262px' }}>
+            <Html transform occlude={false} style={{ pointerEvents: onOpen ? 'auto' : 'none' }} distanceFactor={3.5}>
+                <div ref={containerRef} onClick={onOpen ?? undefined} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <style>{`
                         @keyframes hud-blink { 0%,100%{opacity:1} 50%{opacity:0} }
                         @keyframes hud-scan  { 0%{top:-15%} 100%{top:115%} }
@@ -1502,8 +1503,7 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
 
             <Text position={[0, 2.15, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
-            <Text position={[0, 1.75, 0.1]} fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.15} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.subtitle}</Text>
-            <Text position={[0, -1.35, 3.5]} font={SUBTITLE_FONT} fontSize={0.13} color="#667799" anchorX="center" anchorY="top" maxWidth={4.5} lineHeight={1.6} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 0.85 : 0} material-depthTest={false} renderOrder={5}>{config.desc}</Text>
+            <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.05} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>
 
             {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
         </group>
@@ -2993,7 +2993,7 @@ const CASE_STUDY_CSS_NEON = `
     padding: 32px 28px;
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 255, 255, 0.3) transparent;
-    font-family: 'Courier New', monospace;
+    font-family: 'Space Mono', monospace;
 }
 .cs-body-neon::-webkit-scrollbar {
     width: 6px;
@@ -3163,16 +3163,27 @@ function CaseStudySection({ section, neon = false }) {
 
 function CaseStudyOverlay({ project, onClose }) {
     const [visible, setVisible] = useState(false)
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        if (project) requestAnimationFrame(() => setVisible(true))
-        else setVisible(false)
+        if (project) {
+            setMounted(true)
+            requestAnimationFrame(() => setVisible(true))
+        } else {
+            setVisible(false)
+            const t = setTimeout(() => setMounted(false), 500)
+            return () => clearTimeout(t)
+        }
     }, [project])
 
-    if (!project) return null
+    const cachedProjectRef = useRef(null)
+    if (project) cachedProjectRef.current = project
+    const displayProject = cachedProjectRef.current
 
-    const cs = project.caseStudy
-    const color = project.color
+    if (!mounted || !displayProject) return null
+
+    const cs = displayProject.caseStudy
+    const color = displayProject.color
 
     return (
         <>
@@ -3183,8 +3194,8 @@ function CaseStudyOverlay({ project, onClose }) {
                     {/* Header */}
                     <div className="cs-header">
                         <div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', letterSpacing: '0.14em', color: '#445577', textTransform: 'uppercase' }}>{project.subtitle}</div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color, letterSpacing: '0.08em', marginTop: '4px' }}>{project.title}</div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color, letterSpacing: '0.08em' }}>{displayProject.title}</div>
+                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#556688', marginTop: '6px', lineHeight: 1.5 }}>{displayProject.subtitle}</div>
                         </div>
                         <button className="cs-close-btn" onClick={onClose}>&times;</button>
                     </div>
@@ -3192,10 +3203,10 @@ function CaseStudyOverlay({ project, onClose }) {
                     {/* Scrollable body */}
                     <div className="cs-body">
                         {/* Video at the top */}
-                        {project.video && (
+                        {displayProject.video && (
                             <div style={{ marginBottom: '28px', borderRadius: '4px', overflow: 'hidden', border: `1px solid ${color}22`, background: '#000' }}>
                                 <video
-                                    src={project.video}
+                                    src={displayProject.video}
                                     autoPlay
                                     loop
                                     muted
@@ -3227,10 +3238,10 @@ function CaseStudyOverlay({ project, onClose }) {
                             <div className="cs-placeholder">
                                 <div className="cs-placeholder-title">Case study coming soon</div>
                                 <div style={{ fontSize: '13px', color: '#556688', lineHeight: 1.7 }}>
-                                    {project.desc}
+                                    {displayProject.desc}
                                 </div>
                                 <div style={{ marginTop: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    {project.tech.map(t => (
+                                    {displayProject.tech.map(t => (
                                         <span key={t} style={{ fontSize: '10px', letterSpacing: '0.1em', color: '#556688', padding: '3px 8px', border: '1px solid #1a2444', borderRadius: '2px', fontFamily: 'var(--font-mono)' }}>{t}</span>
                                     ))}
                                 </div>
@@ -3863,10 +3874,8 @@ function ModularResumePatch({ visible, currentSectionRef }) {
         setActiveId(null)
     }, [])
 
-    if (!visible) return null
-
     return (
-        <group ref={groupRef} position-y={10} onClick={onBackgroundClick}>
+        <group ref={groupRef} position-y={visible ? 10 : 9999} visible={visible} onClick={onBackgroundClick}>
             {/* Company → Resume spine chains */}
             {COMPANY_NODES.map((node, i) => {
                 // Determine target speed for this company chain
@@ -4187,7 +4196,7 @@ function SinglePhoto({ path, ...rest }) {
     return <SinglePhotoImage path={path} {...rest} />
 }
 
-function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused, introTRef }) {
+function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused }) {
     const meshRef = useRef()
     const opRef = useRef(0)
     const scaleRef = useRef(1)
@@ -4254,16 +4263,11 @@ function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredI
         if (outlineRef.current) outlineRef.current.material.opacity = outlineOpRef.current
 
         const t  = state.clock.elapsedTime
-        const th = (introTRef?.current ?? (TRAIN_DONE_SEC + 1)) * TRAIN_RATE  // trainHead
-
-        // photo i is (i+1) BOGEY_SPACING steps behind the engine
-        const photoPathFrac = clamp(th - (index + 1) * BOGEY_SPACING, 0, 1)
-        // Rear bogey (index 8) detaches first; front bogey (index 0) detaches last
-        const isDetached = appeared && th >= DETACH_START + (8 - index) * DETACH_STEP
+        // Always settled — no train animation
+        const isDetached = true
 
         let targetX, targetY, targetZ, targetOp
         let clothTarget = 0.18
-        let faceCam = false
 
         if (focused) {
             state.camera.getWorldDirection(_camDir)
@@ -4271,27 +4275,12 @@ function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredI
             if (meshRef.current.parent) meshRef.current.parent.worldToLocal(_worldTarget)
             targetX = _worldTarget.x; targetY = _worldTarget.y; targetZ = _worldTarget.z
             targetOp = 1.0
-        } else if (!appeared || th <= 0) {
-            targetX = TRAIN_PATH[0]; targetY = TRAIN_PATH[1]; targetZ = TRAIN_PATH[2]
-            targetOp = 0
-        } else if (!isDetached) {
-            // Riding the train — follow the wavy path
-            const idx  = Math.floor(photoPathFrac * (TRAIN_N_TOT - 1))
-            const frac = photoPathFrac
-            const amp  = frac < (TRAIN_N_STR / TRAIN_N_TOT)
-                ? 12 * (frac / (TRAIN_N_STR / TRAIN_N_TOT)) : 5
-            targetX = TRAIN_PATH[idx*3]   + Math.cos(frac * 11 - t * 3) * amp * 0.5
-            targetY = TRAIN_PATH[idx*3+1] + Math.sin(frac * 16 - t * 5) * amp
-            targetZ = TRAIN_PATH[idx*3+2]
-            targetOp   = clamp(photoPathFrac / 0.05, 0, 1)
-            clothTarget = 0.50
-            faceCam    = true
         } else {
             // Settled in ring
             targetX = Math.cos(angle) * radius
             targetY = Math.sin(t + index * 0.5) * 0.5
             targetZ = Math.sin(angle) * radius
-            targetOp = isAnyFocused ? 0.3 : 1.0
+            targetOp = appeared ? (isAnyFocused ? 0.3 : 1.0) : 0
         }
 
         opRef.current = dampValue(opRef.current, targetOp, 12, delta)
@@ -4367,31 +4356,19 @@ function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
     const prevAppearedRef = useRef(false)
 
     useFrame((_, delta) => {
-        // Reset / advance intro timer
-        if (!appeared) {
-            introTRef.current = 0
-            prevAppearedRef.current = false
-        } else if (!prevAppearedRef.current) {
-            prevAppearedRef.current = true
-            introTRef.current = 0
-        } else {
-            introTRef.current += delta
-        }
-
-        // Spin ring only after all cards have settled
-        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1 && introTRef.current > TRAIN_DONE_SEC) {
+        // Spin ring when not interacting
+        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1) {
             groupRef.current.rotation.y += delta * 0.1
         }
     })
 
     return (
         <group ref={groupRef} position={center} rotation={[0.3, 0.7, 0.3]}>
-            {appeared && <WavySpine introTRef={introTRef} />}
             {PHOTO_PATHS.map((path, i) => {
                 const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
                 return (
                     <SinglePhoto
-                        key={path}
+                        key={typeof path === 'string' ? path : path.src}
                         path={path}
                         angle={angle}
                         radius={radius}
@@ -4402,7 +4379,7 @@ function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
                         focused={focusedIdx === i}
                         isAnyFocused={focusedIdx !== -1}
                         onFocus={setFocusedIdx}
-                        introTRef={introTRef}
+                        introTRef={null}
                     />
                 )
             })}
@@ -4740,12 +4717,15 @@ function BioSection({ scrollRef, currentSectionRef }) {
     const phaseRef = useRef('idle')
     const timerRef = useRef(0)
     const tRef = useRef(0)
+    const [premounted, setPremounted] = useState(false)
 
     useFrame((_, delta) => {
         if (!groupRef.current) return
         const t = scrollRef.current ?? 0
         tRef.current = t
         groupRef.current.visible = t >= BIO_ENTER - 0.04
+
+        if (t >= BIO_ENTER - 0.12 && !premounted) setPremounted(true)
 
         if (t < BIO_ENTER - 0.04) {
             if (phaseRef.current !== 'idle') { phaseRef.current = 'idle'; setPhase('idle'); timerRef.current = 0 }
@@ -4768,7 +4748,7 @@ function BioSection({ scrollRef, currentSectionRef }) {
             <RaveAfterglowLights active={patchVisible} />
             <BioGrid active={patchVisible} />
             <group position={[0, 1.8, 0]}>
-                <ModularResumePatch visible={patchVisible} currentSectionRef={currentSectionRef} />
+                {premounted && <ModularResumePatch visible={patchVisible} currentSectionRef={currentSectionRef} />}
             </group>
             <BustDiptych scrollRef={scrollRef} />
         </group>
@@ -5046,10 +5026,11 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
                     footerLabel="5M+ Vehicles Secured"
                     colorHex="#00aaff"
                     colorRgb="0,170,255"
+                    onOpen={() => onOpenProject?.(PROJECT_CARDS[0])}
                 />
             </group>
             <group position={[120, -0.5, 0]} rotation={[0, 0.2, 0]}>
-                <VideoScreen />
+                <VideoScreen onOpen={() => onOpenProject?.(PROJECT_CARDS[1])} />
             </group>
         </group>
     )
@@ -5123,8 +5104,8 @@ function EliteLoader() {
         }}>
             <style>{`
                 @keyframes kinetic-wave {
-                    0%, 100% { transform: translateY(0); color: rgba(136, 153, 204, 0.4); text-shadow: none; }
-                    50% { transform: translateY(-10px); color: #ffffff; text-shadow: 0 0 15px #ff00ff, 0 0 30px #00aaff; }
+                    0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.35; }
+                    50% { transform: translate3d(0, -10px, 0); opacity: 1; }
                 }
                 .kinetic-letter {
                     display: inline-block;
@@ -5132,6 +5113,8 @@ function EliteLoader() {
                     font-weight: 200;
                     letter-spacing: 0.2em;
                     animation: kinetic-wave 2s ease-in-out infinite;
+                    will-change: transform, opacity;
+                    color: #8899cc;
                 }
                 .loader-bg-grid {
                     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -5142,11 +5125,11 @@ function EliteLoader() {
                     z-index: -2;
                 }
                 @keyframes sweep {
-                    0% { top: -10%; }
-                    100% { top: 110%; }
+                    0% { transform: translate3d(0, -10vh, 0); }
+                    100% { transform: translate3d(0, 110vh, 0); }
                 }
                 .loader-sweep {
-                    position: absolute; left: 0; width: 100%; height: 2px;
+                    position: absolute; top: 0; left: 0; width: 100%; height: 2px;
                     background: linear-gradient(90deg, transparent, rgba(255, 0, 255, 0.5), rgba(0, 170, 255, 0.5), transparent);
                     animation: sweep 4s linear infinite;
                     z-index: -1;
@@ -5195,7 +5178,6 @@ function EliteLoader() {
 
 
 function CopyEmailHud() {
-    const [hovered, setHovered] = useState(false)
     const [copied, setCopied] = useState(false)
     const copy = () => {
         navigator.clipboard.writeText(CONTACT_EMAIL)
@@ -5205,28 +5187,20 @@ function CopyEmailHud() {
     }
     return (
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-            onMouseEnter={() => { setHovered(true); sfx.hover() }}
-            onMouseLeave={() => setHovered(false)}>
-            <button onClick={copy} title="Copy email" style={{
-                position: 'absolute', right: '100%', marginRight: 8,
-                opacity: hovered ? 1 : 0, pointerEvents: hovered ? 'auto' : 'none',
-                background: 'none',
-                border: '1px solid rgba(255,255,255,0.25)',
-                color: copied ? '#00ff88' : '#aabbdd',
-                cursor: 'pointer',
-                padding: '2px 8px',
-                fontSize: 10,
-                letterSpacing: '0.12em',
-                fontFamily: 'var(--font-mono)',
-                lineHeight: '18px',
-                transition: 'opacity 0.15s, color 0.2s',
-                whiteSpace: 'nowrap',
-            }}>
-                {copied ? '✓' : '⧉'}
-            </button>
-            <GlitchLink href={`mailto:${CONTACT_EMAIL}`}>
-                {CONTACT_EMAIL.toUpperCase()}
-            </GlitchLink>
+            onMouseEnter={() => sfx.hover()}>
+            <span
+                onClick={copy}
+                className="glitch-link"
+                data-text={copied ? 'EMAIL COPIED!' : CONTACT_EMAIL.toUpperCase()}
+                style={{
+                    cursor: 'pointer',
+                    color: copied ? '#00ff88' : undefined,
+                    transition: 'color 0.2s',
+                    userSelect: 'none',
+                }}
+            >
+                {copied ? 'EMAIL COPIED!' : CONTACT_EMAIL.toUpperCase()}
+            </span>
         </div>
     )
 }
@@ -5255,7 +5229,7 @@ const SCROLL_HINT_CSS = `
 }
 .scroll-hint-label {
     font-size: 8px; letter-spacing: 0.3em; color: rgba(136,153,204,0.4);
-    font-family: 'Courier New', monospace; text-transform: uppercase;
+    font-family: 'Space Mono', monospace; text-transform: uppercase;
 }
 
 @keyframes glitch-link-1 {
@@ -5353,7 +5327,18 @@ function MuteButton() {
                 padding: 0,
             }}
         >
-            {muted ? '🔇' : '🔊'}
+            {muted ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+                </svg>
+            ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                </svg>
+            )}
         </button>
     )
 }
@@ -5379,19 +5364,22 @@ function CursorOrb() {
             mouse.current.y = e.clientY
 
             const cursor = window.getComputedStyle(e.target).cursor
-            const isHover = cursor === 'pointer' || cursor === 'crosshair'
+            const isHover = cursor === 'pointer'
             if (isHover !== hoveredRef.current) {
                 hoveredRef.current = isHover
                 if (soulRef.current) {
-                    const s = isHover ? '32px' : '24px'
+                    const s = isHover ? '28px' : '14px'
                     soulRef.current.style.width = s
                     soulRef.current.style.height = s
                     soulRef.current.style.boxShadow = isHover
-                        ? '0 0 25px #ff00ff, 0 0 45px #ff00ff'
-                        : '0 0 12px #ff00ff, 0 0 20px #ff00ff'
+                        ? '0 0 18px #ff00ff, 0 0 32px #ff00ff'
+                        : '0 0 5px #ff00ff, 0 0 10px #ff00ff'
+                    soulRef.current.style.background = isHover
+                        ? 'rgba(255, 0, 255, 0.35)'
+                        : 'rgba(255, 0, 255, 0.18)'
                 }
                 if (coreRef.current) {
-                    const c = isHover ? '6px' : '4px'
+                    const c = isHover ? '5px' : '3px'
                     coreRef.current.style.width = c
                     coreRef.current.style.height = c
                 }
@@ -5432,11 +5420,11 @@ function CursorOrb() {
             }}
         >
             <div ref={soulRef} style={{
-                width: '24px',
-                height: '24px',
+                width: '14px',
+                height: '14px',
                 borderRadius: '50%',
-                background: 'rgba(255, 0, 255, 0.4)',
-                boxShadow: '0 0 12px #ff00ff, 0 0 20px #ff00ff',
+                background: 'rgba(255, 0, 255, 0.18)',
+                boxShadow: '0 0 5px #ff00ff, 0 0 10px #ff00ff',
                 transition: 'width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
@@ -5472,7 +5460,7 @@ function SceneCursorLight() {
         lightRef.current.position.copy(state.camera.position).addScaledVector(_dir, 18)
     })
 
-    return <pointLight ref={lightRef} intensity={15} color="#ff00ff" distance={30} decay={2} />
+    return <pointLight ref={lightRef} intensity={6} color="#ff00ff" distance={22} decay={2} />
 }
 
 function HeroSubtextCard({ scrollRef }) {
@@ -5569,16 +5557,12 @@ export default function Portfolio() {
         const start = () => {
             if (started) return
             started = true
+            sfx.setMuted(false)
             sfx.startBgTrack()
         }
-        window.addEventListener('click', start, { once: true })
-        window.addEventListener('wheel', start, { once: true })
-        window.addEventListener('keydown', start, { once: true })
-        return () => {
-            window.removeEventListener('click', start)
-            window.removeEventListener('wheel', start)
-            window.removeEventListener('keydown', start)
-        }
+        const events = ['click', 'wheel', 'keydown', 'mousemove', 'touchstart', 'scroll']
+        events.forEach(e => window.addEventListener(e, start))
+        return () => events.forEach(e => window.removeEventListener(e, start))
     }, [])
 
     // Global UI hover tracker
