@@ -22,6 +22,7 @@ const dragRotState = {
 
 // ── Hero Intro Shared State (module-level) ────────────────────────────────────
 // Phase: 'loading' | 'pullback' | 'done'
+let loaderFullyHidden = false  // set true when EliteLoader unmounts
 const heroIntroState = {
     phase: 'loading',
     morphProgress: 1,             // 1 = fully scattered, 0 = fully formed
@@ -5098,7 +5099,7 @@ function EliteLoader() {
     useEffect(() => {
         if (progress >= 100 && !active) {
             const fadeTimer = setTimeout(() => setIsFading(true), 600)
-            const hideTimer = setTimeout(() => setIsHidden(true), 1600)
+            const hideTimer = setTimeout(() => { setIsHidden(true); loaderFullyHidden = true }, 1600)
             return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
         }
     }, [progress, active])
@@ -5486,10 +5487,10 @@ function HeroSubtextCard({ scrollRef }) {
 
     useEffect(() => {
         const id = setInterval(() => {
-            if (heroIntroState.phase === 'done') { setShow(true); clearInterval(id) }
+            if (heroIntroState.phase === 'done' && loaderFullyHidden) { setShow(true); clearInterval(id) }
         }, 100)
-        // Fallback: show after 8s in case phase gets stuck
-        const fallback = setTimeout(() => setShow(true), 8000)
+        // Fallback: show after 12s in case phase or loader gets stuck
+        const fallback = setTimeout(() => setShow(true), 12000)
         return () => { clearInterval(id); clearTimeout(fallback) }
     }, [])
 
@@ -5554,7 +5555,7 @@ function HeroSubtextCard({ scrollRef }) {
                     color: '#99aacc',
                     textAlign: 'center',
                 }}>
-                Product designer focused on systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE. </div>
+                Product Designer focused on systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE. </div>
             </div>
         </>
     )
@@ -5651,17 +5652,12 @@ export default function Portfolio() {
         }}>
             <EliteLoader />
 
-            {/* GLOBAL HUD */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0 40px', boxSizing: 'border-box', fontFamily: 'var(--font-mono)' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', pointerEvents: 'auto', height: '36px', marginTop: '28px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                        <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
-                        <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
-                        <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
-                        <CopyEmailHud />
-                    </div>
-                </div>
-                <div />
+            {/* BOTTOM-LEFT NAV LINKS */}
+            <div style={{ position: 'fixed', bottom: '16px', left: '40px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', pointerEvents: 'auto', height: '36px' }}>
+                <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
+                <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
+                <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
+                <CopyEmailHud />
             </div>
 
             <MuteButton />
