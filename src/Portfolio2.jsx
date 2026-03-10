@@ -5330,7 +5330,7 @@ function MuteButton() {
             onClick={toggleMute}
             title={muted ? 'Unmute sound' : 'Mute sound'}
             style={{
-                position: 'fixed', bottom: '16px', right: '40px', zIndex: 200,
+                position: 'fixed', bottom: '13px', right: '40px', zIndex: 200,
                 background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.2)',
                 backdropFilter: 'blur(8px)', borderRadius: '50%',
                 width: '36px', height: '36px', cursor: 'pointer',
@@ -5653,7 +5653,7 @@ export default function Portfolio() {
             <EliteLoader />
 
             {/* BOTTOM-LEFT NAV LINKS */}
-            <div style={{ position: 'fixed', bottom: '16px', left: '40px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', pointerEvents: 'auto', height: '36px' }}>
+            <div style={{ position: 'fixed', bottom: '13px', left: '40px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', pointerEvents: 'auto', height: '30px' }}>
                 <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
                 <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
                 <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
