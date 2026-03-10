@@ -771,7 +771,7 @@ button:hover~.precision-crosshair .cross-center,
 /* Body text — slides up and fades in when checkpoint becomes active */
 .ethos-text {
   font-family: 'Space Mono', monospace;
-  font-size: 11px;
+  font-size: 14px;
   color: rgba(180, 200, 230, 0.55);
   line-height: 1.8;
   min-height: 48px;

@@ -1,0 +1,53 @@
+Based on your description—specifically that it only happens to the **2 cogs closest to the camera** and looks like a sudden **"snap"** before the camera pulls away—you are almost certainly running into **Near Plane Frustum Clipping**.
+
+### Why is this happening?
+
+In 3D engines like Three.js, cameras have a "frustum" (a pyramid-shaped field of view) defined by a `near` and `far` clipping plane. Anything closer to the lens than the `near` plane (which defaults to `0.1` units in React Three Fiber) is instantly sliced off or culled completely.
+
+Right now, your macro starting camera is sitting directly inside the cluster of scattered cogs:
+
+```javascript
+// From your HERO_INTRO_KEYFRAMES
+{ pos: [0, 2.8, 1.8], look: [0, 2.8, 0], fov: 25 }
+
+```
+
+Because the camera is at `Z: 1.8`, its near clipping plane is at `Z: 1.7`.
+
+During the 7-second "scattered state" delay, your cogs are likely drifting, rotating, or floating slightly. As the 2 cogs closest to the camera drift past `Z: 1.7`, they intersect the camera's lens. Three.js violently slices them out of existence, and when they drift back, they "snap" back into view. This happens a second or two before the camera pulls back simply because that's when their floating animation pushes them over the boundary!
+
+### The Fix: "Dolly Zoom" the macro camera
+
+The most elegant way to fix this without changing the visual look of your intro is to physically push the starting camera backwards, but lower the FOV (Field of View) so it acts like a telephoto lens. This keeps the framing exactly the same, but gets the camera out of the danger zone.
+
+Replace your first keyframe in `HERO_INTRO_KEYFRAMES` with this:
+
+```javascript
+const HERO_INTRO_KEYFRAMES = [
+    // Pushed back to Z=6.0, FOV lowered to 7.6 to maintain the exact same macro zoom level
+    { pos: [0, 2.8, 6.0], look: [0, 2.8, 0], fov: 7.6 }, 
+    { pos: [0, 3, 16], look: [0, 2.8, 0], fov: 70 },     
+]
+
+```
+
+By moving the camera to `Z: 6.0`, the near clipping plane is pushed safely back to `Z: 5.9`. Your cogs have plenty of room to float and animate without clipping through the screen.
+
+### Secondary Safety Fix: Initialize `morphProgress`
+
+While looking at your code, I noticed one other thing that can cause "snapping" during that 7-second wait.
+
+Your `heroIntroState` object doesn't define `morphProgress` initially. It only gets set inside `HeroIntroCam` *after* the 7-second `loadWaitRef` finishes. If your cogs are relying on `heroIntroState.morphProgress` to calculate their positions, they are reading `undefined` for 7 seconds, which can result in `NaN` math errors, causing them to jump when the timer hits zero.
+
+Add it to your initial state to be safe:
+
+```javascript
+const heroIntroState = {
+    phase: 'loading',
+    vignetteOverride: 1.4,   
+    bloomOverride: 2.5,      
+    chromaticSpike: 0,       
+    morphProgress: 1,      // 👈 ADD THIS: 1 = full cog state
+}
+
+```

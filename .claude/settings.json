@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for f in \"Truck.glb\" \"Engine Immobilizer.glb\" \"brain_hologram.glb\" \"spine.glb\" \"me.glb\" \"also-me.glb\" \"sigil.glb\" \"favicon.svg\")",
+      "Bash(do ls -lh public/\"$f\")",
+      "Bash(echo \"NOT FOUND: $f\")",
+      "Bash(done)",
+      "Read(//Users/mustafa/Documents/vs-code/hello-3d/**)",
+      "Bash(sort -k2)",
+      "Bash(du -sh /Users/mustafa/Documents/vs-code/hello-3d/node_modules/*)",
+      "Bash(sort -rn -k1)",
+      "Bash(du -sh /Users/mustafa/Documents/vs-code/hello-3d/public/*)"
+    ]
+  }
+}

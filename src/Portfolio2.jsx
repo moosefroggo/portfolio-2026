@@ -86,13 +86,13 @@ const SECTION_BAR_POSITIONS = [0.00, 0.13, 0.30, 0.47, 0.67, 1.00]
 const uiHoveredRef = { current: false }
 
 // ─── Font options for subtitle testing ────────────────────────────────────────
-const SUBTITLE_FONT = '/fonts/Oxanium-VariableFont_wght.ttf'
+const SUBTITLE_FONT = '/fonts/Space_Mono/SpaceMono-Regular.ttf'
 
 const PROJECT_CARDS = [
     {
         pos: [100, 0, 0], rot: [0, 0, 0], color: '#00aaff', appear: 0.44,
-        title: 'Engine Immobilizer', subtitle: 'Allowing managers to remotely immobilize stolen vehicles',
-        desc: 'Allowing managers to remotely immobilize stolen vehicles',
+        title: 'Engine Immobilizer', subtitle: 'Allowing fleet managers to remotely immobilize stolen vehicles',
+        desc: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
         stats: { role: 'Senior Product Designer', year: '2024', company: 'Motive' },
         objectType: 'truck_immobilizer',
@@ -102,7 +102,7 @@ const PROJECT_CARDS = [
     {
         pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
         title: 'Workflows', subtitle: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
-        desc: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
+        desc: 'A central hub for project and documentation management helping development teams reduce Slack messages',
         tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
         stats: { role: 'Product Design', year: '2023', company: 'Educative' },
         objectType: 'workflows',
@@ -864,8 +864,6 @@ function TruckImmobilizerScene({ appeared, cardIndex, onOpen }) {
     )
 }
 
-useGLTF.preload('/Truck.glb')
-useGLTF.preload('/Engine Immobilizer.glb')
 
 // Module-level refs so VideoScreen can be lifted outside <Select enabled>
 // and WorkflowsScene can still drive its opacity.
@@ -1114,7 +1112,6 @@ function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
     )
 }
 
-useGLTF.preload('/brain_hologram.glb')
 
 function CaseStudyObject({ objectType, color, hovered, appeared, cardIndex, onOpen }) {
     const meshRef = useRef()
@@ -1979,8 +1976,6 @@ function SpineHeroSection() {
 }
 
 useGLTF.preload('/spine.glb')
-useGLTF.preload('/me.glb')
-useGLTF.preload('/also-me.glb')
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ETHOS SECTION — Scroll-driven timeline + rotating busts
@@ -1992,15 +1987,15 @@ const ETHOS_EXIT = 0.32   // scroll fraction: ethos ends
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'Combine product, design, and eningeering to create tangible impact',
+        text: 'I combine product, design, and eningeering to create tangible impact',
     },
     {
         label: 'SYSTEMS',
-        text: 'On the hunt for complex problem spaces with multi-modal experiences',
+        text: 'I enjoy being in the weeds making the foundations modular.'  ,
     },
     {
         label: 'VISION',
-        text: 'Partner with AI agents to build cool things that push boundaries',
+        text: 'I partner with AI agents to build cool things that push boundaries',
     },
 ]
 
@@ -2219,7 +2214,7 @@ function EthosSnakeSpine({ trigger }) {
         new THREE.Vector3(50, 40, -30) // 🏁 Exit Point (Fly away!)
     ], false), []) // ⬅️ Closed set to false
 
-    const segments = 80
+    const segments = 15
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
     useFrame((state, delta) => {
@@ -2238,7 +2233,7 @@ function EthosSnakeSpine({ trigger }) {
         const p = progressRef.current
         const curveLength = curve.getLength()
         // Space them by ~3.8 units for a shorter, less dense chain
-        const stepU = 3.8 / curveLength
+        const stepU = 1.8 / curveLength
 
         // 🐍 One-shot traversal logic: stop when the tail clears the path (1.0)
         // Max progress needed is ~1.0 + (segments * stepU)
@@ -2274,7 +2269,7 @@ function EthosSnakeSpine({ trigger }) {
     })
 
     return (
-        <instancedMesh ref={meshRef} args={[geometry, material, 80]} frustumCulled={false} />
+        <instancedMesh ref={meshRef} args={[geometry, material, 15]} frustumCulled={false} />
     )
 }
 
@@ -2349,11 +2344,8 @@ const BIO_ENTER = 0.86
 const BIO_FULL = 0.93
 const BIO_CENTER = [140, -3.2, -25]
 
-const PLACEHOLDER_IMAGES = [
-    'https://picsum.photos/seed/bio1/600/900',
-    'https://picsum.photos/seed/bio2/600/900',
-    'https://picsum.photos/seed/bio3/600/900',
-]
+const GRAY_1x1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+const PLACEHOLDER_IMAGES = [GRAY_1x1, GRAY_1x1, GRAY_1x1]
 
 const DEBRIS_PIECES = [
     { startPos: [-20, 2, 8], geo: 'oct', color: '#3366ff', speed: 2.8 },
@@ -3281,10 +3273,11 @@ const ABOUT_CSS = `
     width: min(360px, 32vw);
     background: transparent;
     z-index: 80;
-    pointer-events: auto;
+    pointer-events: none;
     transition: opacity 0.5s ease;
 }
 .about-panel.hidden { opacity: 0; pointer-events: none; }
+.about-contact-btn { pointer-events: auto; }
 .about-panel:not(.hidden) { animation: about-in 0.55s cubic-bezier(0.16,1,0.3,1) both; }
 .about-label {
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.32em;
@@ -3414,7 +3407,7 @@ function DossierOverlay({ scrollRef }) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 const COMPANY_NODES = [
-    { id: 'dell', pos: [-5.5, 2.4, 0], title: 'DELL', desc: 'CAPSTONE // NOW\nSCHOOL OF INFO', color: '#0076CE' },
+    { id: 'dell', pos: [-5.5, 2.4, 0], title: 'DELL', desc: 'AI-based Data Center Alerts // 2026', color: '#0076CE' },
     { id: 'cbre', pos: [-5.5, 0.8, 0], title: 'CBRE', desc: 'VISUAL LANG // 2025\nINTERACTION DESIGN', color: '#003F2D' },
     { id: 'motive', pos: [-5.5, -0.8, 0], title: 'MOTIVE', desc: 'PRODUCT UX // 2024\nENTERPRISE SYSTEMS', color: '#FF6B00' },
     { id: 'educative', pos: [-5.5, -2.4, 0], title: 'EDUCATIVE', desc: 'UX DESIGN // 2023\nLEARNING SYSTEMS', color: '#5553FF' },
@@ -3430,7 +3423,7 @@ const LOGO_TEXTURES = {
 }
 
 // Company card — holographic logo display, label to the left, data readout to the right
-function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
+function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible }) {
     const [texture, setTexture] = useState(null)
     useEffect(() => {
         const path = LOGO_TEXTURES[config.id]
@@ -3442,29 +3435,37 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut }) {
     const meshRef = useRef()
     const groupRef = useRef()
     const [hovered, setHovered] = useState(false)
+    const hoveredRef = useRef(false)
+
+    useEffect(() => {
+        if (!visible && hoveredRef.current) {
+            hoveredRef.current = false
+            setHovered(false)
+            onHoverOut?.()
+        }
+    }, [visible])
 
     useFrame(() => {
         if (groupRef.current) {
-            // Subtle tilt rotation for holographic effect
-            groupRef.current.rotation.y = (hovered ? 0.15 : 0.08) + Math.sin(Date.now() * 0.0003) * 0.05
-            groupRef.current.rotation.x = (hovered ? -0.1 : -0.05) + Math.cos(Date.now() * 0.0004) * 0.03
+            groupRef.current.rotation.y = (hoveredRef.current ? 0.15 : 0.08) + Math.sin(Date.now() * 0.0003) * 0.05
+            groupRef.current.rotation.x = (hoveredRef.current ? -0.1 : -0.05) + Math.cos(Date.now() * 0.0004) * 0.03
         }
-        // Scale animation on hover
         if (meshRef.current) {
-            const targetScale = hovered ? 1.15 : 1.0
+            const targetScale = hoveredRef.current ? 1.15 : 1.0
             meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.15)
         }
     })
 
     return (
-        <group position={config.pos} ref={groupRef}>
+        <group position={config.pos} ref={groupRef}
+            onClick={e => { e.stopPropagation(); onClick() }}
+            onPointerOver={() => { if (!hoveredRef.current) { hoveredRef.current = true; setHovered(true); onHover?.() } }}
+            onPointerOut={() => { hoveredRef.current = false; setHovered(false); onHoverOut?.() }}
+        >
             {/* Bevelled cube body */}
             <RoundedBox
                 ref={meshRef}
                 args={[0.75, 0.75, 0.75]} radius={0.09} smoothness={4}
-                onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
-                onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
-                onClick={e => { e.stopPropagation(); onClick() }}
             >
                 <meshStandardMaterial
                     color="#0a0a1a"
@@ -3591,13 +3592,22 @@ function ResumeHub({ currentSectionRef }) {
 }
 
 // Locked cube — represents the next role
-function LockedCube({ onHover, onHoverOut }) {
+function LockedCube({ onHover, onHoverOut, visible }) {
     const meshRef = useRef()
     const wireRef = useRef()
     const [hovered, setHovered] = useState(false)
+    const hoveredRef = useRef(false)
+
+    useEffect(() => {
+        if (!visible && hoveredRef.current) {
+            hoveredRef.current = false
+            setHovered(false)
+            onHoverOut?.()
+        }
+    }, [visible])
 
     useFrame((_, delta) => {
-        const speed = hovered ? 1.2 : 0.35
+        const speed = hoveredRef.current ? 1.2 : 0.35
         if (meshRef.current) {
             meshRef.current.rotation.y += delta * speed
             meshRef.current.rotation.x += delta * speed * 0.4
@@ -3608,10 +3618,9 @@ function LockedCube({ onHover, onHoverOut }) {
     })
 
     return (
-        <group
-            position={CUBE_POS}
-            onPointerEnter={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; onHover?.() }}
-            onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'auto'; onHoverOut?.() }}
+        <group position={CUBE_POS}
+            onPointerOver={() => { if (!hoveredRef.current) { hoveredRef.current = true; setHovered(true); onHover?.() } }}
+            onPointerOut={() => { hoveredRef.current = false; setHovered(false); onHoverOut?.() }}
         >
             <mesh ref={meshRef}>
                 <boxGeometry args={[1.1, 1.1, 1.1]} />
@@ -3656,8 +3665,6 @@ function LockedCube({ onHover, onHoverOut }) {
         </group>
     )
 }
-
-useGLTF.preload('/spine.glb')
 
 // Samples a quadratic bezier, orients each spine cog along the tangent
 function SpineChain({ start, end, mid, color, active, interactive = true, segments = 20, rotationSpeed = 1.5, paused = false, targetSpeed = null, cogScale = 0.28 }) {
@@ -3877,6 +3884,15 @@ function ModularResumePatch({ visible, currentSectionRef }) {
         return () => staggerTimers.current.forEach(clearTimeout)
     }, [cubeHovered, activeId])
 
+    // Initialize off-screen so the slide-in plays correctly (never reset by re-renders)
+    const groupInitRef = useRef(false)
+    useEffect(() => {
+        if (!groupInitRef.current && groupRef.current) {
+            groupRef.current.position.y = 10
+            groupInitRef.current = true
+        }
+    }, [])
+
     useFrame((_, delta) => {
         if (!groupRef.current) return
         groupRef.current.position.y = dampValue(groupRef.current.position.y, visible ? 0 : 10, 4, delta)
@@ -3889,7 +3905,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
     }, [])
 
     return (
-        <group ref={groupRef} position-y={visible ? 10 : 9999} visible={visible} onClick={onBackgroundClick}>
+        <group ref={groupRef} visible={visible} onClick={onBackgroundClick}>
             {/* Company → Resume spine chains */}
             {COMPANY_NODES.map((node, i) => {
                 // Determine target speed for this company chain
@@ -3909,6 +3925,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                         color={node.color}
                         active={activeId === node.id}
                         targetSpeed={targetSpeed}
+                        interactive={false}
                     />
                 )
             })}
@@ -3928,6 +3945,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                         color="#3366ff"
                         active={false}
                         targetSpeed={cubeTargetSpeed}
+                        interactive={false}
                     />
                 )
             })()}
@@ -3939,6 +3957,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                     onClick={() => setActiveId(id => id === node.id ? null : node.id)}
                     onHover={() => setHoveredNodeId(node.id)}
                     onHoverOut={() => setHoveredNodeId(null)}
+                    visible={visible}
                 />
             ))}
 
@@ -3946,6 +3965,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
             <LockedCube
                 onHover={() => setCubeHovered(true)}
                 onHoverOut={() => setCubeHovered(false)}
+                visible={visible}
             />
         </group>
     )
@@ -4627,7 +4647,6 @@ function SigilModel({ position = [0, 0, 0], scale = 1 }) {
         </group>
     )
 }
-useGLTF.preload('/sigil.glb')
 
 // ─── Glass accent orbs for Dossier section ───────────────────────────────────
 function DossierGlassAccents() {
@@ -4732,12 +4751,17 @@ function BioSection({ scrollRef, currentSectionRef }) {
     const timerRef = useRef(0)
     const tRef = useRef(0)
     const [premounted, setPremounted] = useState(false)
+    const [inRange, setInRange] = useState(true)
+    const inRangeRef = useRef(true)
 
     useFrame((_, delta) => {
         if (!groupRef.current) return
         const t = scrollRef.current ?? 0
         tRef.current = t
         groupRef.current.visible = t >= BIO_ENTER - 0.04
+
+        const nowInRange = t < 1.04
+        if (nowInRange !== inRangeRef.current) { inRangeRef.current = nowInRange; setInRange(nowInRange) }
 
         if (t >= BIO_ENTER - 0.12 && !premounted) setPremounted(true)
 
@@ -4754,7 +4778,7 @@ function BioSection({ scrollRef, currentSectionRef }) {
     })
 
     const flashActive = phase === 'collapse'
-    const patchVisible = ['appeared', 'afterglow'].includes(phase) && tRef.current < 1.04
+    const patchVisible = ['appeared', 'afterglow'].includes(phase) && inRange
 
     return (
         <group ref={groupRef} position={BIO_CENTER} visible={false}>
