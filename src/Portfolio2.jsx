@@ -2,7 +2,7 @@ import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react'
 import { sfx, useSFX } from './sfx'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html, RoundedBox } from '@react-three/drei'
-import { EffectComposer, Bloom, SelectiveBloom, ChromaticAberration, Vignette, Selection, Select } from '@react-three/postprocessing'
+import { EffectComposer, SelectiveBloom, ChromaticAberration } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 // Enable Draco decoder for compressed GLBs
@@ -27,9 +27,9 @@ const heroIntroState = {
     phase: 'loading',
     morphProgress: 1,             // 1 = fully scattered, 0 = fully formed
     // Post-processing overrides — read by PostProcessingEffects
-    vignetteOverride: 1.4,    // starts heavy, eases to null (use default)
     bloomOverride: 2.5,       // starts hot, eases to null
     chromaticSpike: 0,        // 0 = no spike, >0 = spike magnitude
+    hasEntered: false,
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -94,10 +94,81 @@ const PROJECT_CARDS = [
         title: 'Engine Immobilizer', subtitle: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         desc: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
-        stats: { role: 'Senior Product Designer', year: '2024', company: 'Motive' },
+        stats: { role: 'Product Design Lead', year: '2024', company: 'Motive' },
         objectType: 'truck_immobilizer',
         video: '/demos/ei-noborder.mp4',
-        caseStudy: null,
+        caseStudy: {
+            meta: { role: 'Product Design Lead', duration: '2 months', team: 'Design, PM, Engineering, Hardware' },
+            sections: [
+                {
+                    type: 'intro',
+                    label: 'THE PROBLEM',
+                    title: '90% of prospects needed something we didn\'t have',
+                    body: 'When Motive started expanding to Mexico in Q3 2023, the feedback was clear: 90% of prospects asked for remote immobilization. We\'d already lost deals over it. This went from a nice-to-have feature to a blocker between us and an entire market. We had until end of Q4 to figure it out and ship in Q1 2024.',
+                },
+                {
+                    type: 'research',
+                    label: 'WHY THIS WAS HARD',
+                    title: 'Four concurrent platform initiatives',
+                    body: 'The timing was brutal. Admin was mid-migration from 1.0 to 2.0, and the Vehicles page we needed to redesign hadn\'t been rebuilt yet. Fleet View was getting new map icons simultaneously. A Device Hub was in early development that would eventually own all device controls. On top of that, we were sourcing hardware from a third-party vendor for the first time, which limited what device data we could surface and how it communicated with our systems.',
+                },
+                {
+                    type: 'images',
+                    layout: 'pair',
+                    images: ['/case-material/admin1.0.png', '/case-material/Admin2.0.png'],
+                    caption: 'Admin 1.0 (left) and the planned 2.0 redesign (right). Neither was built for immobilization.',
+                },
+                {
+                    type: 'quotes',
+                    label: 'CUSTOMER RESEARCH',
+                    quotes: [
+                        '"Fleet managers, not drivers, control immobilization." The decision to kill the engine sits with the manager, not the driver.',
+                        '"Vehicles get immobilized roughly five times a month." Top reasons: attempted robbery and drunk driving.',
+                        '"Tampering is a real fear." Thieves know where devices are installed and can damage the wiring to disable the system.',
+                        '"Dead zones on highways are a problem." If there\'s no signal, the device is useless and customers wanted a fallback.',
+                    ],
+                },
+                {
+                    type: 'images',
+                    layout: 'full',
+                    images: ['/case-material/customer-call.png'],
+                    caption: 'Walking fleet managers through the solution. Designs were in Spanish for the call.',
+                },
+                {
+                    type: 'research',
+                    label: 'KEY DESIGN DECISIONS',
+                    title: 'Five iterations to find the right pattern',
+                    body: 'Placement was the critical decision. I tested five different positions: action bar, below vehicle status, next to it, a dedicated section, and a persistent banner. The banner won because immobilized vehicles are rare (less than 1% of fleets), so it needed to stand out without cluttering the normal view. I also positioned Fleet View as a real-time status page and scoped the first release to the starter line, saving things like fuel line deceleration for later.',
+                },
+                {
+                    type: 'images',
+                    layout: 'trio',
+                    images: ['/case-material/iteration-4.png', '/case-material/iteration-1.png', '/case-material/iteration-final.png'],
+                    caption: 'Iteration 1 (action button top-right) → Iteration 4 (dedicated section) → Final (persistent banner). The banner was the clear winner.',
+                },
+                {
+                    type: 'features',
+                    label: 'WHAT SHIPPED',
+                    items: [
+                        { name: 'Immobilized Banner', desc: 'A persistent banner on the vehicle detail page showing who immobilized the vehicle, when, and from where.', video: '/demos/banner-video.webm' },
+                        { name: 'Live Tracking', desc: 'Real-time location data, live video feed, and follow mode to track stolen vehicles. Immobilized vehicles surface at the top of the fleet list.', video: '/demos/map-video.webm' },
+                        { name: 'Trip Timeline', desc: 'Immobilization events logged on the vehicle\'s trip timeline, alongside dashcam footage for full context.', video: '/demos/vehicle-history.webm' },
+                        { name: 'Tamper & Jammer Alerts', desc: 'Post-launch alerts for physical device removal and signal jamming, added based on direct customer feedback.', video: '/demos/notifications-video.webm' },
+                    ],
+                },
+                {
+                    type: 'research',
+                    label: 'IMPACT',
+                    title: 'Seven figures in new revenue',
+                    body: 'Engine Immobilizer opened the Mexican market for Motive and drove seven figures in Q1 2024 revenue. Customers reported lower insurance premiums and a measurable drop in cargo theft.',
+                    stat: '7-figure impact',
+                },
+                {
+                    type: 'cta',
+                    body: 'This case study describes a two-month sprint to ship. Want the full story on how we navigated the constraints? Let\'s talk.',
+                },
+            ],
+        },
     },
     {
         pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
@@ -132,20 +203,20 @@ const PROJECT_CARDS = [
                     type: 'quotes',
                     label: 'KEY INSIGHTS',
                     quotes: [
-                        '"I can never figure out project progress" — Engineering Managers have tight schedules and don\'t want to search for documents or projects.',
-                        '"Design, PM, and dev docs get lost." — Team alignment is broken when related docs live in different platforms.',
-                        '"Signoffs become blockers and I have to remind people via Slack" — People forget things, and PMs constantly remind via messaging apps.',
-                        '"Discussions on technical docs are difficult to resolve?" — Implementation discussions stay in limbo, preventing document approval.',
+                        '"I can never figure out project progress." Engineering Managers have tight schedules and don\'t want to search for documents or projects.',
+                        '"Design, PM, and dev docs get lost." Team alignment is broken when related docs live in different platforms.',
+                        '"Signoffs become blockers and I have to remind people via Slack." People forget things, and PMs constantly remind via messaging apps.',
+                        '"Discussions on technical docs are difficult to resolve." Implementation discussions stay in limbo, preventing document approval.',
                     ],
                 },
                 {
                     type: 'features',
                     label: 'FINAL DESIGNS',
                     items: [
-                        { name: 'Task Manager', desc: 'Complete end-to-end task manager from scratch. Tasks are associated to Projects and Documents and can be assigned to anyone.' },
-                        { name: 'Review Manager', desc: 'Request reviews on documents from any team member. Full review flow with status tracking and resolution.' },
-                        { name: 'Project Manager', desc: 'A project contains several tasks and documents. It can have a due date and multiple collaborators.' },
-                        { name: 'Document Editor', desc: 'Live multiplayer document editor with auto-save. Tasks and reviews are embedded in-document with clear status.' },
+                        { name: 'Task Manager', desc: 'Complete end-to-end task manager from scratch. Tasks are associated to Projects and Documents and can be assigned to anyone.', video: '/demos/task-page.webm' },
+                        { name: 'Review Manager', desc: 'Request reviews on documents from any team member. Full review flow with status tracking and resolution.', video: '/demos/reviews-video.webm' },
+                        { name: 'Project Manager', desc: 'A project contains several tasks and documents. It can have a due date and multiple collaborators.', video: '/demos/project-video.webm' },
+                        { name: 'Document Editor', desc: 'Live multiplayer document editor with auto-save. Tasks and reviews are embedded in-document with clear status.', video: '/demos/doc-video.webm' },
                     ],
                 },
                 {
@@ -226,7 +297,7 @@ function CameraController({ scrollRef }) {
 
     // Intro animation state
     const animTimeRef = useRef(0)
-    const delayRef = useRef(3.5)
+    const delayRef = useRef(0.2)
 
     // Scroll animation state
     const lookAtTarget = useRef(new THREE.Vector3(...HERO_INTRO_START.look))
@@ -257,7 +328,7 @@ function CameraController({ scrollRef }) {
 
         if (!isIntroFinished) {
             // ─── 1) HERO INTRO SEQUENCE ───────────────────────────────────────
-            const isLoaded = progress > 99.9 && !loadingActive
+            const isLoaded = progress > 99.9 && !loadingActive && heroIntroState.hasEntered
             if (!isLoaded) {
                 // Pin to start while loading
                 _targetPos.set(...HERO_INTRO_START.pos)
@@ -317,7 +388,6 @@ function CameraController({ scrollRef }) {
 
             targetFov = THREE.MathUtils.lerp(HERO_INTRO_START.fov, endFov, easedProgress)
             heroIntroState.morphProgress = 1 - easedProgress
-            heroIntroState.vignetteOverride = THREE.MathUtils.lerp(1.4, 0.8, easedProgress)
             heroIntroState.bloomOverride = THREE.MathUtils.lerp(2.5, 1.6, easedProgress)
             // Ramp CA down from 0.004 at start to 0.001 at end so it matches the scroll-phase value
             const caStr = THREE.MathUtils.lerp(0.004, 0.001, easedProgress)
@@ -326,7 +396,6 @@ function CameraController({ scrollRef }) {
             if (rawProgress >= 1) {
                 isIntroFinished = true
                 heroIntroState.phase = 'done'
-                heroIntroState.vignetteOverride = null
                 heroIntroState.bloomOverride = null
                 // Reset scroll to 0 in case user scrolled during intro
                 scrollRef.current = 0
@@ -760,6 +829,7 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
             toneMapped: false,
         })
         c.material = m
+        c.raycast = () => null // 💡 Disable expensive high-poly raycasting
         mats.push(m)
     })
     return { clone, mats }
@@ -860,6 +930,10 @@ function TruckImmobilizerScene({ appeared, cardIndex, onOpen }) {
                 color="#aa66ff"
                 visible={appeared}
             />
+            {/* Simple Box Hitbox for entire scene optimization */}
+            <mesh visible={false}>
+                <boxGeometry args={[4.5, 3.5, 4.5]} />
+            </mesh>
         </group>
     )
 }
@@ -882,9 +956,22 @@ function VideoScreen({
     onOpen = null,
 }) {
     const containerRef = useRef()
+    const videoRef = useRef()
 
     useFrame(() => {
         if (containerRef.current && opRef) containerRef.current.style.opacity = opRef.current
+    })
+
+    // Defer video loading: only set src once opacity becomes non-zero
+    const videoLoadedRef = useRef(false)
+    useFrame(() => {
+        if (videoLoadedRef.current || !videoRef.current || !opRef) return
+        if (opRef.current > 0.01) {
+            videoRef.current.src = src
+            videoRef.current.load()
+            videoRef.current.play().catch(() => { })
+            videoLoadedRef.current = true
+        }
     })
 
     return (
@@ -919,7 +1006,7 @@ function VideoScreen({
                         position: 'relative', lineHeight: 0, overflow: 'hidden',
                         border: `1px solid rgba(${colorRgb},0.35)`, borderTop: 'none', borderBottom: 'none'
                     }}>
-                        <video src={src} autoPlay loop muted playsInline
+                        <video ref={videoRef} loop muted playsInline
                             style={{
                                 width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block',
                                 filter: 'contrast(1.05) brightness(0.88)'
@@ -990,15 +1077,15 @@ function BrainPlatform({ opRef }) {
     const { boxGeo, edgeGeo, hexGeo, traceGeo } = useMemo(() => {
         const box = new THREE.BoxGeometry(3.2, 0.3, 3.2)
         const pts = new Float32Array([
-            -1.1, 0.152, 0.35,  -0.55, 0.152, 0.35,
+            -1.1, 0.152, 0.35, -0.55, 0.152, 0.35,
             -0.55, 0.152, 0.35, -0.55, 0.152, 0.0,
-             1.1, 0.152, -0.35,  0.55, 0.152, -0.35,
-             0.55, 0.152, -0.35, 0.55, 0.152,  0.0,
-            -0.3, 0.152,  1.1,  -0.3, 0.152,  0.5,
-            -0.3, 0.152,  0.5,   0.3, 0.152,  0.5,
-             0.3, 0.152,  0.5,   0.3, 0.152,  1.1,
+            1.1, 0.152, -0.35, 0.55, 0.152, -0.35,
+            0.55, 0.152, -0.35, 0.55, 0.152, 0.0,
+            -0.3, 0.152, 1.1, -0.3, 0.152, 0.5,
+            -0.3, 0.152, 0.5, 0.3, 0.152, 0.5,
+            0.3, 0.152, 0.5, 0.3, 0.152, 1.1,
             -0.55, 0.152, 0.31, -0.55, 0.152, 0.39,
-             0.55, 0.152,-0.31,  0.55, 0.152,-0.39,
+            0.55, 0.152, -0.31, 0.55, 0.152, -0.39,
         ])
         const traceGeo = new THREE.BufferGeometry()
         traceGeo.setAttribute('position', new THREE.BufferAttribute(pts, 3))
@@ -1010,7 +1097,7 @@ function BrainPlatform({ opRef }) {
             <mesh geometry={boxGeo} material={boxMat} />
             <lineSegments geometry={edgeGeo} material={edgeMat} />
             <lineSegments geometry={traceGeo} material={traceMat} />
-            {[[ 1.1, 0.2, 1.1], [-1.1, 0.2, 1.1], [1.1, 0.2, -1.1], [-1.1, 0.2, -1.1]].map((pos, i) => (
+            {[[1.1, 0.2, 1.1], [-1.1, 0.2, 1.1], [1.1, 0.2, -1.1], [-1.1, 0.2, -1.1]].map((pos, i) => (
                 <mesh key={i} geometry={hexGeo} material={hexMat} position={pos} />
             ))}
         </group>
@@ -1019,15 +1106,15 @@ function BrainPlatform({ opRef }) {
 
 // per-wire pulse params: [speed, phase, baseIntensity, amplitude]
 const WIRE_PULSE = [
-    [1.1, 0.0,  3.2, 1.4],  // center — bright, steady
-    [1.7, 0.8,  1.6, 2.2],  // front-right — fast flicker
-    [1.3, 2.1,  2.4, 1.6],  // front-left  — medium
-    [0.9, 1.4,  1.0, 2.8],  // back-right  — slow deep pulse
-    [2.2, 3.0,  1.8, 1.2],  // back-left   — fastest, subtle
-    [0.7, 0.5,  0.8, 1.8],  // trailing 1  — dim, slow fade
-    [1.9, 1.8,  0.6, 2.4],  // trailing 2  — erratic flicker
-    [1.2, 3.5,  1.1, 1.5],  // trailing 3  — medium dim
-    [0.5, 2.2,  0.5, 1.0],  // trailing 4  — barely alive
+    [1.1, 0.0, 3.2, 1.4],  // center — bright, steady
+    [1.7, 0.8, 1.6, 2.2],  // front-right — fast flicker
+    [1.3, 2.1, 2.4, 1.6],  // front-left  — medium
+    [0.9, 1.4, 1.0, 2.8],  // back-right  — slow deep pulse
+    [2.2, 3.0, 1.8, 1.2],  // back-left   — fastest, subtle
+    [0.7, 0.5, 0.8, 1.8],  // trailing 1  — dim, slow fade
+    [1.9, 1.8, 0.6, 2.4],  // trailing 2  — erratic flicker
+    [1.2, 3.5, 1.1, 1.5],  // trailing 3  — medium dim
+    [0.5, 2.2, 0.5, 1.0],  // trailing 4  — barely alive
 ]
 
 function BrainWires({ opRef }) {
@@ -1036,18 +1123,18 @@ function BrainWires({ opRef }) {
             // center — slight lazy droop
             [new THREE.Vector3(0, 1.82, 0.0), new THREE.Vector3(0.12, 0.95, 0.12), new THREE.Vector3(0, 0.25, 0.0)],
             // front-right — heavy droop, midpoint close to center
-            [new THREE.Vector3( 1.1, 0.26,  1.1), new THREE.Vector3( 0.18, 0.55,  0.18), new THREE.Vector3( 0.18, 1.72,  0.18)],
+            [new THREE.Vector3(1.1, 0.26, 1.1), new THREE.Vector3(0.18, 0.55, 0.18), new THREE.Vector3(0.18, 1.72, 0.18)],
             // front-left — medium droop
-            [new THREE.Vector3(-1.1, 0.26,  1.1), new THREE.Vector3(-0.35, 0.70,  0.35), new THREE.Vector3(-0.18, 1.72,  0.18)],
+            [new THREE.Vector3(-1.1, 0.26, 1.1), new THREE.Vector3(-0.35, 0.70, 0.35), new THREE.Vector3(-0.18, 1.72, 0.18)],
             // back-right — light droop, stays fairly taut
-            [new THREE.Vector3( 1.1, 0.26, -1.1), new THREE.Vector3( 0.60, 0.88, -0.60), new THREE.Vector3( 0.18, 1.72, -0.18)],
+            [new THREE.Vector3(1.1, 0.26, -1.1), new THREE.Vector3(0.60, 0.88, -0.60), new THREE.Vector3(0.18, 1.72, -0.18)],
             // back-left — very heavy droop, almost touches platform midway
             [new THREE.Vector3(-1.1, 0.26, -1.1), new THREE.Vector3(-0.10, 0.38, -0.10), new THREE.Vector3(-0.18, 1.72, -0.18)],
             // trailing wires — arc over platform edges and dangle below
-            [new THREE.Vector3( 0.10, 1.65,  0.05), new THREE.Vector3( 1.0,  0.5,  0.05), new THREE.Vector3( 1.9,  0.05,  0.1),  new THREE.Vector3( 2.4, -1.2,  0.3)],
-            [new THREE.Vector3(-0.05, 1.60,  0.15), new THREE.Vector3(-0.1,  0.5,  1.0),  new THREE.Vector3( 0.1,  0.05,  2.1),  new THREE.Vector3(-0.2, -1.4,  2.4)],
-            [new THREE.Vector3( 0.15, 1.58, -0.10), new THREE.Vector3( 0.1,  0.5, -1.0),  new THREE.Vector3(-0.1,  0.05, -2.1),  new THREE.Vector3( 0.3, -1.6, -2.4)],
-            [new THREE.Vector3(-0.08, 1.70, -0.05), new THREE.Vector3(-1.0,  0.5, -0.05), new THREE.Vector3(-2.1,  0.05, -0.1),  new THREE.Vector3(-2.4, -1.0, -0.4)],
+            [new THREE.Vector3(0.10, 1.65, 0.05), new THREE.Vector3(1.0, 0.5, 0.05), new THREE.Vector3(1.9, 0.05, 0.1), new THREE.Vector3(2.4, -1.2, 0.3)],
+            [new THREE.Vector3(-0.05, 1.60, 0.15), new THREE.Vector3(-0.1, 0.5, 1.0), new THREE.Vector3(0.1, 0.05, 2.1), new THREE.Vector3(-0.2, -1.4, 2.4)],
+            [new THREE.Vector3(0.15, 1.58, -0.10), new THREE.Vector3(0.1, 0.5, -1.0), new THREE.Vector3(-0.1, 0.05, -2.1), new THREE.Vector3(0.3, -1.6, -2.4)],
+            [new THREE.Vector3(-0.08, 1.70, -0.05), new THREE.Vector3(-1.0, 0.5, -0.05), new THREE.Vector3(-2.1, 0.05, -0.1), new THREE.Vector3(-2.4, -1.0, -0.4)],
         ]
         const mats = wireDefs.map(() => new THREE.MeshStandardMaterial({
             color: '#001133', emissive: new THREE.Color('#00aaff'), emissiveIntensity: 2.2,
@@ -1107,6 +1194,10 @@ function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
                 </group>
                 <pointLight color="#00ccff" intensity={appeared ? 1.8 : 0} distance={7} decay={2} position={[0, 1.5, 0]} />
                 <pointLight color="#ffffff" intensity={appeared ? 0.6 : 0} distance={5} decay={2} position={[0, 2.5, 2]} />
+                {/* Simple Box Hitbox for Brain assembly optimization */}
+                <mesh visible={false} position={[0, 1.8, 0]}>
+                    <boxGeometry args={[4, 4, 4]} />
+                </mesh>
             </group>
         </group>
     )
@@ -1489,7 +1580,7 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             ref={groupRef}
             position={config.pos}
             rotation={config.rot}
-            onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
+            onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; sfx.piano() }}
             onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
             onClick={e => { e.stopPropagation(); onOpen?.() }}
         >
@@ -1523,6 +1614,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     const spreadOffsetsRef = useRef([])
     const frameCountRef = useRef(0)
     const lastEnterFrameRef = useRef(-100)
+    const prevHovInstRef = useRef(-1)
     const rotationAxesRef = useRef([])  // Random axes per cog
     const CACHE_STEPS = 128
 
@@ -1693,7 +1785,15 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
                 args={[sourceGeometry, material, count]}
                 visible={false}
                 frustumCulled={false}
-                onPointerOver={e => { hovInstRef.current = e.instanceId ?? -1; lastEnterFrameRef.current = frameCountRef.current }}
+                onPointerOver={e => {
+                    const id = e.instanceId ?? -1
+                    hovInstRef.current = id
+                    lastEnterFrameRef.current = frameCountRef.current
+                    if (id !== prevHovInstRef.current && id !== -1) {
+                        prevHovInstRef.current = id
+                        sfx.piano()
+                    }
+                }}
                 onPointerMove={e => { hovInstRef.current = e.instanceId ?? -1; lastEnterFrameRef.current = frameCountRef.current }}
             />
         </group>
@@ -1983,19 +2083,118 @@ useGLTF.preload('/spine.glb')
 
 const ETHOS_ENTER = 0.08   // scroll fraction: ethos begins
 const ETHOS_EXIT = 0.32   // scroll fraction: ethos ends
+const DOSSIER_SECTION_INDEX = 5  // final section index
+const ETHOS_SECTION_INDEX = 1    // ethos section index
+
+// ─── Audio tracks for section transitions ────────────────────────────────────
+let _malletPlayed = false
+let _ambientPianoAudio = null
+
+// Pre-load sounds for instant playback
+let _itemPick1Audio = null
+function getItemPick1Audio() {
+    if (!_itemPick1Audio) {
+        _itemPick1Audio = new Audio('/sounds/itempick1.m4a')
+        _itemPick1Audio.volume = 0.5
+    }
+    return _itemPick1Audio
+}
+
+let _itemBackAudio = null
+function getItemBackAudio() {
+    if (!_itemBackAudio) {
+        _itemBackAudio = new Audio('/sounds/itemback.m4a')
+        _itemBackAudio.volume = 0.5
+    }
+    return _itemBackAudio
+}
+
+let _digitalClickAudio = null
+function getDigitalClickAudio() {
+    if (!_digitalClickAudio) {
+        _digitalClickAudio = new Audio('/sounds/digital-click.mp3')
+        _digitalClickAudio.volume = 0.7
+    }
+    return _digitalClickAudio
+}
+
+let _boinXAudio = null
+function getBoinXAudio() {
+    if (!_boinXAudio) {
+        _boinXAudio = new Audio('/sounds/boing_x.m4a')
+        _boinXAudio.volume = 0.6
+    }
+    return _boinXAudio
+}
+
+function playMalletWithFX() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        fetch('/sounds/MalletAtmospheresE1.m4a')
+            .then(r => r.arrayBuffer())
+            .then(buf => ctx.decodeAudioData(buf))
+            .then(decoded => {
+                const src = ctx.createBufferSource()
+                src.buffer = decoded
+
+                // Gain
+                const gain = ctx.createGain()
+                gain.gain.value = 0.4
+
+                // Short delay
+                const delay = ctx.createDelay(0.5)
+                delay.delayTime.value = 0.18
+                const delayFeedback = ctx.createGain()
+                delayFeedback.gain.value = 0.35
+                const delayWet = ctx.createGain()
+                delayWet.gain.value = 0.45
+
+                // Convolver reverb (synthetic impulse)
+                const convolver = ctx.createConvolver()
+                const irLen = ctx.sampleRate * 1.8
+                const ir = ctx.createBuffer(2, irLen, ctx.sampleRate)
+                for (let c = 0; c < 2; c++) {
+                    const ch = ir.getChannelData(c)
+                    for (let i = 0; i < irLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.5)
+                }
+                convolver.buffer = ir
+                const reverbWet = ctx.createGain()
+                reverbWet.gain.value = 0.4
+
+                // Routing: src → gain → destination (dry)
+                //                   → delay loop → delayWet → destination
+                //                   → convolver  → reverbWet → destination
+                src.connect(gain)
+                gain.connect(ctx.destination)
+
+                gain.connect(delay)
+                delay.connect(delayFeedback)
+                delayFeedback.connect(delay)
+                delay.connect(delayWet)
+                delayWet.connect(ctx.destination)
+
+                gain.connect(convolver)
+                convolver.connect(reverbWet)
+                reverbWet.connect(ctx.destination)
+
+                src.start()
+                src.onended = () => setTimeout(() => ctx.close(), 4000)
+            }).catch(() => {})
+    } catch (e) {}
+}
 
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'I combine product, design, and eningeering to create tangible impact',
+        text: 'Combined dev, design, and motion to build experiences that feel alive.',
     },
     {
         label: 'SYSTEMS',
-        text: 'I enjoy being in the weeds making the foundations modular.'  ,
+        text: 'Leading a team of 10 designers taught me that products fail without structure.',
     },
     {
         label: 'VISION',
-        text: 'I partner with AI agents to build cool things that push boundaries',
+        text: 'A tech optimist who went from filtering AI slopcode to agentic development.',
     },
 ]
 
@@ -2098,8 +2297,8 @@ function EthosOverlay({ scrollRef }) {
         <div ref={wrapperRef} className="ethos-overlay" style={{ opacity: 0 }}>
             <div className="ethos-panel">
                 <div className="ethos-panel-header">
-                    <span className="ethos-eyebrow">PHILOSOPHY</span>
-                    <h2 className="ethos-title">My Ethos</h2>
+                    <span className="ethos-eyebrow">ADAPTATION</span>
+                    <h2 className="ethos-title">How I evolved</h2>
                 </div>
 
                 <div className="ethos-timeline-side">
@@ -2699,15 +2898,29 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                         transform: 'translate(-50%, -50%)',
                         marginTop: '1px',
                     }}
-                    onClick={() => { currentSectionRef.current = i }}
-                    onMouseEnter={() => {
-                        const dot = dotRefs.current[i]
-                        if (dot) { dot.style.borderColor = '#00aaff'; dot.style.boxShadow = '0 0 8px #00aaff88' }
-                    }}
-                    onMouseLeave={() => {
-                        const dot = dotRefs.current[i]
-                        if (dot) { dot.style.borderColor = ''; dot.style.boxShadow = '' }
-                    }}>
+                        onClick={() => {
+                            const prev = currentSectionRef.current
+                            currentSectionRef.current = i
+                            if (!sfx.isMuted()) { const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => {}) }
+                            if (i === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
+                                _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+                                _ambientPianoAudio.loop = true
+                                _ambientPianoAudio.volume = 0.35
+                                _ambientPianoAudio.play().catch(() => {})
+                            }
+                            if (prev === DOSSIER_SECTION_INDEX && i !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
+                                _ambientPianoAudio.pause(); _ambientPianoAudio.currentTime = 0; _ambientPianoAudio = null
+                            }
+                        }}
+                        onMouseEnter={() => {
+                            const dot = dotRefs.current[i]
+                            if (dot) { dot.style.borderColor = '#00aaff'; dot.style.boxShadow = '0 0 8px #00aaff88' }
+                            sfx.piano()
+                        }}
+                        onMouseLeave={() => {
+                            const dot = dotRefs.current[i]
+                            if (dot) { dot.style.borderColor = ''; dot.style.boxShadow = '' }
+                        }}>
                         {/* Diamond (circle for home) */}
                         <div ref={el => dotRefs.current[i] = el} style={{
                             width: '7px', height: '7px',
@@ -2746,18 +2959,20 @@ const CASE_STUDY_CSS = `
     align-items: center;
     justify-content: flex-end;
     pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s ease;
 }
 .cs-panel.open {
     pointer-events: auto;
-    opacity: 1;
 }
 .cs-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.cs-panel.open .cs-backdrop {
+    opacity: 1;
 }
 .cs-drawer {
     position: relative;
@@ -2769,7 +2984,7 @@ const CASE_STUDY_CSS = `
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
-    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.5s ease;
 }
 .cs-panel.open .cs-drawer {
     transform: translateX(0);
@@ -2833,7 +3048,7 @@ const CASE_STUDY_CSS = `
 .cs-meta-item label {
     font-size: 9px;
     letter-spacing: 0.12em;
-    color: #445577;
+    color: #729bec;
     display: block;
     text-transform: uppercase;
 }
@@ -2848,7 +3063,7 @@ const CASE_STUDY_CSS = `
 .cs-section-label {
     font-size: 9px;
     letter-spacing: 0.14em;
-    color: #445577;
+    color: #729bec;
     margin-bottom: 8px;
     text-transform: uppercase;
 }
@@ -2873,8 +3088,8 @@ const CASE_STUDY_CSS = `
     background: rgba(30, 40, 80, 0.2);
 }
 .cs-feature-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
 }
 .cs-feature-card {
@@ -2894,6 +3109,14 @@ const CASE_STUDY_CSS = `
     font-size: 12px;
     color: #7788bb;
     line-height: 1.5;
+    margin-bottom: 8px;
+}
+.cs-feature-video {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    border: 1px solid rgba(100, 130, 220, 0.2);
+    display: block;
 }
 .cs-cta {
     font-size: 13px;
@@ -2913,6 +3136,98 @@ const CASE_STUDY_CSS = `
     font-size: 16px;
     color: #8899cc;
     margin-bottom: 12px;
+}
+.cs-img-full { width: 100%; border-radius: 4px; display: block; }
+.cs-img-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cs-img-pair img { width: 100%; border-radius: 4px; display: block; }
+.cs-img-stack { display: flex; flex-direction: column; gap: 8px; }
+.cs-img-stack img { width: 100%; border-radius: 4px; display: block; }
+.cs-img-trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.cs-img-trio img { width: 100%; border-radius: 4px; display: block; }
+.cs-img-wrap { margin-bottom: 20px; }
+.cs-img-caption { font-size: 11px; color: #7e8aa0; line-height: 1.5; margin-top: 7px; font-family: 'Space Mono', monospace; }
+.cs-zoom-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    padding: 40px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+.cs-zoom-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+.cs-zoom-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.cs-zoom-media {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.cs-zoom-text {
+    margin-top: 24px;
+    text-align: center;
+    max-width: 600px;
+}
+.cs-zoom-title {
+    font-size: 18px;
+    color: #b8d6ff;
+    margin-bottom: 12px;
+    font-weight: 500;
+    font-family: 'Space Mono', monospace;
+}
+.cs-zoom-desc {
+    font-size: 14px;
+    color: #e8e8e8;
+    line-height: 1.6;
+    font-family: 'Space Mono', monospace;
+}
+.cs-zoom-close {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+.cs-zoom-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+.cs-media-clickable {
+    cursor: zoom-in;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+.cs-media-clickable:hover {
+    transform: scale(1.02);
+    filter: brightness(1.1);
 }
 `
 
@@ -3097,6 +3412,14 @@ const CASE_STUDY_CSS_NEON = `
     font-size: 11px;
     color: #00ff88;
     line-height: 1.5;
+    margin-bottom: 8px;
+}
+.cs-feature-video-neon {
+    width: 100%;
+    height: auto;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    display: block;
 }
 .cs-cta-neon {
     font-size: 12px;
@@ -3112,7 +3435,7 @@ const CASE_STUDY_CSS_NEON = `
 }
 `
 
-function CaseStudySection({ section, neon = false }) {
+function CaseStudySection({ section, neon = false, onMediaClick }) {
     const prefix = neon ? '-neon' : ''
 
     if (section.type === 'intro' || section.type === 'role') {
@@ -3152,6 +3475,25 @@ function CaseStudySection({ section, neon = false }) {
                         <div key={i} className={`cs-feature-card${prefix}`}>
                             <div className={`cs-feature-name${prefix}`}>{item.name}</div>
                             <div className={`cs-feature-desc${prefix}`}>{item.desc}</div>
+                            {item.video && (
+                                <video
+                                    className={`cs-feature-video${prefix} cs-media-clickable`}
+                                    src={item.video}
+                                    autoPlay
+                                    muted
+                                    loop
+                                    playsInline
+                                    onClick={(e) => { e.stopPropagation(); onMediaClick?.({ type: 'video', src: item.video, title: item.name, desc: item.desc }) }}
+                                />
+                            )}
+                            {item.image && (
+                                <img
+                                    className={`cs-feature-video${prefix} cs-media-clickable`}
+                                    src={item.image}
+                                    alt=""
+                                    onClick={(e) => { e.stopPropagation(); onMediaClick?.({ type: 'image', src: item.image, title: item.name, desc: item.desc }) }}
+                                />
+                            )}
                         </div>
                     ))}
                 </div>
@@ -3163,6 +3505,30 @@ function CaseStudySection({ section, neon = false }) {
                 {section.body}
             </div>
         )
+    } else if (section.type === 'images') {
+        const handleImgClick = (src) => {
+            onMediaClick?.({ type: 'image', src, desc: section.caption })
+        }
+        return (
+            <div className="cs-img-wrap">
+                {section.layout === 'pair' ? (
+                    <div className="cs-img-pair">
+                        {section.images.map((src, i) => <img key={i} src={src} alt="" className="cs-media-clickable" onClick={(e) => { e.stopPropagation(); handleImgClick(src) }} />)}
+                    </div>
+                ) : section.layout === 'trio' ? (
+                    <div className="cs-img-trio">
+                        {section.images.map((src, i) => <img key={i} src={src} alt="" className="cs-media-clickable" onClick={(e) => { e.stopPropagation(); handleImgClick(src) }} />)}
+                    </div>
+                ) : section.layout === 'stack' ? (
+                    <div className="cs-img-stack">
+                        {section.images.map((src, i) => <img key={i} src={src} alt="" className="cs-media-clickable" onClick={(e) => { e.stopPropagation(); handleImgClick(src) }} />)}
+                    </div>
+                ) : (
+                    <img className="cs-img-full cs-media-clickable" src={section.images[0]} alt="" onClick={(e) => { e.stopPropagation(); handleImgClick(section.images[0]) }} />
+                )}
+                {section.caption && <div className="cs-img-caption">{section.caption}</div>}
+            </div>
+        )
     }
     return null
 }
@@ -3170,6 +3536,7 @@ function CaseStudySection({ section, neon = false }) {
 function CaseStudyOverlay({ project, onClose }) {
     const [visible, setVisible] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const [zoomMedia, setZoomMedia] = useState(null)
 
     useEffect(() => {
         if (project) {
@@ -3236,7 +3603,7 @@ function CaseStudyOverlay({ project, onClose }) {
 
                         {/* Case study sections */}
                         {cs?.sections?.map((section, i) => (
-                            <CaseStudySection key={i} section={section} />
+                            <CaseStudySection key={i} section={section} onMediaClick={setZoomMedia} />
                         ))}
 
                         {/* Placeholder if no case study data */}
@@ -3254,6 +3621,26 @@ function CaseStudyOverlay({ project, onClose }) {
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* ZOOM OVERLAY */}
+                <div className={`cs-zoom-overlay ${zoomMedia ? 'open' : ''}`} onClick={() => setZoomMedia(null)}>
+                    <button className="cs-zoom-close" onClick={() => setZoomMedia(null)}>&times;</button>
+                    {zoomMedia && (
+                        <div className="cs-zoom-content">
+                            {zoomMedia.type === 'video' ? (
+                                <video src={zoomMedia.src} className="cs-zoom-media" autoPlay loop muted playsInline onClick={(e) => e.stopPropagation()} />
+                            ) : (
+                                <img src={zoomMedia.src} className="cs-zoom-media" alt="" onClick={(e) => e.stopPropagation()} />
+                            )}
+                            {(zoomMedia.title || zoomMedia.desc) && (
+                                <div className="cs-zoom-text">
+                                    {zoomMedia.title && <div className="cs-zoom-title">{zoomMedia.title}</div>}
+                                    {zoomMedia.desc && <div className="cs-zoom-desc">{zoomMedia.desc}</div>}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </>
@@ -3303,7 +3690,7 @@ const ABOUT_CSS = `
     color: rgba(136,160,255,0.45); margin: 0 0 28px; text-transform: uppercase;
 }
 .about-bio {
-    font-family: 'Space Mono', monospace; font-size: 12px;
+    font-family: 'Space Mono', monospace; font-size: 13px;
     color: rgba(180,200,240,0.65); line-height: 1.9; letter-spacing: 0.01em;
     margin: 0 0 28px;
 }
@@ -3314,7 +3701,7 @@ const ABOUT_CSS = `
 }
 .about-skills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 28px; }
 .about-skill {
-    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
     color: rgba(100,140,220,0.6); padding: 3px 7px;
     border: 1px solid rgba(80,110,200,0.18); border-radius: 2px;
     text-transform: uppercase;
@@ -3324,12 +3711,13 @@ const ABOUT_CSS = `
 }
 .about-contact-btn {
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
-    color: rgba(136,160,255,0.6); text-transform: uppercase; text-decoration: none;
-    padding: 10px 16px; border: 1px solid rgba(100,130,220,0.2); border-radius: 2px;
-    background: transparent; cursor: pointer;
-    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+    color: rgba(180,210,255,0.9); text-transform: uppercase; text-decoration: none;
+    padding: 10px 20px; border: 1px solid rgba(100,150,255,0.45); border-radius: 2px;
+    background: rgba(40,70,180,0.12); cursor: pointer;
+    box-shadow: 0 0 12px rgba(80,130,255,0.1), inset 0 0 8px rgba(80,130,255,0.06);
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.about-contact-btn:hover { background: rgba(50,90,220,0.12); color: #fff; border-color: rgba(100,130,220,0.4); }
+.about-contact-btn:hover { background: rgba(50,90,220,0.22); color: #fff; border-color: rgba(120,160,255,0.7); box-shadow: 0 0 20px rgba(80,130,255,0.25), inset 0 0 12px rgba(80,130,255,0.1); }
 .about-contact-btn.copied { background: rgba(0,80,40,0.22); color: #00ff88; border-color: rgba(0,200,100,0.2); }
 `
 
@@ -3393,7 +3781,7 @@ function DossierOverlay({ scrollRef }) {
                     <button onClick={copyEmail} className={`about-contact-btn${copied ? ' copied' : ''}`}>
                         {copied ? 'Copied ✓' : '@ Email'}
                     </button>
-                    <a href="/Resume%20-%20Mustafa%20Akbar.pdf" download="Resume - Mustafa Akbar.pdf" className="about-contact-btn">
+                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noopener noreferrer" className="about-contact-btn">
                         ↓ Resume
                     </a>
                 </div>
@@ -3416,10 +3804,10 @@ const HUB_POS = [0, 0, 0]
 const CUBE_POS = [5.5, 0, 0]
 
 const LOGO_TEXTURES = {
-    'cbre':      '/textures/logos/2/27/cbre.png',
-    'motive':    '/textures/logos/motive-logo.png',
+    'cbre': '/textures/logos/2/27/cbre.png',
+    'motive': '/textures/logos/motive-logo.png',
     'educative': '/textures/logos/educative-logo.png',
-    'dell':      '/textures/logos/dell-log.png',
+    'dell': '/textures/logos/dell-log.png',
 }
 
 // Company card — holographic logo display, label to the left, data readout to the right
@@ -3459,7 +3847,7 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible }) 
     return (
         <group position={config.pos} ref={groupRef}
             onClick={e => { e.stopPropagation(); onClick() }}
-            onPointerOver={() => { if (!hoveredRef.current) { hoveredRef.current = true; setHovered(true); onHover?.() } }}
+            onPointerOver={() => { if (!hoveredRef.current) { hoveredRef.current = true; setHovered(true); sfx.piano(); onHover?.() } }}
             onPointerOut={() => { hoveredRef.current = false; setHovered(false); onHoverOut?.() }}
         >
             {/* Bevelled cube body */}
@@ -3561,7 +3949,7 @@ function ResumeHub({ currentSectionRef }) {
         <group position={HUB_POS}>
             <mesh ref={meshRef}
                 onClick={goToDossier}
-                onPointerEnter={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair' }}
+                onPointerEnter={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'crosshair'; sfx.piano() }}
                 onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'auto' }}
             >
                 <icosahedronGeometry args={[0.7, 1]} />
@@ -3575,18 +3963,6 @@ function ResumeHub({ currentSectionRef }) {
                 <meshBasicMaterial color="#3366ff" transparent opacity={0.45} toneMapped={false} />
             </mesh>
             <pointLight color="#3366ff" intensity={2.5} distance={7} />
-            <Text position={[0, -1.1, 0.5]}
-                font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
-                fontSize={0.22} letterSpacing={0.1} anchorX="center" anchorY="middle"
-                color="#ffffff" material-toneMapped={false}
-                material-depthTest={false} renderOrder={5}
-            >RESUME.SYS</Text>
-            <Text position={[0, -1.45, 0.5]}
-                font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
-                fontSize={0.13} letterSpacing={0.05} anchorX="center" anchorY="middle"
-                color="#3a5080" material-toneMapped={false}
-                material-depthTest={false} renderOrder={5}
-            >MUSTAFA ALI AKBAR // UX designer</Text>
         </group>
     )
 }
@@ -3619,7 +3995,7 @@ function LockedCube({ onHover, onHoverOut, visible }) {
 
     return (
         <group position={CUBE_POS}
-            onPointerOver={() => { if (!hoveredRef.current) { hoveredRef.current = true; setHovered(true); onHover?.() } }}
+            onPointerOver={() => { if (!hoveredRef.current) { hoveredRef.current = true; setHovered(true); sfx.piano(); onHover?.() } }}
             onPointerOut={() => { hoveredRef.current = false; setHovered(false); onHoverOut?.() }}
         >
             <mesh ref={meshRef}>
@@ -3673,6 +4049,7 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
     const spinRefs = useRef([])
     const posRefs = useRef([])
     const hoveredIdxRef = useRef(-1)
+    const prevHoveredIdxRef = useRef(-1)
     const spreadOffsets = useRef([])
     const frameCountRef = useRef(0)
     const lastEnterFrameRef = useRef(-100)
@@ -3760,7 +4137,7 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
                     ref={el => { if (el) posRefs.current[i] = el }}
                     position={t.pos}
                     quaternion={t.quat}
-                    onPointerOver={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}
+                    onPointerOver={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current; if (i !== prevHoveredIdxRef.current) { prevHoveredIdxRef.current = i; sfx.piano() } }) : undefined}
                     onPointerMove={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}>
                     <group ref={el => { if (el) { if (!spinRefs.current[i]) el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
                         <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
@@ -3778,6 +4155,7 @@ function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', 
     const spinRefs = useRef([])
     const posRefs = useRef([])
     const hoveredIdxRef = useRef(-1)
+    const prevHoveredIdxRef = useRef(-1)
     const spreadOffsets = useRef([])
     const frameCountRef = useRef(0)
     const lastEnterFrameRef = useRef(-100)
@@ -3848,7 +4226,15 @@ function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', 
                     ref={el => { if (el) posRefs.current[i] = el }}
                     position={t.pos}
                     quaternion={t.quat}
-                    onPointerOver={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}
+                    onPointerOver={interactive ? (e => {
+                        e.stopPropagation();
+                        hoveredIdxRef.current = i;
+                        lastEnterFrameRef.current = frameCountRef.current;
+                        if (i !== prevHoveredIdxRef.current) {
+                            prevHoveredIdxRef.current = i;
+                            sfx.piano();
+                        }
+                    }) : undefined}
                     onPointerMove={interactive ? (e => { e.stopPropagation(); hoveredIdxRef.current = i; lastEnterFrameRef.current = frameCountRef.current }) : undefined}>
                     <group ref={el => { if (el) { if (!spinRefs.current[i]) el.rotation.z = i * 0.22; spinRefs.current[i] = el } }}>
                         <primitive object={clones[i]} scale={cogScale} rotation={[Math.PI, 0, 0]} />
@@ -4081,6 +4467,9 @@ function GlitchBust({ position = [0, 0, 0], scale = 4, rotSpeed = 0.06, dimmed =
 
 // ─── Diptych — bust + resume side-by-side revealed on final scroll ────────────
 const DIPTYCH_ENTER = 1.06   // appears as camera approaches dossier stop
+const DOSSIER_SWAY_AMP = -0.12
+const DOSSIER_SWAY_FREQ = 1.0
+const DOSSIER_RING_ROTATION = [-0.15, 0.5, -0.15]
 
 const RESUME_CSS = `
 .dossier { width:240px; background:#f7f6f2; color:#111; font-family:'Georgia',serif;
@@ -4112,31 +4501,31 @@ const TRAIN_PATH = (() => {
     const jz = Math.sin(TRAIN_JOINT_ANGLE) * 70
     // Tangent direction at joint angle (CCW circle tangent = perpendicular to radius)
     const tx = -Math.sin(TRAIN_JOINT_ANGLE)
-    const tz =  Math.cos(TRAIN_JOINT_ANGLE)
+    const tz = Math.cos(TRAIN_JOINT_ANGLE)
     // Straight approach: arrive tangentially from just outside the ring edge, no big sweep
     for (let i = 0; i < TRAIN_N_STR; i++) {
         const t = i / (TRAIN_N_STR - 1)
         // ease-in so first appearance is slow
         const ease = t * t
-        pts[i*3]   = THREE.MathUtils.lerp(jx - tx * 55, jx, ease)
-        pts[i*3+1] = THREE.MathUtils.lerp(-18, 0, ease)
-        pts[i*3+2] = THREE.MathUtils.lerp(jz - tz * 55, jz, ease)
+        pts[i * 3] = THREE.MathUtils.lerp(jx - tx * 55, jx, ease)
+        pts[i * 3 + 1] = THREE.MathUtils.lerp(-18, 0, ease)
+        pts[i * 3 + 2] = THREE.MathUtils.lerp(jz - tz * 55, jz, ease)
     }
     for (let i = 0; i < TRAIN_N_CIR; i++) {
         const a = TRAIN_JOINT_ANGLE + (i / TRAIN_N_CIR) * Math.PI * 2
-        pts[(TRAIN_N_STR + i)*3]   = Math.cos(a) * 70
-        pts[(TRAIN_N_STR + i)*3+1] = 0
-        pts[(TRAIN_N_STR + i)*3+2] = Math.sin(a) * 70
+        pts[(TRAIN_N_STR + i) * 3] = Math.cos(a) * 70
+        pts[(TRAIN_N_STR + i) * 3 + 1] = 0
+        pts[(TRAIN_N_STR + i) * 3 + 2] = Math.sin(a) * 70
     }
     return pts
 })()
 
-const BOGEY_SPACING   = 0.014  // tighter — cards stay close together, less card-deck spread
-const TRAIN_RATE      = 0.13   // slower — smooth, unhurried entrance
-const DETACH_START    = 0.70   // trainHead when photo 8 (rear bogey) detaches
-const DETACH_STEP     = 0.07   // trainHead increment between successive detachments
+const BOGEY_SPACING = 0.014  // tighter — cards stay close together, less card-deck spread
+const TRAIN_RATE = 0.13   // slower — smooth, unhurried entrance
+const DETACH_START = 0.70   // trainHead when photo 8 (rear bogey) detaches
+const DETACH_STEP = 0.07   // trainHead increment between successive detachments
 const SPINE_FADE_HEAD = DETACH_START + 8 * DETACH_STEP   // ≈ 1.26
-const TRAIN_DONE_SEC  = (SPINE_FADE_HEAD + 0.5) / TRAIN_RATE + 0.5
+const TRAIN_DONE_SEC = (SPINE_FADE_HEAD + 0.5) / TRAIN_RATE + 0.5
 
 const _spineWaveBuf = new Float32Array(TRAIN_N_TOT * 3)
 
@@ -4145,29 +4534,29 @@ function WavySpine({ introTRef }) {
 
     useFrame((state) => {
         if (!lineRef.current) return
-        const t  = state.clock.elapsedTime
+        const t = state.clock.elapsedTime
         const th = introTRef.current * TRAIN_RATE
 
         const headIdx = Math.min(Math.floor(clamp(th, 0, 1) * (TRAIN_N_TOT - 1)), TRAIN_N_TOT - 1)
         const tailIdx = Math.max(Math.floor(clamp(th - 9 * BOGEY_SPACING, 0, 1) * (TRAIN_N_TOT - 1)), 0)
 
         for (let i = 0; i < TRAIN_N_TOT; i++) {
-            const px = TRAIN_PATH[i*3], py = TRAIN_PATH[i*3+1], pz = TRAIN_PATH[i*3+2]
+            const px = TRAIN_PATH[i * 3], py = TRAIN_PATH[i * 3 + 1], pz = TRAIN_PATH[i * 3 + 2]
             if (i < tailIdx || i > headIdx) {
-                _spineWaveBuf[i*3] = px; _spineWaveBuf[i*3+1] = py; _spineWaveBuf[i*3+2] = pz
+                _spineWaveBuf[i * 3] = px; _spineWaveBuf[i * 3 + 1] = py; _spineWaveBuf[i * 3 + 2] = pz
                 continue
             }
             const frac = i / (TRAIN_N_TOT - 1)
-            const amp  = i < TRAIN_N_STR ? 12 * (frac / (TRAIN_N_STR / TRAIN_N_TOT)) : 5
-            _spineWaveBuf[i*3]   = px + Math.cos(frac * 11 - t * 3) * amp * 0.5
-            _spineWaveBuf[i*3+1] = py + Math.sin(frac * 16 - t * 5) * amp
-            _spineWaveBuf[i*3+2] = pz
+            const amp = i < TRAIN_N_STR ? 12 * (frac / (TRAIN_N_STR / TRAIN_N_TOT)) : 5
+            _spineWaveBuf[i * 3] = px + Math.cos(frac * 11 - t * 3) * amp * 0.5
+            _spineWaveBuf[i * 3 + 1] = py + Math.sin(frac * 16 - t * 5) * amp
+            _spineWaveBuf[i * 3 + 2] = pz
         }
         lineRef.current.geometry.attributes.position.needsUpdate = true
 
         const opacity = th < 0.05 ? 0
             : th < SPINE_FADE_HEAD ? 1
-            : Math.max(0, 1 - (th - SPINE_FADE_HEAD) / 0.4)
+                : Math.max(0, 1 - (th - SPINE_FADE_HEAD) / 0.4)
         lineRef.current.material.opacity = opacity
     })
 
@@ -4183,15 +4572,12 @@ function WavySpine({ introTRef }) {
 
 // ─── Photo Ring — circular gallery of images for the Dossier section ──────────
 const PHOTO_PATHS = [
-    '/photos/DSCN3675 (1).png',
-    '/photos/E8BBA5C7-1659-4C8E-9044-9555075F11A0.png',
-    '/photos/IMG_1830.png',
-    '/photos/IMG_3979.png',
-    '/photos/IMG_7737.png',
-    '/photos/IMG_8804.png',
-    '/photos/PXL_20250318_174319952 (1).png',
-    '/photos/PXL_20251026_025829577.png',
-    { type: 'video', src: '/photos/guitar-vid.webm' },
+    { type: 'video', src: '/photos/guitar-vid.webm', label: '2024-08-14  19:32' },
+    { type: 'video', src: '/photos/co-highway.webm', label: '2023-11-03  07:14' },
+    { type: 'video', src: '/photos/currents.webm', label: '2024-06-21  16:48' },
+    { type: 'video', src: '/photos/desert.webm', label: '2023-04-09  12:05' },
+    { type: 'video', src: '/photos/lake.webm', label: '2024-09-30  08:22' },
+    { type: 'video', src: '/photos/quandary.webm', label: '2022-07-17  14:57' },
 ]
 
 function useVideoTexture(src) {
@@ -4203,7 +4589,7 @@ function useVideoTexture(src) {
         vid.muted = true
         vid.playsInline = true
         vid.autoplay = true
-        vid.play().catch(() => {})
+        vid.play().catch(() => { })
         const t = new THREE.VideoTexture(vid)
         t.colorSpace = THREE.SRGBColorSpace
         setTex(t)
@@ -4213,39 +4599,42 @@ function useVideoTexture(src) {
 }
 
 function SinglePhotoImage({ path, ...rest }) {
-    const tex = useTexture(path)
-    return <SinglePhotoInner tex={tex} isVideo={false} {...rest} />
+    const src = typeof path === 'string' ? path : path.src
+    const label = (path && typeof path === 'object') ? path.label : ''
+    const tex = useTexture(src)
+    return <SinglePhotoInner tex={tex} isVideo={false} label={label} {...rest} />
 }
 
-function SinglePhotoVideo({ src, ...rest }) {
+function SinglePhotoVideo({ path, ...rest }) {
+    const src = typeof path === 'string' ? path : path.src
+    const label = (path && typeof path === 'object') ? path.label : ''
     const tex = useVideoTexture(src)
     if (!tex) return null
-    return <SinglePhotoInner tex={tex} isVideo={true} {...rest} />
+    return <SinglePhotoInner tex={tex} isVideo={true} label={label} {...rest} />
 }
 
 function SinglePhoto({ path, ...rest }) {
     if (path && typeof path === 'object' && path.type === 'video') {
-        return <SinglePhotoVideo src={path.src} {...rest} />
+        return <SinglePhotoVideo path={path} {...rest} />
     }
     return <SinglePhotoImage path={path} {...rest} />
 }
 
-function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, focused, onFocus, isAnyFocused }) {
+function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredIdx, index, appeared, label }) {
     const meshRef = useRef()
+    const textRef = useRef()
+    const textShaderRef = useRef()
     const opRef = useRef(0)
-    const scaleRef = useRef(1)
+    const scaleRef = useRef(1.8)
     const posRef = useRef({ x: 0, y: 0, z: 0 })
-    const detachBlendRef = useRef(0)
     const outlineRef = useRef()
     const outlineOpRef = useRef(0)
-    const _camDir = useMemo(() => new THREE.Vector3(), [])
-    const _worldTarget = useMemo(() => new THREE.Vector3(), [])
 
     const shaderRef = useRef()
     const mat = useMemo(() => {
         const m = new THREE.MeshStandardMaterial({
             map: tex,
-            ...(isVideo ? {} : { emissiveMap: tex, emissive: new THREE.Color('#00ccff') }),
+            ...(isVideo ? {} : { emissiveMap: tex, emissive: new THREE.Color('#aaccff') }),
             transparent: true, opacity: 0, side: THREE.DoubleSide,
             toneMapped: false, depthWrite: false,
         })
@@ -4281,12 +4670,88 @@ function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredI
                 // Apply bend + cloth + hover pull
                 float theta = transformed.x / uBendRadius;
                 transformed.x = sin(theta) * uBendRadius + sway;
-                transformed.z = transformed.z + (uBendRadius - cos(theta) * uBendRadius) + cloth + pull;
+                transformed.z = transformed.z - (uBendRadius - cos(theta) * uBendRadius) + cloth + pull;
                 transformed.y += sin(position.x * 2.0 + uTime * 1.1) * uClothAmp * 0.2 * hang;`
+            )
+            shader.fragmentShader = 'uniform float uTime;\n' + shader.fragmentShader
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <map_fragment>',
+                `
+                #ifdef USE_MAP
+                    // --- 1. TV Glitch / Jitter ---
+                    float jitter = (fract(sin(uTime * 15.0) * 43758.5453) - 0.5) * step(0.98, fract(uTime * 1.2)) * 0.05;
+                    vec2 glitchUv = vMapUv + vec2(jitter, 0.0);
+                    vec4 sampledColor = texture2D( map, glitchUv );
+                    
+                    // --- 2. Paper Border ---
+                    float borderX = step(0.04, vMapUv.x) * step(vMapUv.x, 0.96);
+                    float borderY = step(0.03, vMapUv.y) * step(vMapUv.y, 0.97);
+                    float border = borderX * borderY;
+                    vec3 paperColor = vec3(0.95, 0.95, 1.0); // Neutral/Cool paper
+                    sampledColor.rgb = mix(paperColor, sampledColor.rgb, border);
+
+                    // --- 3. Cold Cinematic Tint ---
+                    float gray = dot(sampledColor.rgb, vec3(0.299, 0.587, 0.114));
+                    vec3 coldTint = vec3(gray) * vec3(0.9, 1.05, 1.2);
+                    sampledColor.rgb = mix(sampledColor.rgb, coldTint, 0.45);
+
+                    // --- 4. TV Static Noise (Bad Signal) ---
+                    float staticNoise = fract(sin(dot(glitchUv + fract(uTime), vec2(12.9898, 78.233))) * 43758.5453);
+                    sampledColor.rgb = mix(sampledColor.rgb, vec3(staticNoise), 0.28 * border);
+
+                    // --- 5. Scanlines ---
+                    float scanline = sin(vMapUv.y * 800.0 + uTime * 10.0) * 0.04;
+                    sampledColor.rgb -= scanline * border;
+
+                    // --- 6. Vignette ---
+                    float vDist = distance(vMapUv, vec2(0.5));
+                    float vignette = smoothstep(0.75, 0.3, vDist);
+                    sampledColor.rgb *= (0.7 + 0.3 * vignette);
+
+                    // --- 7. Black Point Fade & Flicker ---
+                    float flicker = 1.0 + (fract(sin(uTime * 20.0) * 12345.67) - 0.5) * 0.03;
+                    sampledColor.rgb = max(sampledColor.rgb * flicker, vec3(0.08, 0.07, 0.06));
+
+                    diffuseColor *= sampledColor;
+                #endif
+                `
             )
         }
         return m
     }, [tex, radius, isVideo])
+
+    const textMat = useMemo(() => {
+        const m = new THREE.MeshStandardMaterial({
+            color: '#ffffff',
+            transparent: true,
+            opacity: 0,
+            toneMapped: false,
+            depthTest: false,
+        })
+        m.onBeforeCompile = (shader) => {
+            shader.uniforms.uTime = { value: 0 }
+            textShaderRef.current = shader
+            shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `
+                float jitter = (fract(sin(uTime * 15.0) * 43758.5453) - 0.5) * step(0.98, fract(uTime * 1.2)) * 0.4;
+                vec3 transformed = vec3(position);
+                transformed.x += jitter;
+                `
+            )
+            shader.fragmentShader = 'uniform float uTime;\n' + shader.fragmentShader
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <dithering_fragment>',
+                `
+                #include <dithering_fragment>
+                float flicker = 1.0 + (fract(sin(uTime * 25.0) * 12345.67) - 0.5) * 0.3;
+                gl_FragColor.rgb *= flicker;
+                `
+            )
+        }
+        return m
+    }, [])
 
     useFrame((state, delta) => {
         if (!meshRef.current) return
@@ -4296,27 +4761,8 @@ function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredI
         outlineOpRef.current = dampValue(outlineOpRef.current, isHovered ? 0.8 : 0, 10, delta)
         if (outlineRef.current) outlineRef.current.material.opacity = outlineOpRef.current
 
-        const t  = state.clock.elapsedTime
-        // Always settled — no train animation
-        const isDetached = true
-
-        let targetX, targetY, targetZ, targetOp
-        let clothTarget = 0.18
-
-        if (focused) {
-            state.camera.getWorldDirection(_camDir)
-            _worldTarget.copy(state.camera.position).addScaledVector(_camDir, 8)
-            if (meshRef.current.parent) meshRef.current.parent.worldToLocal(_worldTarget)
-            targetX = _worldTarget.x; targetY = _worldTarget.y; targetZ = _worldTarget.z
-            targetOp = 1.0
-        } else {
-            // Settled in ring
-            targetX = Math.cos(angle) * radius
-            targetY = Math.sin(t + index * 0.5) * 0.5
-            targetZ = Math.sin(angle) * radius
-            targetOp = appeared ? (isAnyFocused ? 0.3 : 1.0) : 0
-        }
-
+        const t = state.clock.elapsedTime
+        let targetOp = appeared ? 1.0 : 0
         opRef.current = dampValue(opRef.current, targetOp, 12, delta)
 
         if (shaderRef.current) {
@@ -4324,34 +4770,28 @@ function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredI
             shaderRef.current.uniforms.uHoverStrength.value = dampValue(
                 shaderRef.current.uniforms.uHoverStrength.value, isHovered ? 1.2 : 0.0, 6, delta)
             shaderRef.current.uniforms.uClothAmp.value = dampValue(
-                shaderRef.current.uniforms.uClothAmp.value, clothTarget, 4, delta)
+                shaderRef.current.uniforms.uClothAmp.value, 0.18, 4, delta)
         }
+        if (textShaderRef.current) textShaderRef.current.uniforms.uTime.value = t
 
-        scaleRef.current = dampValue(scaleRef.current, focused ? 2.2 : 1.8, 10, delta)
-
-        posRef.current.x = dampValue(posRef.current.x, targetX, 8, delta)
-        posRef.current.y = dampValue(posRef.current.y, targetY, 8, delta)
-        posRef.current.z = dampValue(posRef.current.z, targetZ, 8, delta)
+        posRef.current.x = Math.cos(angle) * radius
+        posRef.current.y = Math.sin(t * DOSSIER_SWAY_FREQ + index * 0.5) * DOSSIER_SWAY_AMP
+        posRef.current.z = Math.sin(angle) * radius
 
         meshRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z)
-
-        // Blend detach: 0 = facing camera, 1 = settled ring rotation
-        detachBlendRef.current = dampValue(detachBlendRef.current, (isDetached && !focused) ? 1 : 0, 3, delta)
-        const blend = detachBlendRef.current
-        if (blend < 0.01 || focused) {
-            meshRef.current.lookAt(state.camera.position)
-        } else if (blend > 0.99) {
-            meshRef.current.rotation.set(0, Math.PI / 2 - angle, 0)
-        } else {
-            meshRef.current.lookAt(state.camera.position)
-            const camQuat = meshRef.current.quaternion.clone()
-            const ringEuler = new THREE.Euler(0, Math.PI / 2 - angle, 0)
-            const ringQuat = new THREE.Quaternion().setFromEuler(ringEuler)
-            meshRef.current.quaternion.slerpQuaternions(camQuat, ringQuat, blend)
-        }
-        meshRef.current.scale.setScalar(scaleRef.current)
+        meshRef.current.rotation.set(0, Math.PI / 2 - angle, 0)
+        meshRef.current.scale.setScalar(1.8)
         meshRef.current.material.opacity = opRef.current
-        meshRef.current.material.emissiveIntensity = 0.15 + (isHovered || focused ? 0.35 : 0) + Math.sin(t * 4 + index) * 0.05
+        meshRef.current.material.emissiveIntensity = 0.15 + (isHovered ? 0.35 : 0) + Math.sin(t * 4 + index) * 0.05
+
+        if (textRef.current) {
+            textRef.current.material.opacity = opRef.current * 0.7
+            // bottom-left: offset along plane's local left axis (tangent to ring) and drop to bottom
+            const leftX = -Math.sin(angle) * 40
+            const leftZ = Math.cos(angle) * 40
+            textRef.current.position.set(posRef.current.x + leftX, posRef.current.y - 22, posRef.current.z + leftZ)
+            textRef.current.rotation.set(0, Math.PI / 2 - angle, 0)
+        }
     })
 
     return (
@@ -4360,44 +4800,58 @@ function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredI
             <mesh
                 ref={outlineRef}
                 position={[posRef.current.x, posRef.current.y, posRef.current.z - 0.05]}
-                scale={scaleRef.current * 1.08}
+                scale={1.8 * 1.08}
                 onPointerOver={() => { }} // dummy to allow events to pass to main mesh
             >
                 <planeGeometry args={[20.0, 28.56]} />
-                <meshBasicMaterial color="#00ccff" transparent opacity={0} wireframe />
+                <meshBasicMaterial color="#ffcc88" transparent opacity={0} wireframe />
             </mesh>
 
             <mesh
                 ref={meshRef}
                 material={mat}
-                onPointerOver={e => { e.stopPropagation(); if (!isAnyFocused) setHoveredIdx(index); document.body.style.cursor = 'pointer' }}
+                onPointerOver={e => { e.stopPropagation(); setHoveredIdx(index); sfx.piano(); document.body.style.cursor = 'pointer' }}
                 onPointerMove={e => { if (shaderRef.current && e.uv) shaderRef.current.uniforms.uHoverUV.value.copy(e.uv) }}
-                onPointerOut={() => { if (!isAnyFocused) setHoveredIdx(-1); document.body.style.cursor = 'auto' }}
-                onClick={e => { e.stopPropagation(); onFocus(focused ? -1 : index) }}
+                onPointerOut={() => { setHoveredIdx(-1); document.body.style.cursor = 'auto' }}
             >
-                <planeGeometry args={[20.0, 28.28, 32, 32]} />
+                <planeGeometry args={[50, 28.28, 32, 32]} />
             </mesh>
+
+            <Text
+                ref={textRef}
+                position={[posRef.current.x, posRef.current.y - 12, posRef.current.z]}
+                rotation={[0, Math.PI / 2 - angle, 0]}
+                font="/fonts/Rocket%20Command/rocketcommand.ttf"
+                fontSize={2.8}
+                anchorX="left"
+                anchorY="bottom"
+                material={textMat}
+                renderOrder={10}
+                maxWidth={46}
+            >
+                {label}
+            </Text>
         </group>
     )
 }
 
-function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
+function PhotoRing({ appeared }) {
     const [hoveredIdx, setHoveredIdx] = useState(-1)
     const groupRef = useRef()
-    const radius = 70
+    const radius = 90
     const center = [-80, 9, -200]
-    const introTRef      = useRef(0)
+    const introTRef = useRef(0)
     const prevAppearedRef = useRef(false)
 
     useFrame((_, delta) => {
         // Spin ring when not interacting
-        if (groupRef.current && hoveredIdx === -1 && focusedIdx === -1) {
+        if (groupRef.current && hoveredIdx === -1) {
             groupRef.current.rotation.y += delta * 0.1
         }
     })
 
     return (
-        <group ref={groupRef} position={center} rotation={[0.3, 0.7, 0.3]}>
+        <group ref={groupRef} position={center} rotation={DOSSIER_RING_ROTATION}>
             {PHOTO_PATHS.map((path, i) => {
                 const angle = (i / PHOTO_PATHS.length) * Math.PI * 2
                 return (
@@ -4410,9 +4864,6 @@ function PhotoRing({ appeared, focusedIdx, setFocusedIdx }) {
                         setHoveredIdx={setHoveredIdx}
                         index={i}
                         appeared={appeared}
-                        focused={focusedIdx === i}
-                        isAnyFocused={focusedIdx !== -1}
-                        onFocus={setFocusedIdx}
                         introTRef={null}
                     />
                 )
@@ -4445,10 +4896,10 @@ function exportSigilSVG() {
     const R = 2.2
     for (let i = 0; i < 8; i++) {
         const startRad = THREE.MathUtils.degToRad(i * 45 + 3.5)
-        const endRad   = THREE.MathUtils.degToRad(i * 45 + 41.5)
+        const endRad = THREE.MathUtils.degToRad(i * 45 + 41.5)
         const x1 = tx(Math.cos(startRad) * R), y1 = ty(Math.sin(startRad) * R)
-        const x2 = tx(Math.cos(endRad)   * R), y2 = ty(Math.sin(endRad)   * R)
-        const r  = R * S
+        const x2 = tx(Math.cos(endRad) * R), y2 = ty(Math.sin(endRad) * R)
+        const r = R * S
         paths.push(`<path d="M ${x1} ${y1} A ${r} ${r} 0 0 0 ${x2} ${y2}" stroke="#00aaff" stroke-width="4.5" fill="none"/>`)
     }
 
@@ -4456,7 +4907,7 @@ function exportSigilSVG() {
     for (let i = 0; i < 8; i++) {
         const a = THREE.MathUtils.degToRad(i * 45)
         const r0 = 2.44, r1 = 2.66
-        paths.push(`<line x1="${tx(Math.cos(a)*r0)}" y1="${ty(Math.sin(a)*r0)}" x2="${tx(Math.cos(a)*r1)}" y2="${ty(Math.sin(a)*r1)}" stroke="#00aaff" stroke-width="6"/>`)
+        paths.push(`<line x1="${tx(Math.cos(a) * r0)}" y1="${ty(Math.sin(a) * r0)}" x2="${tx(Math.cos(a) * r1)}" y2="${ty(Math.sin(a) * r1)}" stroke="#00aaff" stroke-width="6"/>`)
     }
 
     // 3. 4-pointed star (quadratic bezier outline)
@@ -4482,8 +4933,8 @@ function exportSigilSVG() {
 </svg>`
 
     const blob = new Blob([svg], { type: 'image/svg+xml' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
     a.href = url; a.download = 'techno-sigil.svg'; a.click()
     URL.revokeObjectURL(url)
 }
@@ -4663,9 +5114,9 @@ function DossierGlassAccents() {
 
     const accents = useMemo(() => [
         { type: 'sphere', pos: [-18, 12, -200], r: 5.5, phase: 0.0, speed: 0.48 },
-        { type: 'sphere', pos: [-68, -8,  -225], r: 4.0, phase: 1.7, speed: 0.52 },
+        { type: 'sphere', pos: [-68, -8, -225], r: 4.0, phase: 1.7, speed: 0.52 },
         { type: 'sphere', pos: [-32, -38, -260], r: 3.5, phase: 3.1, speed: 0.44 },
-        { type: 'torus',  pos: [-45,  8, -215], r: 11, tube: 0.9, phase: 0.8, speed: 0.38 },
+        { type: 'torus', pos: [-45, 8, -215], r: 11, tube: 0.9, phase: 0.8, speed: 0.38 },
         { type: 'sphere', pos: [-55, 25, -240], r: 2.5, phase: 2.4, speed: 0.60 },
     ], [])
 
@@ -4705,11 +5156,10 @@ function BustDiptych({ scrollRef }) {
     const opRef = useRef()
     const [appeared, setAppeared] = useState(false)
     const appearedRef = useRef(false)
-    const [focusedIdx, setFocusedIdx] = useState(-1)
 
-    const k_x = -67, k_y = -5,   k_z = -160, k_intensity = 2000, k_color = '#0079ff'
-    const r_x = -62, r_y = -66,  r_z = -222, r_intensity = 2000, r_color = '#6d50ff'
-    const f_x = -110, f_y = 39,  f_z = -191, f_intensity = 2000, f_color = '#a200ff'
+    const k_x = -67, k_y = -5, k_z = -160, k_intensity = 2000, k_color = '#0079ff'
+    const r_x = -62, r_y = -66, r_z = -222, r_intensity = 2000, r_color = '#6d50ff'
+    const f_x = -110, f_y = 39, f_z = -191, f_intensity = 2000, f_color = '#a200ff'
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
@@ -4731,18 +5181,12 @@ function BustDiptych({ scrollRef }) {
             <pointLight position={[r_x, r_y, r_z]} intensity={r_intensity} color={r_color} distance={100} decay={2} />
             <pointLight position={[f_x, f_y, f_z]} intensity={f_intensity} color={f_color} distance={90} decay={2} />
             <SigilModel position={[-40, -20, -250]} scale={9} />
-            <PhotoRing appeared={appeared} focusedIdx={focusedIdx} setFocusedIdx={setFocusedIdx} />
+            <PhotoRing appeared={appeared} />
 
-            {/* Backdrop to close focused image */}
-            {focusedIdx !== -1 && (
-                <mesh position={[0, 0, 10]} onClick={() => setFocusedIdx(-1)}>
-                    <planeGeometry args={[100, 100]} />
-                    <meshBasicMaterial transparent opacity={0} />
-                </mesh>
-            )}
         </group>
     )
 }
+
 
 function BioSection({ scrollRef, currentSectionRef }) {
     const groupRef = useRef()
@@ -4996,7 +5440,7 @@ function AnimatedGrid() {
 
     return (
         <mesh ref={meshRef} position={[0, 0, -5]} rotation={[0, 0, 0]}>
-            <planeGeometry args={[60, 60, 40, 40]} />
+            <planeGeometry args={[60, 60, 25, 25]} />
             <meshBasicMaterial
                 color="#ffffff"
                 vertexColors
@@ -5087,6 +5531,7 @@ function EliteLoader() {
     const { progress, active } = useProgress()
     const [isFading, setIsFading] = useState(false)
     const [isHidden, setIsHidden] = useState(false)
+    const [canEnter, setCanEnter] = useState(false)
     const progressTargetRef = useRef(0)
     const displayProgressRef = useRef(0)
     const progressTextRef = useRef(null)
@@ -5119,18 +5564,26 @@ function EliteLoader() {
         return () => cancelAnimationFrame(rafId)
     }, [])
 
-    // Handle fade out sequence
+    // Handle completion state
     useEffect(() => {
-        if (progress >= 100 && !active) {
-            const fadeTimer = setTimeout(() => setIsFading(true), 600)
-            const hideTimer = setTimeout(() => { setIsHidden(true); loaderFullyHidden = true }, 1600)
-            return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
+        if (progress >= 100 && !active && !canEnter) {
+            setCanEnter(true)
         }
-    }, [progress, active])
+    }, [progress, active, canEnter])
+
+    const handleEnter = () => {
+        const click = getDigitalClickAudio(); click.currentTime = 0; click.play().catch(() => {})
+        setIsFading(true)
+        heroIntroState.hasEntered = true
+        setTimeout(() => {
+            setIsHidden(true)
+            loaderFullyHidden = true
+        }, 1200)
+    }
 
     if (isHidden) return null
 
-    const letters = "LOADING".split('')
+    const letters = (canEnter ? "SUCCESS" : "LOADING").split('')
 
     return (
         <div style={{
@@ -5138,7 +5591,7 @@ function EliteLoader() {
             backgroundColor: '#02040a', zIndex: 9999, overflow: 'hidden',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             opacity: isFading ? 0 : 1, transition: 'opacity 1s cubic-bezier(0.87, 0, 0.13, 1)',
-            pointerEvents: 'none', fontFamily: 'var(--font-mono)', color: '#8899cc'
+            pointerEvents: (canEnter && !isFading) ? 'all' : 'none', fontFamily: 'var(--font-mono)', color: '#8899cc'
         }}>
             <style>{`
                 @keyframes kinetic-wave {
@@ -5153,6 +5606,7 @@ function EliteLoader() {
                     animation: kinetic-wave 2s ease-in-out infinite;
                     will-change: transform, opacity;
                     color: #8899cc;
+                    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
                 }
                 .loader-bg-grid {
                     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -5187,7 +5641,7 @@ function EliteLoader() {
             `}</style>
 
             <div className="loader-bg-grid" />
-            <div className="loader-sweep" />
+            <div className="loader-sweep" style={{ animationPlayState: canEnter ? 'paused' : 'running', opacity: canEnter ? 0 : 1, transition: 'opacity 0.6s' }} />
             <div className="loader-orb" />
 
             <div className="loader-corner-tl" />
@@ -5203,13 +5657,54 @@ function EliteLoader() {
                 ))}
             </div>
 
-            <div style={{ fontSize: '11px', letterSpacing: '0.4em', opacity: 0.5, position: 'relative', zIndex: 1 }}>
-                SYS // INITIALIZING GRAPHICS
+            <div style={{
+                fontSize: '11px', letterSpacing: '0.4em', position: 'relative', zIndex: 1, transition: 'all 0.6s',
+                opacity: canEnter ? 1 : 0.5,
+                color: canEnter ? '#00e5ff' : '#8899cc',
+                textShadow: canEnter ? '0 0 12px rgba(0, 229, 255, 0.8), 0 0 24px rgba(0, 229, 255, 0.4)' : 'none',
+            }}>
+                {canEnter ? 'SYS // SYSTEMS READY // AWAITING ENTRY' : 'SYS // INITIALIZING GRAPHICS'}
             </div>
 
-            <div ref={progressTextRef} style={{ marginTop: '30px', color: '#ffffff', fontSize: '18px', fontWeight: 200, letterSpacing: '0.15em' }}>
+            <div ref={progressTextRef} style={{ marginTop: '30px', color: '#ffffff', fontSize: '18px', fontWeight: 200, letterSpacing: '0.15em', opacity: canEnter ? 0 : 1, transition: 'opacity 0.5s' }}>
                 00.00 %
             </div>
+
+            <button
+                    onClick={canEnter ? handleEnter : undefined}
+                    onPointerOver={() => canEnter && sfx.piano()}
+                    style={{
+                        marginTop: '40px',
+                        background: 'transparent',
+                        border: '1px solid rgba(136, 153, 204, 0.4)',
+                        color: '#ffffff',
+                        padding: '12px 40px',
+                        fontSize: '14px',
+                        letterSpacing: '0.6em',
+                        cursor: canEnter ? 'pointer' : 'default',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)',
+                        outline: 'none',
+                        textIndent: '0.6em',
+                        opacity: canEnter ? 1 : 0,
+                        pointerEvents: canEnter ? 'auto' : 'none',
+                    }}
+                    onMouseEnter={e => {
+                        e.target.style.background = 'rgba(136, 153, 204, 0.1)'
+                        e.target.style.borderColor = 'rgba(136, 153, 204, 0.8)'
+                        e.target.style.boxShadow = '0 0 20px rgba(136, 153, 204, 0.2)'
+                        e.target.style.transform = 'translateY(-2px)'
+                    }}
+                    onMouseLeave={e => {
+                        e.target.style.background = 'transparent'
+                        e.target.style.borderColor = 'rgba(136, 153, 204, 0.4)'
+                        e.target.style.boxShadow = 'none'
+                        e.target.style.transform = 'translateY(0)'
+                    }}
+                >
+                    ENTER
+                </button>
         </div>
     )
 }
@@ -5366,14 +5861,14 @@ function MuteButton() {
         >
             {muted ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                    <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" />
                 </svg>
             ) : (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
                 </svg>
             )}
         </button>
@@ -5511,11 +6006,12 @@ function HeroSubtextCard({ scrollRef }) {
 
     useEffect(() => {
         const id = setInterval(() => {
-            if (heroIntroState.phase === 'done' && loaderFullyHidden) { setShow(true); clearInterval(id) }
+            if (heroIntroState.phase === 'done' && loaderFullyHidden && heroIntroState.hasEntered) {
+                setShow(true)
+                clearInterval(id)
+            }
         }, 100)
-        // Fallback: show after 12s in case phase or loader gets stuck
-        const fallback = setTimeout(() => setShow(true), 12000)
-        return () => { clearInterval(id); clearTimeout(fallback) }
+        return () => { clearInterval(id) }
     }, [])
 
     useEffect(() => {
@@ -5568,7 +6064,7 @@ function HeroSubtextCard({ scrollRef }) {
                 flexDirection: 'column',
                 alignItems: 'center',
                 pointerEvents: 'none',
-                
+
                 zIndex: 40,
             }}>
                 <div style={{
@@ -5579,7 +6075,7 @@ function HeroSubtextCard({ scrollRef }) {
                     color: '#99aacc',
                     textAlign: 'center',
                 }}>
-                Product Designer focused on systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE. </div>
+                    Product Designer focused on systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE. </div>
             </div>
         </>
     )
@@ -5592,6 +6088,16 @@ export default function Portfolio() {
     const activeProjectRef = useRef(null)
     useEffect(() => { activeProjectRef.current = activeProject }, [activeProject])
 
+    // Wrapper to play sound when opening case study
+    const handleOpenProject = (project) => {
+        if (!sfx.isMuted()) {
+            const boin = getBoinXAudio()
+            boin.currentTime = 0
+            boin.play().catch(() => { })
+        }
+        setActiveProject(project)
+    }
+
     // Start background track on first user gesture (required by browser autoplay policy)
     useEffect(() => {
         let started = false
@@ -5600,7 +6106,7 @@ export default function Portfolio() {
             sfx.setMuted(false)
             const p = sfx.startBgTrack()
             if (p && typeof p.then === 'function') {
-                p.then(() => { started = true }).catch(() => {})
+                p.then(() => { started = true }).catch(() => { })
             } else {
                 started = true
             }
@@ -5650,12 +6156,59 @@ export default function Portfolio() {
             if (wheelAccum >= WHEEL_THRESHOLD) {
                 wheelAccum = 0
                 locked = true
+                const prevSection = currentSectionRef.current
                 currentSectionRef.current = Math.min(currentSectionRef.current + 1, SECTION_STOPS.length - 1)
+                const newSection = currentSectionRef.current
+
+                // Play itempick1 on forward transition (pre-loaded for instant playback)
+                if (!sfx.isMuted()) {
+                    const pick = getItemPick1Audio()
+                    pick.currentTime = 0
+                    pick.play().catch(() => { })
+                }
+
+                // Play mallet when entering ethos section (only once per session)
+                if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
+                    _malletPlayed = true
+                    playMalletWithFX()
+                }
+
+                // Play ambient piano when entering dossier section
+                if (newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
+                    _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+                    _ambientPianoAudio.loop = true
+                    _ambientPianoAudio.volume = 0.35
+                    _ambientPianoAudio.play().catch(() => { })
+                }
+
                 sfx.snap()
             } else if (wheelAccum <= -WHEEL_THRESHOLD) {
                 wheelAccum = 0
                 locked = true
+                const prevSection = currentSectionRef.current
                 currentSectionRef.current = Math.max(currentSectionRef.current - 1, 0)
+                const newSection = currentSectionRef.current
+
+                // Play itemback on backward transition (pre-loaded for instant playback)
+                if (!sfx.isMuted()) {
+                    const back = getItemBackAudio()
+                    back.currentTime = 0
+                    back.play().catch(() => { })
+                }
+
+                // Play mallet when entering ethos section (only once per session)
+                if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
+                    _malletPlayed = true
+                    playMalletWithFX()
+                }
+
+                // Stop ambient piano when leaving dossier
+                if (prevSection === DOSSIER_SECTION_INDEX && newSection !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
+                    _ambientPianoAudio.pause()
+                    _ambientPianoAudio.currentTime = 0
+                    _ambientPianoAudio = null
+                }
+
                 sfx.snap()
             }
         }
@@ -5666,41 +6219,41 @@ export default function Portfolio() {
 
     return (
         <>
-        <CursorOrb />
-        <div style={{
-            width: '100vw',
-            height: '100vh',
-            background: '#050510',
-            overflow: 'hidden',
-            cursor: 'none' // Hide native to show Orb
-        }}>
-            <EliteLoader />
+            <CursorOrb />
+            <div style={{
+                width: '100vw',
+                height: '100vh',
+                background: '#050510',
+                overflow: 'hidden',
+                cursor: 'none' // Hide native to show Orb
+            }}>
+                <EliteLoader />
 
-            {/* BOTTOM-LEFT NAV LINKS */}
-            <div style={{ position: 'fixed', bottom: '13px', left: '40px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', pointerEvents: 'auto', height: '30px' }}>
-                <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
-                <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
-                <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
-                <CopyEmailHud />
+                {/* BOTTOM-LEFT NAV LINKS */}
+                <div style={{ position: 'fixed', bottom: '13px', left: '40px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', pointerEvents: 'auto', height: '30px' }}>
+                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
+                    <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
+                    <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
+                    <CopyEmailHud />
+                </div>
+
+                <MuteButton />
+                <HeroSubtextCard scrollRef={scrollRef} />
+                <ScrollHint scrollRef={scrollRef} />
+                <EthosOverlay scrollRef={scrollRef} />
+                <BioOverlay scrollRef={scrollRef} />
+                <DossierOverlay scrollRef={scrollRef} />
+                <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
+
+                <Canvas camera={{ position: [0, -4, 14], fov: 65 }} dpr={[1, 1.5]} style={{ zIndex: 1 }}>
+                    <React.Suspense fallback={null}>
+                        <SceneCursorLight />
+                        <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={handleOpenProject} />
+                    </React.Suspense>
+                </Canvas>
+
+                <CaseStudyOverlay project={activeProject} onClose={() => { if (!sfx.isMuted()) { const back = getItemBackAudio(); back.currentTime = 0; back.play().catch(() => {}) } setActiveProject(null) }} />
             </div>
-
-            <MuteButton />
-            <HeroSubtextCard scrollRef={scrollRef} />
-            <ScrollHint scrollRef={scrollRef} />
-            <EthosOverlay scrollRef={scrollRef} />
-            <BioOverlay scrollRef={scrollRef} />
-            <DossierOverlay scrollRef={scrollRef} />
-            <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
-
-            <Canvas camera={{ position: [0, -4, 14], fov: 65 }} dpr={[1, 1.5]} style={{ zIndex: 1 }}>
-                <React.Suspense fallback={null}>
-                    <SceneCursorLight />
-                    <Scene scrollRef={scrollRef} currentSectionRef={currentSectionRef} onOpenProject={setActiveProject} />
-                </React.Suspense>
-            </Canvas>
-
-            <CaseStudyOverlay project={activeProject} onClose={() => setActiveProject(null)} />
-        </div>
         </>
     )
 }

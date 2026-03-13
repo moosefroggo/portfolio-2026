@@ -158,6 +158,78 @@ const sounds = {
         osc('square', 2400, { attack: 0.001, decay: 0.018, peak: 0.15 })
         noise({ attack: 0.001, decay: 0.012, peak: 0.1, bandpass: 6000 })
     },
+
+    /** Soft piano note — random pentatonic pitch, plucked feel */
+    piano() {
+        if (_muted) return
+        // C pentatonic major across 2 octaves: C4 D4 E4 G4 A4 C5 D5 E5 G5 A5
+        const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00]
+        const freq = NOTES[Math.floor(Math.random() * NOTES.length)]
+        const ac = ctx()
+
+        // Gain envelope — fast attack, natural piano decay
+        const g = ac.createGain()
+        g.gain.setValueAtTime(0, ac.currentTime)
+        g.gain.linearRampToValueAtTime(0.22, ac.currentTime + 0.006)
+        g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 1.2)
+
+        // Warm lowpass to soften the sine into something piano-adjacent
+        const lp = ac.createBiquadFilter()
+        lp.type = 'lowpass'
+        lp.frequency.setValueAtTime(freq * 6, ac.currentTime)
+        lp.frequency.exponentialRampToValueAtTime(freq * 1.5, ac.currentTime + 0.8)
+        lp.Q.value = 0.8
+
+        // Fundamental + soft 2nd harmonic for body
+        const o1 = ac.createOscillator()
+        o1.type = 'sine'
+        o1.frequency.value = freq
+
+        const o2 = ac.createOscillator()
+        o2.type = 'sine'
+        o2.frequency.value = freq * 2
+        const g2 = ac.createGain()
+        g2.gain.value = 0.12
+        o2.connect(g2)
+        g2.connect(lp)
+
+        // Short delay
+        const delay = ac.createDelay(0.5)
+        delay.delayTime.value = 0.14
+        const delayFb = ac.createGain()
+        delayFb.gain.value = 0.28
+        const delayWet = ac.createGain()
+        delayWet.gain.value = 0.35
+
+        // Convolver reverb
+        const convolver = ac.createConvolver()
+        const irLen = ac.sampleRate * 1.2
+        const ir = ac.createBuffer(2, irLen, ac.sampleRate)
+        for (let c = 0; c < 2; c++) {
+            const ch = ir.getChannelData(c)
+            for (let i = 0; i < irLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.2)
+        }
+        convolver.buffer = ir
+        const reverbWet = ac.createGain()
+        reverbWet.gain.value = 0.3
+
+        o1.connect(lp)
+        lp.connect(g)
+        g.connect(master())
+        g.connect(delay)
+        delay.connect(delayFb)
+        delayFb.connect(delay)
+        delay.connect(delayWet)
+        delayWet.connect(master())
+        g.connect(convolver)
+        convolver.connect(reverbWet)
+        reverbWet.connect(master())
+
+        o1.start(ac.currentTime)
+        o2.start(ac.currentTime)
+        o1.stop(ac.currentTime + 1.25)
+        o2.stop(ac.currentTime + 1.25)
+    },
 }
 
 // ─── Background track ────────────────────────────────────────────────────────

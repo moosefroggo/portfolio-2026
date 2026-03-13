@@ -5,6 +5,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'RocketCommand';
+  src: url('/fonts/Rocket%20Command/rocketcommand.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 
 @font-face {
   font-family: 'Space Mono';
@@ -618,6 +625,7 @@ button:hover~.precision-crosshair .cross-center,
   font-weight: normal;
   letter-spacing: 0.06em;
   line-height: 1.1;
+  font-family: 'RocketCommand', monospace;
 }
 
 /* Right half is fully transparent — 3D busts show through */
@@ -744,6 +752,7 @@ button:hover~.precision-crosshair .cross-center,
   color: #00aaff;
   display: flex;
   overflow: hidden;
+  font-family: 'RocketCommandExpand', monospace;
 }
 
 .ethos-label-char {
