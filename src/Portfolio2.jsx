@@ -49,23 +49,23 @@ const CAMERA_PATH = [
     // ── Transition to project rail (30-unit gap: ethos X=70 → cards X=100) ──
     { t: 0.30, pos: [80, 0.5, 12], look: [80, 0, 0], fov: 68, roll: 0 },
     // ── Card 1 — X=100 ──
-    { t: 0.38, pos: [100, 0, 9], look: [100, 0, 0], fov: 62, roll: -1 },
-    { t: 0.44, pos: [100, 0, 6], look: [100, 0, 0], fov: 52, roll: 0 },
+    { t: 0.38, pos: [100, 1, 9], look: [100, -1, 0], fov: 62, roll: -1 },
+    { t: 0.44, pos: [100, -2, 7], look: [100, -2, 0], fov: 44, roll: 0 },
     // ── Card 2 — X=120 ──
-    { t: 0.52, pos: [110, 0.3, 10], look: [110, 0, 0], fov: 60, roll: 1 },
-    { t: 0.58, pos: [120, 0, 9], look: [120, 0, 0], fov: 58, roll: -0.5 },
-    { t: 0.62, pos: [120, 0, 6], look: [120, 0, 0], fov: 52, roll: 0 },
+    { t: 0.52, pos: [110, 0.3, 10], look: [110, -1, 0], fov: 60, roll: 1 },
+    { t: 0.58, pos: [120, 0, 9], look: [120, -1, 0], fov: 58, roll: -0.5 },
+    { t: 0.62, pos: [120, -2, 7], look: [120, -2, 0], fov: 44, roll: 0 },
     // ── Card 3 — X=140 ──
-    { t: 0.70, pos: [130, 0.3, 10], look: [130, 0, 0], fov: 60, roll: 0.5 },
-    { t: 0.76, pos: [140, 0, 9], look: [140, 0, 0], fov: 58, roll: -0.5 },
-    { t: 0.80, pos: [140, 0, 6], look: [140, 0, 0], fov: 52, roll: 0 },
+    { t: 0.70, pos: [130, 0.3, 10], look: [130, -1, 0], fov: 60, roll: 0.5 },
+    { t: 0.76, pos: [140, 0, 9], look: [140, -1, 0], fov: 58, roll: -0.5 },
+    { t: 0.80, pos: [140, 1, 7], look: [140, -0.5, 0], fov: 52, roll: 0 },
     // ── Bio section ──
     { t: 0.86, pos: [140, 0, -2], look: [140, -3.2, -30], fov: 54, roll: 0 },
     { t: 0.93, pos: [140, 0, -12], look: [140, -3.2, -30], fov: 52, roll: 0 },
     { t: 1.00, pos: [140, 0, -20], look: [140, -3.2, -30], fov: 50, roll: 0 },
     // ── Dossier — eased approach: mid-waypoint to soften the deep Z plunge ──
     { t: 1.05, pos: [140, -1.8, -58], look: [140, -3.2, -72], fov: 44, roll: 0 },
-    { t: 1.10, pos: [140, -3.2, -100], look: [140, -3.2, -110], fov: 36, roll: 0 },
+    { t: 1.10, pos: [140, -1.5, -100], look: [140, -1.5, -110], fov: 44, roll: 0 },
 ]
 
 // Section snap stops — camera always rests at one of these t-values
@@ -90,7 +90,7 @@ const SUBTITLE_FONT = '/fonts/Space_Mono/SpaceMono-Regular.ttf'
 
 const PROJECT_CARDS = [
     {
-        pos: [100, 0, 0], rot: [0, 0, 0], color: '#00aaff', appear: 0.44,
+        pos: [100, -2, 0], rot: [0, 0, 0], color: '#00aaff', appear: 0.44,
         title: 'Engine Immobilizer', subtitle: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         desc: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
@@ -171,7 +171,7 @@ const PROJECT_CARDS = [
         },
     },
     {
-        pos: [120, -0.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
+        pos: [120, -2.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
         title: 'Workflows', subtitle: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         desc: 'A central hub for project and documentation management helping development teams reduce Slack messages',
         tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
@@ -292,7 +292,7 @@ const HERO_ANIMATION_DURATION = 3.5  // seconds for the entire smooth pullback
 
 
 function CameraController({ scrollRef }) {
-    const { camera } = useThree()
+    const { camera, size } = useThree()
     const { progress, active: loadingActive } = useProgress()
 
     // Intro animation state
@@ -313,15 +313,34 @@ function CameraController({ scrollRef }) {
     const _startLook = useMemo(() => new THREE.Vector3(), [])
     const _endLook = useMemo(() => new THREE.Vector3(), [])
 
-    const activeCameraPath = CAMERA_PATH
+    const isPortrait = size.width < size.height
+    const heroZ = isPortrait ? 2 : 22
+    const activeCameraPath = useMemo(() => {
+        if (!isPortrait) return [
+            { ...CAMERA_PATH[0], pos: [0, 2, heroZ] },
+            ...CAMERA_PATH.slice(1)
+        ]
+        // On portrait: hero closer + project card keyframes zoomed in
+        return CAMERA_PATH.map((kf, i) => {
+            if (i === 0) return { ...kf, pos: [0, 2, heroZ] }
+            // Card settle keyframes — portrait: pull back and center on card (card is at y=-2)
+            if (kf.t === 0.44 || kf.t === 0.62 || kf.t === 0.80) return { ...kf, pos: [kf.pos[0], 1, 8], look: [kf.pos[0], -1.5, 0], fov: 62 }
+            // Experience section — bring camera closer to the patch
+            if (kf.t === 0.86) return { ...kf, pos: [140, 0, -18] }
+            if (kf.t === 0.93) return { ...kf, pos: [140, 0, -22] }
+            if (kf.t === 1.00) return { ...kf, pos: [140, 0, -26] }
+            if (kf.t === 1.10) return { ...kf, fov: 90, pos: [140, 2, -80], look: [140, -1, -110] }
+            return kf
+        })
+    }, [isPortrait, heroZ])
 
     useFrame((state, delta) => {
         let isIntroFinished = heroIntroState.phase === 'done'
 
         // Shared narrow compensation values (used by both intro end and scroll logic)
         const narrowFactor = Math.max(0, 1.6 - camera.aspect)
-        const aspectBoost = narrowFactor * 30
-        const narrowZPullback = narrowFactor * 10
+        const aspectBoost = narrowFactor * 45
+        const narrowZPullback = narrowFactor * 4
 
         let targetFov = 70
         let targetRoll = 0
@@ -371,7 +390,7 @@ function CameraController({ scrollRef }) {
                 : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2
 
             // Calculate current intro targets
-            const targetZ = HERO_INTRO_END.pos[2] + narrowZPullback
+            const targetZ = (isPortrait ? HERO_INTRO_END.pos[2] : 22) + narrowZPullback
             const endFov = HERO_INTRO_END.fov + aspectBoost
 
             _targetPos.set(
@@ -1556,6 +1575,7 @@ function ProjectZoneGrid({ scrollRef }) {
 
 // ─── Project card — full assembly ─────────────────────────────────────────────
 function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
     const [hovered, setHovered] = useState(false)
     const [appeared, setAppeared] = useState(false)
     const [scanActive, setScanActive] = useState(false)
@@ -1588,12 +1608,12 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             <CaseStudyObject objectType={config.objectType} color={config.color} hovered={hovered} appeared={appeared} cardIndex={cardIndex} onOpen={onOpen} />
             <TargetingReticle hovered={hovered} appeared={appeared} color={config.color} radius={2.0} />
             <ScanReveal color={config.color} active={scanActive} onComplete={() => setAppeared(true)} />
-            <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />
+            {!isMobile && <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />}
 
-            <Text position={[0, 2.15, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>
-            <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.05} textAlign="center" material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>
+            {!isMobile && <Text position={[0, 2.15, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>}
+            {!isMobile && <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.05} textAlign="center" material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>}
 
-            {appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
+            {!isMobile && appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
         </group>
     )
 }
@@ -2016,7 +2036,10 @@ function SpineHeroSection() {
         const visH = 2 * Math.tan(fovRad / 2) * 16          // ~22.4 world units tall
         const visW = visH * (size.width / size.height)       // depends on aspect ratio
         const totalSpan = (cfg.letters.length - 1) * cfg.spacing
-        const scale = (visW * cfg.targetFraction) / totalSpan
+        // On portrait mobile, fill more width so text stays readable
+        const isPortrait = size.width < size.height
+        const fraction = isPortrait ? Math.min(cfg.targetFraction * 1.5, 0.98) : Math.min(cfg.targetFraction * 1.15, 0.88)
+        const scale = (visW * fraction) / totalSpan
         return { letterScale: scale, actualSpacing: cfg.spacing * scale }
     }, [size.width, size.height])
 
@@ -2298,7 +2321,7 @@ function EthosOverlay({ scrollRef }) {
             <div className="ethos-panel">
                 <div className="ethos-panel-header">
                     <span className="ethos-eyebrow">ADAPTATION</span>
-                    <h2 className="ethos-title">How I evolved</h2>
+                    <h2 className="ethos-title">How i work</h2>
                 </div>
 
                 <div className="ethos-timeline-side">
@@ -2856,16 +2879,17 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
 
     return (
         <div ref={wrapRef} style={{
-            position: 'fixed', bottom: '16px', left: '50%',
-            transform: 'translateX(-50%)', width: 'min(440px, 48vw)',
+            position: 'fixed', bottom: '28px',
+            left: '50%', transform: 'translateX(-50%)',
+            width: 'min(480px, calc(100vw - clamp(32px, 8vw, 80px) - 36px - 12px))',
+            height: '36px',
             zIndex: 100, pointerEvents: 'none', transition: 'none',
             // Liquid Glass Container
             background: 'rgba(0, 0, 0, 0)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            borderRadius: '12px',
-            padding: '14px 32px 14px 24px',
-            //border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '18px',
+            padding: '0 32px 0 24px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
             display: 'flex',
             flexDirection: 'column',
@@ -2931,13 +2955,13 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                         }} />
                         {/* Home indicator */}
                         {i === 0 && (
-                            <div style={{
+                            <span className="nav-label" style={{
                                 position: 'absolute', top: '20px', left: '50%',
                                 transform: 'translateX(-50%)',
                                 fontSize: '8px', color: '#3a5a90',
                                 fontFamily: 'var(--font-mono)', userSelect: 'none',
                                 letterSpacing: '1px', opacity: 0.7,
-                            }}>⌂</div>
+                            }}>⌂</span>
                         )}
                     </div>
                 ))}
@@ -2959,6 +2983,12 @@ const CASE_STUDY_CSS = `
     align-items: center;
     justify-content: flex-end;
     pointer-events: none;
+}
+@media (max-width: 768px) {
+    .cs-panel {
+        align-items: flex-end;
+        justify-content: center;
+    }
 }
 .cs-panel.open {
     pointer-events: auto;
@@ -2988,6 +3018,20 @@ const CASE_STUDY_CSS = `
 }
 .cs-panel.open .cs-drawer {
     transform: translateX(0);
+}
+@media (max-width: 768px) {
+    .cs-drawer {
+        width: 100vw;
+        height: 85vh;
+        top: auto;
+        bottom: 0;
+        right: 0;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+    }
+    .cs-panel.open .cs-drawer {
+        transform: translateY(0);
+    }
 }
 .cs-header {
     padding: 20px 28px;
@@ -3228,6 +3272,25 @@ const CASE_STUDY_CSS = `
 .cs-media-clickable:hover {
     transform: scale(1.02);
     filter: brightness(1.1);
+}
+@media (max-width: 768px) {
+    .cs-zoom-overlay {
+        padding: 20px;
+    }
+    .cs-zoom-close {
+        top: 15px;
+        right: 15px;
+        width: 36px;
+        height: 36px;
+    }
+    .cs-zoom-content {
+        max-width: 100%;
+        max-height: 90vh;
+    }
+}
+@media (max-width: 480px) {
+    .cs-body { padding: 20px 16px; }
+    .cs-header { padding: 20px 16px 16px; }
 }
 `
 
@@ -3648,6 +3711,65 @@ function CaseStudyOverlay({ project, onClose }) {
 }
 
 // ─── About panel — right side, shown on final scroll stop ────────────────────
+const MOBILE_RING_CSS = `
+@keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.mobile-marquee {
+    position: fixed;
+    left: 0; right: 0;
+    top: 9%;
+    z-index: 5;
+    pointer-events: none;
+    overflow: hidden;
+    padding: 12px 0;
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+.mobile-marquee-track {
+    display: flex;
+    gap: 14px;
+    width: max-content;
+    animation: marquee-scroll 14s linear infinite;
+    padding: 8px 0;
+}
+.mobile-marquee-item {
+    position: relative;
+    width: 180px;
+    height: 210px;
+    border-radius: 2px;
+    overflow: visible;
+    flex-shrink: 0;
+}
+.mobile-marquee-item video {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(80,120,255,0.45);
+    box-shadow: 0 0 18px rgba(60,100,255,0.35), 0 4px 20px rgba(0,0,0,0.5);
+    display: block;
+    filter: saturate(0.1) brightness(0.85) contrast(1.1) hue-rotate(180deg);
+}
+.mobile-marquee-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 2px);
+    pointer-events: none;
+}
+@keyframes static-flicker { 0%,100%{opacity:0.18} 50%{opacity:0.22} 33%{opacity:0.14} }
+.mobile-marquee-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 150' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-size: cover;
+    mix-blend-mode: overlay;
+    opacity: 0.18;
+    animation: static-flicker 0.12s steps(1) infinite;
+    pointer-events: none;
+}
+`
+
 const ABOUT_CSS = `
 @keyframes about-in {
     from { opacity: 0; transform: translateY(calc(-50% + 12px)); }
@@ -3666,10 +3788,29 @@ const ABOUT_CSS = `
 .about-panel.hidden { opacity: 0; pointer-events: none; }
 .about-contact-btn { pointer-events: auto; }
 .about-panel:not(.hidden) { animation: about-in 0.55s cubic-bezier(0.16,1,0.3,1) both; }
+@media (max-width: 768px) {
+    .about-panel {
+        right: 0;
+        bottom: 0;
+        top: auto;
+        transform: none;
+        width: 100vw;
+        border-radius: 16px 16px 0 0;
+        max-height: 80vh;
+        overflow-y: auto;
+        padding: 24px 20px calc(28px + 36px + 16px);
+        background: rgba(6, 7, 20, 0.92);
+        backdrop-filter: blur(20px);
+    }
+    @keyframes about-in {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+}
 .about-label {
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.32em;
     color: rgba(136,160,255,0.4); text-transform: uppercase;
-    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
 }
 .about-label::after {
     content: ''; flex: 1; height: 1px;
@@ -3687,19 +3828,19 @@ const ABOUT_CSS = `
 }
 .about-role {
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.26em;
-    color: rgba(136,160,255,0.45); margin: 0 0 28px; text-transform: uppercase;
+    color: rgba(136,160,255,0.45); margin: 0 0 18px; text-transform: uppercase;
 }
 .about-bio {
     font-family: 'Space Mono', monospace; font-size: 13px;
-    color: rgba(180,200,240,0.65); line-height: 1.9; letter-spacing: 0.01em;
-    margin: 0 0 28px;
+    color: rgba(180,200,240,0.65); line-height: 1.75; letter-spacing: 0.01em;
+    margin: 0 0 18px;
 }
 .about-bio strong { color: rgba(200,220,255,0.85); font-weight: 400; }
 .about-divider {
     height: 1px; background: linear-gradient(to right, rgba(100,130,220,0.2), transparent);
-    margin: 0 0 22px;
+    margin: 0 0 16px;
 }
-.about-skills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 28px; }
+.about-skills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 18px; }
 .about-skill {
     font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
     color: rgba(100,140,220,0.6); padding: 3px 7px;
@@ -3727,6 +3868,8 @@ function DossierOverlay({ scrollRef }) {
     const panelRef = useRef()
     const visRef = useRef(false)
     const [copied, setCopied] = useState(false)
+    const [visible, setVisible] = useState(false)
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
 
     const copyEmail = () => {
         navigator.clipboard.writeText(CONTACT_EMAIL)
@@ -3741,6 +3884,7 @@ function DossierOverlay({ scrollRef }) {
             const now = t >= DIPTYCH_ENTER
             if (now !== visRef.current) {
                 visRef.current = now
+                setVisible(now)
                 if (panelRef.current)
                     panelRef.current.classList.toggle('hidden', !now)
             }
@@ -3752,7 +3896,8 @@ function DossierOverlay({ scrollRef }) {
 
     return (
         <>
-            <style>{ABOUT_CSS}</style>
+            <style>{ABOUT_CSS}{MOBILE_RING_CSS}</style>
+            {isMobile && <MobilePhotoRing visible={visible} />}
             <div ref={panelRef} className="about-panel hidden">
                 <div className="about-label">
                     <span className="about-dot" />
@@ -3790,6 +3935,21 @@ function DossierOverlay({ scrollRef }) {
     )
 }
 
+function MobilePhotoRing({ visible }) {
+    const doubled = [...PHOTO_PATHS, ...PHOTO_PATHS]
+    return (
+        <div className="mobile-marquee" style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.6s ease' }}>
+            <div className="mobile-marquee-track">
+                {doubled.map((p, i) => (
+                    <div key={i} className="mobile-marquee-item">
+                        <video src={p.src} autoPlay loop muted playsInline />
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // MODULAR RESUME PATCH BAY
 // ═════════════════════════════════════════════════════════════════════════════
@@ -3811,15 +3971,19 @@ const LOGO_TEXTURES = {
 }
 
 // Company card — holographic logo display, label to the left, data readout to the right
-function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible }) {
+function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible, isMobile }) {
+    const { gl } = useThree()
     const [texture, setTexture] = useState(null)
     useEffect(() => {
         const path = LOGO_TEXTURES[config.id]
         if (!path) return
         const loader = new THREE.TextureLoader()
-        loader.load(path, setTexture, undefined,
-            (err) => console.warn('Logo load failed:', config.id, err))
-    }, [config.id])
+        loader.load(path, (tex) => {
+            tex.anisotropy = gl.capabilities.getMaxAnisotropy()
+            tex.needsUpdate = true
+            setTexture(tex)
+        }, undefined, (err) => console.warn('Logo load failed:', config.id, err))
+    }, [config.id, gl])
     const meshRef = useRef()
     const groupRef = useRef()
     const [hovered, setHovered] = useState(false)
@@ -3903,7 +4067,7 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible }) 
             <pointLight color={config.color} intensity={isActive ? 1.8 : (hovered ? 0.8 : 0.3)} distance={3} />
 
             {/* Label — to the left of the jack */}
-            <Text
+            {!isMobile && <Text
                 position={[-0.7, 0, 0.5]}
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.2} letterSpacing={0.08} anchorX="right" anchorY="middle"
@@ -3911,22 +4075,14 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible }) 
                 material-toneMapped={false}
                 material-depthTest={false}
                 renderOrder={5}
-            >{config.title}</Text>
+            >{config.title}</Text>}
 
-            {/* Data readout — to the right, toward the resume hub */}
-            {(isActive || hovered) && (
-                <group>
-                    <Line points={[[0.5, 0, 0], [1.0, 0.5, 0], [1.5, 0.5, 0]]}
-                        color={config.color} lineWidth={0.7} transparent opacity={0.5} />
-                    <Text
-                        position={[1.6, 0.5, 0.5]}
-                        font={SUBTITLE_FONT}
-                        fontSize={0.14} lineHeight={1.5} anchorX="left" anchorY="middle"
-                        color="#aabbcc" material-toneMapped={false} material-transparent={true}
-                        material-depthTest={false}
-                        renderOrder={5}
-                    >{config.desc}</Text>
-                </group>
+            {/* Active ring highlight */}
+            {isActive && (
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[0.52, 0.58, 32]} />
+                    <meshBasicMaterial color={config.color} transparent opacity={0.6} toneMapped={false} />
+                </mesh>
             )}
         </group>
     )
@@ -3968,7 +4124,7 @@ function ResumeHub({ currentSectionRef }) {
 }
 
 // Locked cube — represents the next role
-function LockedCube({ onHover, onHoverOut, visible }) {
+function LockedCube({ onHover, onHoverOut, onClick, visible }) {
     const meshRef = useRef()
     const wireRef = useRef()
     const [hovered, setHovered] = useState(false)
@@ -3994,25 +4150,26 @@ function LockedCube({ onHover, onHoverOut, visible }) {
     })
 
     return (
-        <group position={CUBE_POS}
+        <group
             onPointerOver={() => { if (!hoveredRef.current) { hoveredRef.current = true; setHovered(true); sfx.piano(); onHover?.() } }}
             onPointerOut={() => { hoveredRef.current = false; setHovered(false); onHoverOut?.() }}
+            onClick={e => { e.stopPropagation(); onClick?.() }}
         >
             <mesh ref={meshRef}>
                 <boxGeometry args={[1.1, 1.1, 1.1]} />
                 <meshStandardMaterial
-                    color="#06060f"
-                    emissive={hovered ? '#112244' : '#000011'}
-                    emissiveIntensity={hovered ? 0.4 : 0.15}
+                    color="#0a0a1a"
+                    emissive={hovered ? '#2244aa' : '#0a1a55'}
+                    emissiveIntensity={hovered ? 1.2 : 0.7}
                     metalness={0.9} roughness={0.15} toneMapped={false}
                 />
             </mesh>
             <mesh ref={wireRef}>
                 <boxGeometry args={[1.16, 1.16, 1.16]} />
                 <meshBasicMaterial
-                    color={hovered ? '#334466' : '#1a2233'}
+                    color={hovered ? '#6688cc' : '#3355aa'}
                     wireframe transparent
-                    opacity={hovered ? 0.55 : 0.28}
+                    opacity={hovered ? 0.85 : 0.55}
                     toneMapped={false}
                 />
             </mesh>
@@ -4021,7 +4178,7 @@ function LockedCube({ onHover, onHoverOut, visible }) {
             <Text position={[0, -0.9, 0]}
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.22} letterSpacing={0.1} anchorX="center" anchorY="middle"
-                color={hovered ? '#334466' : '#1a2233'}
+                color={hovered ? '#6688cc' : '#3355aa'}
                 material-toneMapped={false}
             >{'???'}</Text>
 
@@ -4246,8 +4403,17 @@ function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', 
 }
 
 function ModularResumePatch({ visible, currentSectionRef }) {
+    const { size } = useThree()
+    const isPortrait = size.width < size.height
+    const companyNodes = isPortrait
+        ? COMPANY_NODES.map((n, i) => ({ ...n, pos: [-2.4 + i * 1.6, 2.5, 0] }))
+        : COMPANY_NODES
+    const hubPos = isPortrait ? [0, 0, 0] : HUB_POS
+    const cubePos = isPortrait ? [0, -2.5, 0] : CUBE_POS
+
     const groupRef = useRef()
     const [activeId, setActiveId] = useState(null)
+    const [cubeActive, setCubeActive] = useState(false)
     const [hoveredNodeId, setHoveredNodeId] = useState(null)
     const [cubeHovered, setCubeHovered] = useState(false)
     const [companyPaused, setCompanyPaused] = useState(() => COMPANY_NODES.map(() => false))
@@ -4288,26 +4454,26 @@ function ModularResumePatch({ visible, currentSectionRef }) {
     const onBackgroundClick = useCallback((e) => {
         // Only if the click wasn't on a SynthNode (they stopPropagation)
         setActiveId(null)
+        setCubeActive(false)
     }, [])
 
     return (
         <group ref={groupRef} visible={visible} onClick={onBackgroundClick}>
             {/* Company → Resume spine chains */}
-            {COMPANY_NODES.map((node, i) => {
-                // Determine target speed for this company chain
-                let targetSpeed = 1.0  // default: normal speed
+            {companyNodes.map((node, i) => {
+                let targetSpeed = 1.0
                 if (cubeHovered) {
-                    targetSpeed = 0    // cube hovered: pause all companies
+                    targetSpeed = 0
                 } else if (activeId === node.id) {
-                    targetSpeed = 0.4  // company selected: slowdown this one
+                    targetSpeed = 0.4
                 } else if (activeId) {
-                    targetSpeed = 0    // another company selected: pause this one
+                    targetSpeed = 0
                 }
                 return (
                     <SpineChain
                         key={node.id}
-                        start={node.pos} end={HUB_POS}
-                        mid={[(node.pos[0] + HUB_POS[0]) / 2, node.pos[1] - 1.8, 0]}
+                        start={node.pos} end={hubPos}
+                        mid={[(node.pos[0] + hubPos[0]) / 2, node.pos[1] - 1.8, 0]}
                         color={node.color}
                         active={activeId === node.id}
                         targetSpeed={targetSpeed}
@@ -4318,16 +4484,13 @@ function ModularResumePatch({ visible, currentSectionRef }) {
 
             {/* Resume → Cube spine chain */}
             {(() => {
-                // Cube spine slows when cube is hovered, pauses when company is selected
                 let cubeTargetSpeed = 1.0
-                if (cubeHovered) {
-                    cubeTargetSpeed = 0.4  // cube hovered: slowdown
-                } else if (activeId) {
-                    cubeTargetSpeed = 0    // company selected: pause cube
-                }
+                if (cubeHovered) cubeTargetSpeed = 0.4
+                else if (activeId) cubeTargetSpeed = 0
                 return (
                     <SpineChain
-                        start={HUB_POS} end={CUBE_POS} mid={[2.75, -2.0, 0]}
+                        start={hubPos} end={cubePos}
+                        mid={[(hubPos[0] + cubePos[0]) / 2, (hubPos[1] + cubePos[1]) / 2 - 2, 0]}
                         color="#3366ff"
                         active={false}
                         targetSpeed={cubeTargetSpeed}
@@ -4336,7 +4499,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                 )
             })()}
 
-            {COMPANY_NODES.map(node => (
+            {companyNodes.map(node => (
                 <SynthNode
                     key={node.id} config={node}
                     isActive={activeId === node.id}
@@ -4344,15 +4507,56 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                     onHover={() => setHoveredNodeId(node.id)}
                     onHoverOut={() => setHoveredNodeId(null)}
                     visible={visible}
+                    isMobile={isPortrait}
                 />
             ))}
 
-            <ResumeHub currentSectionRef={currentSectionRef} />
-            <LockedCube
-                onHover={() => setCubeHovered(true)}
-                onHoverOut={() => setCubeHovered(false)}
-                visible={visible}
-            />
+            <group position={hubPos}>
+                <ResumeHub currentSectionRef={currentSectionRef} />
+            </group>
+            <group position={cubePos}>
+                <LockedCube
+                    onHover={() => setCubeHovered(true)}
+                    onHoverOut={() => setCubeHovered(false)}
+                    onClick={() => { setActiveId(null); setCubeActive(a => !a) }}
+                    visible={visible}
+                />
+            </group>
+
+            {/* Centered DOM popup — shown above the card row when a node or cube is active */}
+            {(activeId || cubeActive) && (() => {
+                const node = companyNodes.find(n => n.id === activeId)
+                const color = node ? node.color : '#3355aa'
+                const text = node ? node.desc : 'NEXT_ROLE.EXE\n???.???.????\n\nOpen to new opportunities.'
+                return (
+                    <Html
+                        position={[0, 0, 0]}
+                        style={{ pointerEvents: 'none' }}
+                        zIndexRange={[100, 0]}
+                    >
+                        <div style={{
+                            position: 'fixed',
+                            left: '50%',
+                            top: '12%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(5,8,20,0.88)',
+                            border: `1px solid ${color}44`,
+                            borderLeft: `2px solid ${color}`,
+                            padding: '10px 18px',
+                            borderRadius: '4px',
+                            color: '#aabbcc',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '12px',
+                            lineHeight: '1.6',
+                            letterSpacing: '0.5px',
+                            whiteSpace: 'pre-line',
+                            textAlign: 'left',
+                            maxWidth: 'min(420px, calc(100vw - 32px))',
+                            boxShadow: `0 0 18px ${color}22`,
+                        }}>{text}</div>
+                    </Html>
+                )
+            })()}
         </group>
     )
 }
@@ -5189,6 +5393,8 @@ function BustDiptych({ scrollRef }) {
 
 
 function BioSection({ scrollRef, currentSectionRef }) {
+    const { size } = useThree()
+    const isPortrait = size.width < size.height
     const groupRef = useRef()
     const [phase, setPhase] = useState('idle')
     const phaseRef = useRef('idle')
@@ -5232,7 +5438,7 @@ function BioSection({ scrollRef, currentSectionRef }) {
             <group position={[0, 1.8, 0]}>
                 {premounted && <ModularResumePatch visible={patchVisible} currentSectionRef={currentSectionRef} />}
             </group>
-            <BustDiptych scrollRef={scrollRef} />
+            {!isPortrait && <BustDiptych scrollRef={scrollRef} />}
         </group>
     )
 }
@@ -5472,6 +5678,7 @@ function PostProcessingEffects() {
 }
 
 function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
     return (
         <group>
             <ScrollSmoother currentSectionRef={currentSectionRef} scrollRef={scrollRef} />
@@ -5498,7 +5705,7 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <BioSection scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
             {/* VideoScreens rendered outside Select enabled — no bloom bleed */}
-            <group position={[100, 0, 0]} rotation={[0, 0, 0]}>
+            {!isMobile && <group position={[100, -2, 0]} rotation={[0, 0, 0]}>
                 <VideoScreen
                     src="/demos/ei-noborder.mp4"
                     opRef={eiVideoOpRef}
@@ -5510,10 +5717,10 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
                     colorRgb="0,170,255"
                     onOpen={() => onOpenProject?.(PROJECT_CARDS[0])}
                 />
-            </group>
-            <group position={[120, -0.5, 0]} rotation={[0, 0.2, 0]}>
+            </group>}
+            {!isMobile && <group position={[120, -2, 0]} rotation={[0, 0.2, 0]}>
                 <VideoScreen onOpen={() => onOpenProject?.(PROJECT_CARDS[1])} />
-            </group>
+            </group>}
         </group>
     )
 }
@@ -5600,7 +5807,7 @@ function EliteLoader() {
                 }
                 .kinetic-letter {
                     display: inline-block;
-                    font-size: 64px;
+                    font-size: clamp(32px, 10vw, 64px);
                     font-weight: 200;
                     letter-spacing: 0.2em;
                     animation: kinetic-wave 2s ease-in-out infinite;
@@ -5634,10 +5841,10 @@ function EliteLoader() {
                     z-index: -1;
                     filter: blur(20px);
                 }
-                .loader-corner-tl { position: absolute; top: 40px; left: 40px; width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
-                .loader-corner-tr { position: absolute; top: 40px; right: 40px; width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
-                .loader-corner-bl { position: absolute; bottom: 40px; left: 40px; width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
-                .loader-corner-br { position: absolute; bottom: 40px; right: 40px; width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-tl { position: absolute; top: clamp(20px, 4vw, 40px); left: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-tr { position: absolute; top: clamp(20px, 4vw, 40px); right: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-bl { position: absolute; bottom: clamp(20px, 4vw, 40px); left: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-br { position: absolute; bottom: clamp(20px, 4vw, 40px); right: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
             `}</style>
 
             <div className="loader-bg-grid" />
@@ -5658,10 +5865,11 @@ function EliteLoader() {
             </div>
 
             <div style={{
-                fontSize: '11px', letterSpacing: '0.4em', position: 'relative', zIndex: 1, transition: 'all 0.6s',
+                fontSize: 'clamp(9px, 2vw, 11px)', letterSpacing: '0.3em', position: 'relative', zIndex: 1, transition: 'all 0.6s',
                 opacity: canEnter ? 1 : 0.5,
                 color: canEnter ? '#00e5ff' : '#8899cc',
                 textShadow: canEnter ? '0 0 12px rgba(0, 229, 255, 0.8), 0 0 24px rgba(0, 229, 255, 0.4)' : 'none',
+                textAlign: 'center', padding: '0 16px',
             }}>
                 {canEnter ? 'SYS // SYSTEMS READY // AWAITING ENTRY' : 'SYS // INITIALIZING GRAPHICS'}
             </div>
@@ -5849,7 +6057,7 @@ function MuteButton() {
             onClick={toggleMute}
             title={muted ? 'Unmute sound' : 'Mute sound'}
             style={{
-                position: 'fixed', bottom: '13px', right: '40px', zIndex: 200,
+                position: 'fixed', bottom: '28px', right: 'clamp(16px, 4vw, 40px)', zIndex: 200,
                 background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.2)',
                 backdropFilter: 'blur(8px)', borderRadius: '50%',
                 width: '36px', height: '36px', cursor: 'pointer',
@@ -5889,6 +6097,7 @@ function CursorOrb() {
     const coreRef = useRef()
     const mouse = useRef({ x: 0, y: 0 })
     const hoveredRef = useRef(false)
+    const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
 
     useEffect(() => {
         const onMove = (e) => {
@@ -5937,6 +6146,8 @@ function CursorOrb() {
             cancelAnimationFrame(raf)
         }
     }, [])
+
+    if (isTouchDevice) return null
 
     return (
         <div
@@ -5999,6 +6210,122 @@ function SceneCursorLight() {
     return <pointLight ref={lightRef} intensity={6} color="#ff00ff" distance={22} decay={2} />
 }
 
+// scroll ranges per card: [enter, exit]
+const MOBILE_CARD_RANGES = [
+    [0.38, 0.58],
+    [0.58, 0.82],
+]
+
+function MobileProjectsOverlay({ scrollRef, onOpenProject }) {
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
+    const cardRefs = useRef([])
+
+    useEffect(() => {
+        if (!isMobile) return
+        let raf
+        const tick = () => {
+            const t = scrollRef.current ?? 0
+            MOBILE_CARD_RANGES.forEach(([enter, exit], i) => {
+                const fadeIn = Math.min(1, Math.max(0, (t - enter) / 0.04))
+                const fadeOut = Math.min(1, Math.max(0, (exit - t) / 0.04))
+                const opacity = Math.min(fadeIn, fadeOut)
+                const el = cardRefs.current[i]
+                if (el) {
+                    el.style.opacity = opacity
+                    el.style.pointerEvents = opacity > 0.1 ? 'auto' : 'none'
+                    el.style.transform = `translateY(${(1 - opacity) * 20}px)`
+                }
+            })
+            raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [scrollRef, isMobile])
+
+    if (!isMobile) return null
+
+    return (
+        <>
+            {PROJECT_CARDS.map((config, i) => (
+                <div key={i} ref={el => cardRefs.current[i] = el} style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    zIndex: 50, opacity: 0, pointerEvents: 'none',
+                    display: 'flex', flexDirection: 'column',
+                    padding: '60px clamp(16px, 4vw, 40px) 100px',
+                }}>
+                    {/* Top: video + title */}
+                    <div>
+                        {config.video && (
+                            <video
+                                src={config.video}
+                                autoPlay loop muted playsInline
+                                style={{
+                                    width: '100%',
+                                    maxHeight: '40vh',
+                                    objectFit: 'cover',
+                                    borderRadius: '8px',
+                                    marginBottom: '20px',
+                                    border: `1px solid ${config.color}44`,
+                                    boxShadow: `0 0 30px ${config.color}33`,
+                                    display: 'block',
+                                }}
+                            />
+                        )}
+                        <div style={{
+                            fontFamily: "'RocketCommand', monospace",
+                            fontSize: '22px',
+                            color: config.color,
+                            letterSpacing: '0.06em',
+                            marginBottom: '8px',
+                            textTransform: 'uppercase',
+                            textShadow: `0 0 20px ${config.color}88`,
+                        }}>{config.title}</div>
+                        <div style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '11px',
+                            color: '#8899cc',
+                            lineHeight: 1.6,
+                            letterSpacing: '0.04em',
+                        }}>{config.subtitle}</div>
+                    </div>
+
+                    {/* Bottom: meta + CTA */}
+                    <div style={{ marginTop: 'auto' }}>
+                        <div style={{
+                            display: 'flex', gap: '10px',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '10px',
+                            color: '#556688',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            marginBottom: '16px',
+                        }}>
+                            <span>{config.stats.company}</span>
+                            <span>·</span>
+                            <span>{config.stats.role}</span>
+                            <span>·</span>
+                            <span>{config.stats.year}</span>
+                        </div>
+                        <div
+                            onClick={() => onOpenProject?.(config)}
+                            style={{
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '12px',
+                                color: config.color,
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                pointerEvents: 'auto',
+                                borderTop: `1px solid ${config.color}33`,
+                                paddingTop: '16px',
+                            }}>View Case Study →</div>
+                    </div>
+                </div>
+            ))}
+        </>
+    )
+}
+
 function HeroSubtextCard({ scrollRef }) {
     const [show, setShow] = useState(false)
     const [inHero, setInHero] = useState(true)
@@ -6029,53 +6356,59 @@ function HeroSubtextCard({ scrollRef }) {
 
     return (
         <>
-            {/* "Hello, I AM" — above the 3D MUSTAFA text */}
-            <div style={{
-                position: 'absolute',
-                top: '18%',
-                left: '50%',
-                transform: `translateX(-50%) translateY(${visible ? '0px' : '-40px'})`,
-                opacity: visible ? 1 : 0,
-                transition: 'opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1), transform 1.6s cubic-bezier(0.16, 1, 0.3, 1)',
-                pointerEvents: 'none',
-                zIndex: 40,
-                textAlign: 'center',
-            }}>
+            {/* Roles — desktop only, above the 3D MUSTAFA text */}
+            {window.innerWidth > 768 && (
                 <div style={{
+                    position: 'absolute',
+                    top: 'clamp(12%, 18%, 22%)',
+                    left: '50%',
+                    transform: `translateX(-50%) translateY(${visible ? '0px' : '-20px'})`,
+                    opacity: visible ? 1 : 0,
+                    transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s, transform 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s',
+                    display: 'flex', alignItems: 'center', gap: '24px',
                     fontFamily: "'Space Mono', monospace",
-                    fontSize: '16px',
+                    fontSize: 'clamp(13px, 1.2vw, 16px)',
                     letterSpacing: '0.22em',
+                    color: 'rgba(160,180,230,0.55)',
                     textTransform: 'uppercase',
-                    color: '#8899cc',
+                    pointerEvents: 'none',
+                    zIndex: 40,
+                    whiteSpace: 'nowrap',
                 }}>
-                    Product Designer @ Dell &nbsp;·&nbsp; UX Engineer @ iSchool
+                    <span>Product Designer @ Dell</span>
+                    <span style={{ opacity: 0.35 }}>·</span>
+                    <span>UX Engineer @ iSchool</span>
                 </div>
-            </div>
+            )}
 
             {/* Subtext card — below the 3D MUSTAFA text */}
             <div style={{
                 position: 'absolute',
-                bottom: '20%',
-                left: '50%',
-                transform: `translateX(-50%) translateY(${visible ? '0px' : '60px'})`,
+                bottom: 'clamp(12%, 20%, 24%)',
+                ...(window.innerWidth <= 768
+                    ? { left: 'clamp(16px, 4vw, 40px)' }
+                    : { left: '50%', transform: `translateX(-50%) translateY(${visible ? '0px' : '60px'})` }),
+                ...(window.innerWidth > 768 ? {} : { transform: `translateY(${visible ? '0px' : '60px'})` }),
                 opacity: visible ? 1 : 0,
                 transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s, transform 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
+                alignItems: window.innerWidth <= 768 ? 'flex-start' : 'center',
                 pointerEvents: 'none',
-
                 zIndex: 40,
+                width: '90vw',
+                maxWidth: window.innerWidth > 768 ? '860px' : '600px',
             }}>
                 <div style={{
                     fontFamily: "'Space Mono', monospace",
-                    fontSize: '14px',
+                    fontSize: 'clamp(12pt, 1.4vw, 14px)',
                     letterSpacing: '0.08em',
                     lineHeight: 1.6,
                     color: '#99aacc',
-                    textAlign: 'center',
+                    textAlign: window.innerWidth <= 768 ? 'left' : 'center',
                 }}>
-                    Product Designer focused on systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE. </div>
+                    Product Designer skilled in systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE.
+                </div>
             </div>
         </>
     )
@@ -6225,20 +6558,37 @@ export default function Portfolio() {
                 height: '100vh',
                 background: '#050510',
                 overflow: 'hidden',
-                cursor: 'none' // Hide native to show Orb
+                cursor: window.matchMedia('(hover: none)').matches ? 'auto' : 'none'
             }}>
                 <EliteLoader />
 
-                {/* BOTTOM-LEFT NAV LINKS */}
-                <div style={{ position: 'fixed', bottom: '13px', left: '40px', zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', pointerEvents: 'auto', height: '30px' }}>
+                {/* LINKS — top-left on mobile, bottom-left on desktop */}
+                <div style={{
+                    position: 'fixed',
+                    ...(window.innerWidth <= 768
+                        ? { top: '16px', left: 'clamp(16px, 4vw, 40px)' }
+                        : { bottom: '28px', left: 'clamp(16px, 4vw, 40px)' }),
+                    zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px',
+                    color: '#8899cc', fontSize: '13px', letterSpacing: '1px',
+                    textTransform: 'uppercase', fontFamily: 'var(--font-mono)',
+                    pointerEvents: 'auto', height: '36px'
+                }}>
                     <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
                     <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
                     <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
-                    <CopyEmailHud />
+                    {window.innerWidth > 768 && <CopyEmailHud />}
                 </div>
+
+                {/* EMAIL — top-right on mobile only */}
+                {window.innerWidth <= 768 && (
+                    <div style={{ position: 'fixed', top: '16px', right: 'clamp(16px, 4vw, 40px)', zIndex: 200, display: 'flex', alignItems: 'center', pointerEvents: 'auto', height: '30px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                        <CopyEmailHud />
+                    </div>
+                )}
 
                 <MuteButton />
                 <HeroSubtextCard scrollRef={scrollRef} />
+                <MobileProjectsOverlay scrollRef={scrollRef} onOpenProject={handleOpenProject} />
                 <ScrollHint scrollRef={scrollRef} />
                 <EthosOverlay scrollRef={scrollRef} />
                 <BioOverlay scrollRef={scrollRef} />
