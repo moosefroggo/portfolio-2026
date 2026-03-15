@@ -2099,6 +2099,8 @@ function SpineHeroSection() {
 }
 
 useGLTF.preload('/spine.glb')
+useGLTF.preload('/Truck.glb')
+useGLTF.preload('/sigil.glb')
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ETHOS SECTION — Scroll-driven timeline + rotating busts
@@ -3535,7 +3537,7 @@ function CaseStudySection({ section, neon = false, onMediaClick }) {
                 <div className={`cs-section-label${prefix}`}>{section.label}</div>
                 <div className={`cs-feature-grid${prefix}`} style={{ marginTop: 12 }}>
                     {section.items.map((item, i) => (
-                        <div key={i} className={`cs-feature-card${prefix}`}>
+                        <div key={i} className={`cs-feature-card${prefix}`} onMouseEnter={() => sfx.piano()}>
                             <div className={`cs-feature-name${prefix}`}>{item.name}</div>
                             <div className={`cs-feature-desc${prefix}`}>{item.desc}</div>
                             {item.video && (
@@ -3633,7 +3635,7 @@ function CaseStudyOverlay({ project, onClose }) {
                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color, letterSpacing: '0.08em' }}>{displayProject.title}</div>
                             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '13px', letterSpacing: '0.08em', color: '#556688', marginTop: '6px', lineHeight: 1.5 }}>{displayProject.subtitle}</div>
                         </div>
-                        <button className="cs-close-btn" onClick={onClose}>&times;</button>
+                        <button className="cs-close-btn" onClick={onClose} onMouseEnter={() => sfx.piano()}>&times;</button>
                     </div>
 
                     {/* Scrollable body */}
@@ -3656,7 +3658,7 @@ function CaseStudyOverlay({ project, onClose }) {
                         {cs?.meta && (
                             <div className="cs-meta-row">
                                 {Object.entries(cs.meta).map(([key, val]) => (
-                                    <div className="cs-meta-item" key={key}>
+                                    <div className="cs-meta-item" key={key} onMouseEnter={() => sfx.piano()}>
                                         <label>{key}</label>
                                         <span>{val}</span>
                                     </div>
@@ -3923,10 +3925,10 @@ function DossierOverlay({ scrollRef }) {
                 </div>
 
                 <div className="about-contact">
-                    <button onClick={copyEmail} className={`about-contact-btn${copied ? ' copied' : ''}`}>
+                    <button onClick={copyEmail} onMouseEnter={() => sfx.piano()} className={`about-contact-btn${copied ? ' copied' : ''}`}>
                         {copied ? 'Copied ✓' : '@ Email'}
                     </button>
-                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noopener noreferrer" className="about-contact-btn">
+                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noopener noreferrer" className="about-contact-btn" onMouseEnter={() => sfx.piano()}>
                         ↓ Resume
                     </a>
                 </div>
@@ -4100,6 +4102,16 @@ function ResumeHub({ currentSectionRef }) {
     const goToDossier = (e) => {
         e.stopPropagation()
         if (currentSectionRef) currentSectionRef.current = SECTION_STOPS.length - 1
+        if (!sfx.isMuted()) {
+            const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => {})
+        }
+        sfx.snap()
+        if (!sfx.isMuted() && !_ambientPianoAudio) {
+            _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+            _ambientPianoAudio.loop = true
+            _ambientPianoAudio.volume = 0.35
+            _ambientPianoAudio.play().catch(() => {})
+        }
     }
     return (
         <group position={HUB_POS}>
@@ -6573,9 +6585,9 @@ export default function Portfolio() {
                     textTransform: 'uppercase', fontFamily: 'var(--font-mono)',
                     pointerEvents: 'auto', height: '36px'
                 }}>
-                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>RESUME</a>
-                    <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>LINKEDIN</a>
-                    <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>GITHUB</a>
+                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>RESUME</a>
+                    <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>LINKEDIN</a>
+                    <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>GITHUB</a>
                     {window.innerWidth > 768 && <CopyEmailHud />}
                 </div>
 

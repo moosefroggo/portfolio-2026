@@ -193,33 +193,37 @@ const sounds = {
         o2.connect(g2)
         g2.connect(lp)
 
-        // Short delay
-        const delay = ac.createDelay(0.5)
-        delay.delayTime.value = 0.14
+        // Ambient delay — two taps for spaciousness
+        const delay1 = ac.createDelay(2.0)
+        delay1.delayTime.value = 0.36
+        const delay2 = ac.createDelay(2.0)
+        delay2.delayTime.value = 0.54
         const delayFb = ac.createGain()
-        delayFb.gain.value = 0.28
+        delayFb.gain.value = 0.48
         const delayWet = ac.createGain()
-        delayWet.gain.value = 0.35
+        delayWet.gain.value = 0.42
+        // Feedback loop: delay1 → delay2 → delayFb → delay1
+        delay1.connect(delay2)
+        delay2.connect(delayFb)
+        delayFb.connect(delay1)
 
-        // Convolver reverb
+        // Long convolver reverb (hall-like)
         const convolver = ac.createConvolver()
-        const irLen = ac.sampleRate * 1.2
+        const irLen = ac.sampleRate * 3.0
         const ir = ac.createBuffer(2, irLen, ac.sampleRate)
         for (let c = 0; c < 2; c++) {
             const ch = ir.getChannelData(c)
-            for (let i = 0; i < irLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.2)
+            for (let i = 0; i < irLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.6)
         }
         convolver.buffer = ir
         const reverbWet = ac.createGain()
-        reverbWet.gain.value = 0.3
+        reverbWet.gain.value = 0.5
 
         o1.connect(lp)
         lp.connect(g)
         g.connect(master())
-        g.connect(delay)
-        delay.connect(delayFb)
-        delayFb.connect(delay)
-        delay.connect(delayWet)
+        g.connect(delay1)
+        delay2.connect(delayWet)
         delayWet.connect(master())
         g.connect(convolver)
         convolver.connect(reverbWet)
