@@ -269,13 +269,24 @@ const dampValue = (current, target, smoothing, delta) => THREE.MathUtils.damp(cu
 
 const SCROLL_SMOOTHING = 3  // higher = snappier, lower = more damped
 
+// Module-level scroll value — updated every frame, readable by any component without prop drilling
+let _scrollT = 0
+
 function ScrollSmoother({ currentSectionRef, scrollRef }) {
     useFrame((_, delta) => {
         const target = SECTION_STOPS[currentSectionRef.current]
         scrollRef.current = dampValue(scrollRef.current, target, SCROLL_SMOOTHING, delta)
+        _scrollT = scrollRef.current
     })
     return null
 }
+
+// Section active range helpers (with margin so transitions feel smooth)
+const inHero     = () => _scrollT < 0.18
+const inEthos    = () => _scrollT > 0.05 && _scrollT < 0.40
+const inProjects = () => _scrollT > 0.35 && _scrollT < 0.85
+const inBio      = () => _scrollT > 0.80 && _scrollT < 1.05
+const inDossier  = () => _scrollT > 1.00
 
 // Max camera strafe offset in world units — camera drifts toward mouse position
 const PROJ_NUDGE_X = 1.6   // horizontal lean (world units)
@@ -1163,6 +1174,7 @@ function BrainWires({ opRef }) {
     }, [])
 
     useFrame((state) => {
+        if (!inProjects()) return
         const t = state.clock.elapsedTime
         mats.forEach((m, i) => {
             const [speed, phase, base, amp] = WIRE_PULSE[i]
@@ -1583,6 +1595,7 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
 
     const groupRef = useRef()
     useFrame((state, delta) => {
+        if (!inProjects()) return
         const t = scrollRef?.current ?? 0
         if (!scanFiredRef.current && t >= config.appear - 0.015) {
             scanFiredRef.current = true
@@ -1671,6 +1684,7 @@ function WritingSpineLetter({ points, sourceGeometry, material, position = [0, 0
     const { progress, active: loadingActive } = useProgress()
 
     useFrame((state, delta) => {
+        if (!inHero()) return
         const instanced = instancedRef.current
         if (!instanced || count === 0) return
 
@@ -2347,12 +2361,13 @@ function EthosOverlay({ scrollRef }) {
 }
 
 // ─── Rotating busts ───────────────────────────────────────────────────────────
-function RotatingBust({ url, position, tiltAxis, rotSpeed = 0.3, scale = 1 }) {
+function RotatingBust({ url, position, tiltAxis, rotSpeed = 0.3, scale = 1, activeCheck }) {
     const { scene } = useGLTF(url)
     const groupRef = useRef()
     const cloned = useMemo(() => scene.clone(true), [scene])
 
     useFrame((_, delta) => {
+        if (activeCheck && !activeCheck()) return
         if (!groupRef.current) return
         groupRef.current.rotation.y += delta * rotSpeed
     })
@@ -2442,6 +2457,7 @@ function EthosSnakeSpine({ trigger }) {
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
     useFrame((state, delta) => {
+        if (!inEthos()) return
         if (!meshRef.current) return
 
         // Only progress if trigger is true, but DON'T reset if false
@@ -2531,6 +2547,7 @@ function EthosSection({ scrollRef }) {
                 tiltAxis={[0, -0.7, 0]}
                 rotSpeed={-0.001}
                 scale={12}
+                activeCheck={inEthos}
             />
 
             {/* Top bust — robot me */}
@@ -2540,6 +2557,7 @@ function EthosSection({ scrollRef }) {
                 tiltAxis={[0, -0.3, 0]}
                 rotSpeed={0.001}
                 scale={8}
+                activeCheck={inEthos}
             />
 
             <pointLight position={[0, 2, 6]} intensity={200} color="#6699ff" distance={18} decay={2} />
@@ -5672,19 +5690,21 @@ function AnimatedGrid() {
 }
 
 // ─── Hardcoded Post-Processing Effects ────────────────────────────
+const _isMobileDevice = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
+
 function PostProcessingEffects() {
-    // Hardcode chromatic aberration magnitude to 3.0
     useEffect(() => {
         warpOffset.set(0.004, 0.004)
     }, [])
 
     // Hero intro overrides — reads module-level state each render
-    const effectiveBloom = heroIntroState.bloomOverride ?? 1.6
+    // Mobile: halve bloom intensity, skip chromatic aberration
+    const effectiveBloom = (heroIntroState.bloomOverride ?? 1.6) * (_isMobileDevice ? 0.5 : 1.0)
 
     return (
         <EffectComposer disableNormalPass>
             <SelectiveBloom luminanceThreshold={0.4} intensity={effectiveBloom} levels={4} />
-            <ChromaticAberration offset={warpOffset} />
+            {!_isMobileDevice && <ChromaticAberration offset={warpOffset} />}
         </EffectComposer>
     )
 }

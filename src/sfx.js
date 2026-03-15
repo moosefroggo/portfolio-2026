@@ -242,7 +242,9 @@ let _bgAudio = null
 
 function getBgAudio() {
     if (!_bgAudio) {
-        _bgAudio = new Audio('/sounds/main-track.m4a')
+        // Prefer Opus/WebM (smaller), fall back to M4A for older Safari
+        const supportsOpus = typeof Audio !== 'undefined' && new Audio().canPlayType('audio/webm; codecs=opus') !== ''
+        _bgAudio = new Audio(supportsOpus ? '/sounds/main-track.webm' : '/sounds/main-track.m4a')
         _bgAudio.loop = true
         _bgAudio.volume = 0.11
     }
