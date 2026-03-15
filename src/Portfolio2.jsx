@@ -235,7 +235,7 @@ const PROJECT_CARDS = [
 const HERO_CONFIG = {
     // Per-letter tweaks: yOffset and zOffset are in world units (pre-scale)
     letters: [
-        { char: 'M', yOffset: 0, zOffset: 0 },
+        { char: 'M', xOffset: -0.6, yOffset: 0, zOffset: 0 },
         { char: 'U', yOffset: 0, zOffset: 0 },
         { char: 'S', yOffset: 0, zOffset: 0 },
         { char: 'T', yOffset: 0, zOffset: 0 },
@@ -2075,7 +2075,7 @@ function SpineHeroSection() {
     const startX = -((cfg.letters.length - 1) / 2) * actualSpacing
 
     return (
-        <group position={[0, cfg.groupY, 0]}>
+        <group position={[0.15 * letterScale, cfg.groupY, 0]}>
             {cfg.letters.map((letterCfg, i) => (
                 <SpineLetter2
                     key={i}
@@ -2083,7 +2083,7 @@ function SpineHeroSection() {
                     sourceGeometry={spineGeometry}
                     material={material}
                     position={[
-                        startX + i * actualSpacing,
+                        startX + i * actualSpacing + (letterCfg.xOffset ?? 0) * letterScale,
                         letterCfg.yOffset * letterScale,
                         letterCfg.zOffset,
                     ]}
@@ -3537,7 +3537,7 @@ function CaseStudySection({ section, neon = false, onMediaClick }) {
                 <div className={`cs-section-label${prefix}`}>{section.label}</div>
                 <div className={`cs-feature-grid${prefix}`} style={{ marginTop: 12 }}>
                     {section.items.map((item, i) => (
-                        <div key={i} className={`cs-feature-card${prefix}`} onMouseEnter={() => sfx.piano()}>
+                        <div key={i} className={`cs-feature-card${prefix}`}>
                             <div className={`cs-feature-name${prefix}`}>{item.name}</div>
                             <div className={`cs-feature-desc${prefix}`}>{item.desc}</div>
                             {item.video && (
@@ -3635,7 +3635,7 @@ function CaseStudyOverlay({ project, onClose }) {
                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color, letterSpacing: '0.08em' }}>{displayProject.title}</div>
                             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '13px', letterSpacing: '0.08em', color: '#556688', marginTop: '6px', lineHeight: 1.5 }}>{displayProject.subtitle}</div>
                         </div>
-                        <button className="cs-close-btn" onClick={onClose} onMouseEnter={() => sfx.piano()}>&times;</button>
+                        <button className="cs-close-btn" onClick={onClose}>&times;</button>
                     </div>
 
                     {/* Scrollable body */}
@@ -3658,7 +3658,7 @@ function CaseStudyOverlay({ project, onClose }) {
                         {cs?.meta && (
                             <div className="cs-meta-row">
                                 {Object.entries(cs.meta).map(([key, val]) => (
-                                    <div className="cs-meta-item" key={key} onMouseEnter={() => sfx.piano()}>
+                                    <div className="cs-meta-item" key={key}>
                                         <label>{key}</label>
                                         <span>{val}</span>
                                     </div>
