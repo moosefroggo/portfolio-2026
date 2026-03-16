@@ -30,6 +30,9 @@ let _muted = true
 const _listeners = new Set()
 function _notifyMute() { _listeners.forEach(fn => fn()) }
 
+// Registry for HTML Audio elements that should follow sfx mute state
+const _managedAudios = new Set()
+
 // ─── Master gain ─────────────────────────────────────────────────────────────
 
 let _master = null
@@ -193,41 +196,9 @@ const sounds = {
         o2.connect(g2)
         g2.connect(lp)
 
-        // Ambient delay — two taps for spaciousness
-        const delay1 = ac.createDelay(2.0)
-        delay1.delayTime.value = 0.36
-        const delay2 = ac.createDelay(2.0)
-        delay2.delayTime.value = 0.54
-        const delayFb = ac.createGain()
-        delayFb.gain.value = 0.48
-        const delayWet = ac.createGain()
-        delayWet.gain.value = 0.42
-        // Feedback loop: delay1 → delay2 → delayFb → delay1
-        delay1.connect(delay2)
-        delay2.connect(delayFb)
-        delayFb.connect(delay1)
-
-        // Long convolver reverb (hall-like)
-        const convolver = ac.createConvolver()
-        const irLen = ac.sampleRate * 3.0
-        const ir = ac.createBuffer(2, irLen, ac.sampleRate)
-        for (let c = 0; c < 2; c++) {
-            const ch = ir.getChannelData(c)
-            for (let i = 0; i < irLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 1.6)
-        }
-        convolver.buffer = ir
-        const reverbWet = ac.createGain()
-        reverbWet.gain.value = 0.5
-
         o1.connect(lp)
         lp.connect(g)
         g.connect(master())
-        g.connect(delay1)
-        delay2.connect(delayWet)
-        delayWet.connect(master())
-        g.connect(convolver)
-        convolver.connect(reverbWet)
-        reverbWet.connect(master())
 
         o1.start(ac.currentTime)
         o2.start(ac.currentTime)
@@ -310,10 +281,16 @@ export const sfx = {
         return audio.play() // return promise so caller can detect if autoplay was blocked
     },
 
+    /** Register an HTML Audio element to follow sfx mute state */
+    registerAudio(el) { _managedAudios.add(el); el.muted = _muted },
+    /** Unregister a previously registered HTML Audio element */
+    unregisterAudio(el) { _managedAudios.delete(el) },
+
     toggleMute() {
         _muted = !_muted
         if (_master) _master.gain.setTargetAtTime(_muted ? 0 : 0.4, ctx().currentTime, 0.05)
         if (_bgAudio) _bgAudio.muted = _muted
+        _managedAudios.forEach(a => { a.muted = _muted })
         _notifyMute()
     },
 
@@ -322,6 +299,7 @@ export const sfx = {
         _muted = val
         if (_master) _master.gain.setTargetAtTime(_muted ? 0 : 0.4, ctx().currentTime, 0.05)
         if (_bgAudio) _bgAudio.muted = _muted
+        _managedAudios.forEach(a => { a.muted = _muted })
         _notifyMute()
     },
 

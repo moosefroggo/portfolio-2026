@@ -2946,13 +2946,15 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                             const prev = currentSectionRef.current
                             currentSectionRef.current = i
                             if (!sfx.isMuted()) { const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => {}) }
-                            if (i === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
+                            if (!sfx.isMuted() && i === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
                                 _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
                                 _ambientPianoAudio.loop = true
                                 _ambientPianoAudio.volume = 0.35
+                                sfx.registerAudio(_ambientPianoAudio)
                                 _ambientPianoAudio.play().catch(() => {})
                             }
                             if (prev === DOSSIER_SECTION_INDEX && i !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
+                                sfx.unregisterAudio(_ambientPianoAudio)
                                 _ambientPianoAudio.pause(); _ambientPianoAudio.currentTime = 0; _ambientPianoAudio = null
                             }
                         }}
@@ -4128,6 +4130,7 @@ function ResumeHub({ currentSectionRef }) {
             _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
             _ambientPianoAudio.loop = true
             _ambientPianoAudio.volume = 0.35
+            sfx.registerAudio(_ambientPianoAudio)
             _ambientPianoAudio.play().catch(() => {})
         }
     }
@@ -5811,7 +5814,7 @@ function EliteLoader() {
     }, [progress, active, canEnter])
 
     const handleEnter = () => {
-        const click = getDigitalClickAudio(); click.currentTime = 0; click.play().catch(() => {})
+        if (!sfx.isMuted()) { const click = getDigitalClickAudio(); click.currentTime = 0; click.play().catch(() => {}) }
         setIsFading(true)
         heroIntroState.hasEntered = true
         setTimeout(() => {
@@ -6539,10 +6542,11 @@ export default function Portfolio() {
                 }
 
                 // Play ambient piano when entering dossier section
-                if (newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
+                if (!sfx.isMuted() && newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
                     _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
                     _ambientPianoAudio.loop = true
                     _ambientPianoAudio.volume = 0.35
+                    sfx.registerAudio(_ambientPianoAudio)
                     _ambientPianoAudio.play().catch(() => { })
                 }
 
@@ -6569,6 +6573,7 @@ export default function Portfolio() {
 
                 // Stop ambient piano when leaving dossier
                 if (prevSection === DOSSIER_SECTION_INDEX && newSection !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
+                    sfx.unregisterAudio(_ambientPianoAudio)
                     _ambientPianoAudio.pause()
                     _ambientPianoAudio.currentTime = 0
                     _ambientPianoAudio = null
