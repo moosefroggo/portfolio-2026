@@ -23,8 +23,12 @@ npm run preview
 Dev server runs at `http://localhost:5173` by default.
 
 ## Tools used
-
-Blender, Claude Code, Figma, Meshy.ai
+| Tool | Used or |
+|---|---|
+| Blender | Main 3D assets including cogs |
+| Claude Code | Extension for GitHub |
+| Figma | Image and vector manipulation |
+| Meshy.ai | Decorative assets for the scene |
 
 ## Stack
 
