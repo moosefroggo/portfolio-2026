@@ -375,7 +375,7 @@ function CameraController({ scrollRef }) {
 
             if (heroIntroState.phase === 'loading') {
                 heroIntroState.phase = 'pullback'
-                if (!sfx.isMuted()) { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }
+                if (!sfx.isMuted()) { setTimeout(() => { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }, 400) }
             }
 
             // Linger phase
@@ -2253,11 +2253,11 @@ function playMalletWithFX() {
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'Combined dev, design, and motion to build experiences that feel alive.',
+        text: 'I combine dev, design, and motion to build experiences that feel alive.',
     },
     {
         label: 'SYSTEMS',
-        text: 'Leading a team of 10 designers taught me that products fail without structure.',
+        text: 'I have led a team to build world-class',
     },
     {
         label: 'VISION',
