@@ -25,7 +25,7 @@ Dev server runs at `http://localhost:5173` by default.
 ## Tools used
 | Tool | For |
 |---|---|
-| Blender | Main 3D assets including cogs |
+| Blender | Main 3D assets including cogs, light and texture baking |
 | Claude Code | Extension for GitHub |
 | Figma | Image and vector manipulation |
 | Meshy.ai | Decorative assets for the scene |
