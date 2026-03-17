@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react'
+import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { sfx, useSFX } from './sfx'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Text, Text3D, Center, useGLTF, Line, useTexture, useProgress, Html, RoundedBox } from '@react-three/drei'
@@ -4458,8 +4458,6 @@ function ModularResumePatch({ visible, currentSectionRef }) {
     const cubePos = isPortrait ? [0, -2.5, 0] : CUBE_POS
 
     const groupRef = useRef()
-    const [activeId, setActiveId] = useState(null)
-    const [cubeActive, setCubeActive] = useState(false)
     const [hoveredNodeId, setHoveredNodeId] = useState(null)
     const [cubeHovered, setCubeHovered] = useState(false)
     const [companyPaused, setCompanyPaused] = useState(() => COMPANY_NODES.map(() => false))
@@ -4472,15 +4470,15 @@ function ModularResumePatch({ visible, currentSectionRef }) {
         if (cubeHovered) {
             // Cube hovered: pause all companies
             setCompanyPaused(COMPANY_NODES.map(() => true))
-        } else if (activeId) {
-            // Company selected: pause all except selected
-            setCompanyPaused(COMPANY_NODES.map(node => node.id !== activeId))
+        } else if (hoveredNodeId) {
+            // Company hovered: pause all except hovered
+            setCompanyPaused(COMPANY_NODES.map(node => node.id !== hoveredNodeId))
         } else {
             // No interaction: resume all
             setCompanyPaused(COMPANY_NODES.map(() => false))
         }
         return () => staggerTimers.current.forEach(clearTimeout)
-    }, [cubeHovered, activeId])
+    }, [cubeHovered, hoveredNodeId])
 
     // Initialize off-screen so the slide-in plays correctly (never reset by re-renders)
     const groupInitRef = useRef(false)
@@ -4496,23 +4494,16 @@ function ModularResumePatch({ visible, currentSectionRef }) {
         groupRef.current.position.y = dampValue(groupRef.current.position.y, visible ? 0 : 10, 4, delta)
     })
 
-    // Clear active company when clicking empty space
-    const onBackgroundClick = useCallback((e) => {
-        // Only if the click wasn't on a SynthNode (they stopPropagation)
-        setActiveId(null)
-        setCubeActive(false)
-    }, [])
-
     return (
-        <group ref={groupRef} visible={visible} onClick={onBackgroundClick}>
+        <group ref={groupRef} visible={visible}>
             {/* Company → Resume spine chains */}
             {companyNodes.map((node, i) => {
                 let targetSpeed = 1.0
                 if (cubeHovered) {
                     targetSpeed = 0
-                } else if (activeId === node.id) {
+                } else if (hoveredNodeId === node.id) {
                     targetSpeed = 0.4
-                } else if (activeId) {
+                } else if (hoveredNodeId) {
                     targetSpeed = 0
                 }
                 return (
@@ -4521,7 +4512,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                         start={node.pos} end={hubPos}
                         mid={[(node.pos[0] + hubPos[0]) / 2, node.pos[1] - 1.8, 0]}
                         color={node.color}
-                        active={activeId === node.id}
+                        active={hoveredNodeId === node.id}
                         targetSpeed={targetSpeed}
                         interactive={false}
                     />
@@ -4548,8 +4539,8 @@ function ModularResumePatch({ visible, currentSectionRef }) {
             {companyNodes.map(node => (
                 <SynthNode
                     key={node.id} config={node}
-                    isActive={activeId === node.id}
-                    onClick={() => setActiveId(id => id === node.id ? null : node.id)}
+                    isActive={hoveredNodeId === node.id}
+                    onClick={() => {}}
                     onHover={() => setHoveredNodeId(node.id)}
                     onHoverOut={() => setHoveredNodeId(null)}
                     visible={visible}
@@ -4564,14 +4555,14 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                 <LockedCube
                     onHover={() => setCubeHovered(true)}
                     onHoverOut={() => setCubeHovered(false)}
-                    onClick={() => { setActiveId(null); setCubeActive(a => !a) }}
+                    onClick={() => {}}
                     visible={visible}
                 />
             </group>
 
             {/* Popup — anchored to hovered node/cube world position */}
-            {(activeId || cubeActive) && (() => {
-                const node = companyNodes.find(n => n.id === activeId)
+            {(hoveredNodeId || cubeHovered) && (() => {
+                const node = companyNodes.find(n => n.id === hoveredNodeId)
                 const color = node ? node.color : '#3355aa'
                 const text = node ? node.desc : 'NEXT_ROLE.EXE\n???.???.????\n\nOpen to new opportunities.'
                 const pos = node ? node.pos : cubePos
