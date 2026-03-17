@@ -4585,21 +4585,53 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                             left: '50%',
                             top: '12%',
                             transform: 'translateX(-50%)',
-                            background: 'rgba(5,8,20,0.88)',
-                            border: `1px solid ${color}44`,
-                            borderLeft: `2px solid ${color}`,
-                            padding: '10px 18px',
-                            borderRadius: '4px',
-                            color: '#aabbcc',
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '12px',
-                            lineHeight: '1.6',
-                            letterSpacing: '0.5px',
-                            whiteSpace: 'pre-line',
-                            textAlign: 'left',
-                            maxWidth: 'min(420px, calc(100vw - 32px))',
-                            boxShadow: `0 0 18px ${color}22`,
-                        }}>{text}</div>
+                            width: '260px',
+                            fontFamily: "'Space Mono', monospace",
+                            userSelect: 'none',
+                        }}>
+                            <style>{`
+                                @keyframes _node-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+                                @keyframes _node-scan  { 0%{top:-15%} 100%{top:115%} }
+                                ._node-dot  { animation: _node-blink 1.1s step-end infinite }
+                                ._node-scan { position:absolute;left:0;right:0;height:18%;background:linear-gradient(transparent,${color}18,transparent);animation:_node-scan 2.4s linear infinite;pointer-events:none }
+                            `}</style>
+                            {/* Header */}
+                            <div style={{
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '5px 9px',
+                                background: `rgba(5,8,20,0.92)`,
+                                border: `1px solid ${color}44`,
+                                borderBottom: 'none',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, letterSpacing: '0.15em', color }}>
+                                    <span className="_node-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />
+                                    {node ? node.title : 'NEXT ROLE'}
+                                </div>
+                                <span style={{ fontSize: 8, color: `${color}88`, letterSpacing: '0.1em' }}>SYS</span>
+                            </div>
+                            {/* Body */}
+                            <div style={{
+                                position: 'relative', overflow: 'hidden',
+                                padding: '10px 12px',
+                                background: 'rgba(5,8,20,0.88)',
+                                border: `1px solid ${color}44`,
+                                borderTop: 'none',
+                                color: '#aabbdd',
+                                fontSize: '11px',
+                                lineHeight: '1.7',
+                                letterSpacing: '0.04em',
+                                whiteSpace: 'pre-line',
+                                boxShadow: `0 0 24px ${color}22`,
+                            }}>
+                                <div className="_node-scan" />
+                                {/* Scanlines */}
+                                <div style={{
+                                    position: 'absolute', inset: 0, pointerEvents: 'none',
+                                    background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 3px)'
+                                }} />
+                                {text}
+                            </div>
+                        </div>
                     </Html>
                 )
             })()}
