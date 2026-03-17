@@ -375,7 +375,7 @@ function CameraController({ scrollRef }) {
 
             if (heroIntroState.phase === 'loading') {
                 heroIntroState.phase = 'pullback'
-                if (!sfx.isMuted()) { setTimeout(() => { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }, 1500) }
+                setTimeout(() => sfx.heroWhoosh(), 200)
             }
 
             // Linger phase
@@ -2183,16 +2183,6 @@ function getDataAudio() {
         _dataAudio.volume = 0.6
     }
     return _dataAudio
-}
-
-let _zoomAudio = null
-function getZoomAudio() {
-    if (!_zoomAudio) {
-        _zoomAudio = new Audio('/sounds/whoosh-bumpy.mp3')
-        _zoomAudio.volume = 0.7
-        _zoomAudio.playbackRate = 0.7
-    }
-    return _zoomAudio
 }
 
 function playMalletWithFX() {

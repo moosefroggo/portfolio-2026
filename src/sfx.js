@@ -274,6 +274,54 @@ export const sfx = {
         noise({ attack: 0.001, decay: 0.045, peak: 0.07, bandpass: 3800 })
     },
 
+    /** Hero intro whoosh — synced to 3.5s cog unmorph animation */
+    heroWhoosh() {
+        if (_muted) return
+        const ac = ctx()
+        const dur = 3.5
+
+        // ── Noise layer: bandpass sweeps high→low (scatter→form) ──
+        const bufSize = Math.ceil(ac.sampleRate * (dur + 0.1))
+        const buf = ac.createBuffer(1, bufSize, ac.sampleRate)
+        const data = buf.getChannelData(0)
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+        const nSrc = ac.createBufferSource()
+        nSrc.buffer = buf
+
+        const bp = ac.createBiquadFilter()
+        bp.type = 'bandpass'
+        bp.frequency.setValueAtTime(3200, ac.currentTime)
+        bp.frequency.exponentialRampToValueAtTime(180, ac.currentTime + dur)
+        bp.Q.setValueAtTime(0.4, ac.currentTime)
+        bp.Q.linearRampToValueAtTime(4.0, ac.currentTime + dur)
+
+        const nGain = ac.createGain()
+        nGain.gain.setValueAtTime(0, ac.currentTime)
+        nGain.gain.linearRampToValueAtTime(0.38, ac.currentTime + 0.25)
+        nGain.gain.setValueAtTime(0.38, ac.currentTime + dur - 0.7)
+        nGain.gain.linearRampToValueAtTime(0, ac.currentTime + dur)
+
+        nSrc.connect(bp); bp.connect(nGain); nGain.connect(master())
+        nSrc.start(ac.currentTime)
+        nSrc.stop(ac.currentTime + dur + 0.1)
+
+        // ── Tone layer: descending sine gives the "whoosh" body ──
+        const o = ac.createOscillator()
+        o.type = 'sine'
+        o.frequency.setValueAtTime(700, ac.currentTime)
+        o.frequency.exponentialRampToValueAtTime(60, ac.currentTime + dur)
+
+        const oGain = ac.createGain()
+        oGain.gain.setValueAtTime(0, ac.currentTime)
+        oGain.gain.linearRampToValueAtTime(0.14, ac.currentTime + 0.4)
+        oGain.gain.setValueAtTime(0.14, ac.currentTime + dur - 0.8)
+        oGain.gain.linearRampToValueAtTime(0, ac.currentTime + dur)
+
+        o.connect(oGain); oGain.connect(master())
+        o.start(ac.currentTime)
+        o.stop(ac.currentTime + dur + 0.1)
+    },
+
     /** Soft cog emergence tick */
     cogTick() {
         if (_muted) return
