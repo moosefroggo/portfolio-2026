@@ -174,7 +174,7 @@ const PROJECT_CARDS = [
         pos: [120, -2.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
         title: 'Workflows', subtitle: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         desc: 'A central hub for project and documentation management helping development teams reduce Slack messages',
-        tech: ['Figma', 'Rive', 'JavaScript', 'Miro'],
+        tech: ['Figma', 'Microsoft Clarity', 'JavaScript', 'FigJam'],
         stats: { role: 'Product Design', year: '2023', company: 'Educative' },
         objectType: 'workflows',
         video: '/demos/wf-noborder.mp4',
@@ -271,6 +271,7 @@ const SCROLL_SMOOTHING = 3  // higher = snappier, lower = more damped
 
 // Module-level scroll value — updated every frame, readable by any component without prop drilling
 let _scrollT = 0
+let _navToHero = () => {}
 
 function ScrollSmoother({ currentSectionRef, scrollRef }) {
     useFrame((_, delta) => {
@@ -2046,13 +2047,13 @@ function SpineHeroSection() {
     // Camera starts at Z=16, FOV=70 — compute world-space width visible at Z=0.
     const { letterScale, actualSpacing } = useMemo(() => {
         const cfg = HERO_CONFIG
-        const fovRad = (70 * Math.PI) / 180
-        const visH = 2 * Math.tan(fovRad / 2) * 16          // ~22.4 world units tall
+        const fovRad = (60 * Math.PI) / 180
+        const visH = 2 * Math.tan(fovRad / 2) * 18          // actual end-state: z=18, fov=60
         const visW = visH * (size.width / size.height)       // depends on aspect ratio
         const totalSpan = (cfg.letters.length - 1) * cfg.spacing
         // On portrait mobile, fill more width so text stays readable
         const isPortrait = size.width < size.height
-        const fraction = isPortrait ? Math.min(cfg.targetFraction * 1.5, 0.98) : Math.min(cfg.targetFraction * 1.15, 0.88)
+        const fraction = isPortrait ? Math.min(cfg.targetFraction * 1.3, 0.84) : Math.min(cfg.targetFraction * 1.15, 0.88)
         const scale = (visW * fraction) / totalSpan
         return { letterScale: scale, actualSpacing: cfg.spacing * scale }
     }, [size.width, size.height])
@@ -3599,12 +3600,9 @@ function CaseStudySection({ section, neon = false, onMediaClick }) {
         return (
             <div className={`cs-cta${prefix}`}>
                 {section.body}
-                <a
-                    href="mailto:hello@mstf.work"
-                    style={{ display: 'inline-block', marginTop: '12px', color: '#5588ff', fontSize: '12px', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', textDecoration: 'none', opacity: 0.85 }}
-                    onMouseEnter={e => e.target.style.opacity = 1}
-                    onMouseLeave={e => e.target.style.opacity = 0.85}
-                >hello@mstf.work →</a>
+                <div style={{ marginTop: '12px', fontSize: '12px', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', color: '#5588ff' }}>
+                    <CopyEmailHud />
+                </div>
             </div>
         )
     } else if (section.type === 'images') {
@@ -3997,10 +3995,10 @@ function MobilePhotoRing({ visible }) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 const COMPANY_NODES = [
-    { id: 'dell', pos: [-5.5, 2.4, 0], title: 'DELL', desc: 'AI-based Data Center Alerts // 2026', color: '#0076CE' },
-    { id: 'cbre', pos: [-5.5, 0.8, 0], title: 'CBRE', desc: 'VISUAL LANG // 2025\nINTERACTION DESIGN', color: '#003F2D' },
-    { id: 'motive', pos: [-5.5, -0.8, 0], title: 'MOTIVE', desc: 'PRODUCT UX // 2024\nENTERPRISE SYSTEMS', color: '#FF6B00' },
-    { id: 'educative', pos: [-5.5, -2.4, 0], title: 'EDUCATIVE', desc: 'UX DESIGN // 2023\nLEARNING SYSTEMS', color: '#5553FF' },
+    { id: 'dell', pos: [-5.5, 2.4, 0], title: 'DELL', desc: 'AI-based Data center leak Alerts // 2026', color: '#0076CE' },
+    { id: 'cbre', pos: [-5.5, 0.8, 0], title: 'CBRE', desc: 'Visual language redesign // 2025\nINTERACTION DESIGN', color: '#003F2D' },
+    { id: 'motive', pos: [-5.5, -0.8, 0], title: 'MOTIVE', desc: 'Fleet Management // 2024', color: '#FF6B00' },
+    { id: 'educative', pos: [-5.5, -2.4, 0], title: 'EDUCATIVE', desc: 'Workflows // 2023', color: '#5553FF' },
 ]
 const HUB_POS = [0, 0, 0]
 const CUBE_POS = [5.5, 0, 0]
@@ -6126,6 +6124,195 @@ function ScrollHint({ scrollRef }) {
     )
 }
 
+const LOGO_SIZE = 72
+function NavLinks() {
+    const [show, setShow] = useState(false)
+    const { muted, toggleMute } = useSFX()
+    useEffect(() => {
+        const id = setInterval(() => {
+            if (heroIntroState.phase === 'done' && loaderFullyHidden && heroIntroState.hasEntered) {
+                setShow(true)
+                clearInterval(id)
+            }
+        }, 100)
+        return () => clearInterval(id)
+    }, [])
+    const isMobile = window.innerWidth <= 768
+    return (
+        <div style={{
+            position: 'fixed',
+            top: '24px',
+            right: 'clamp(16px, 4vw, 40px)',
+            zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px',
+            pointerEvents: show ? 'auto' : 'none',
+            opacity: show ? 1 : 0,
+            transform: show ? 'translateY(0)' : 'translateY(-10px)',
+            transition: 'opacity 0.6s ease, transform 0.6s ease',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', height: '36px' }}>
+                {!isMobile && <>
+                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>RESUME</a>
+                    <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>LINKEDIN</a>
+                    <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>GITHUB</a>
+                </>}
+                <CopyEmailHud />
+                {/* On mobile: mute button sits inline so it can't overlap */}
+                {isMobile && (
+                    <button
+                        onClick={toggleMute}
+                        title={muted ? 'Unmute sound' : 'Mute sound'}
+                        style={{
+                            background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.2)',
+                            backdropFilter: 'blur(8px)', borderRadius: '50%',
+                            width: '36px', height: '36px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: muted ? 'rgba(136,153,204,0.35)' : 'rgba(136,153,204,0.85)',
+                            transition: 'color 0.2s, border-color 0.2s', padding: 0, flexShrink: 0,
+                        }}
+                    >
+                        {muted ? (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                <line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" />
+                            </svg>
+                        ) : (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                            </svg>
+                        )}
+                    </button>
+                )}
+            </div>
+        </div>
+    )
+}
+
+const _logoHovered = { current: false }
+
+function SpineLogoModel() {
+    const { scene } = useGLTF('/spine.glb')
+    const uniformsRef = useRef(null)
+    const t = useRef(0)
+    const hoverStrength = useRef(0)
+
+    const { geometry, material, normScale } = useMemo(() => {
+        let g
+        scene.traverse(child => { if (child.isMesh) g = child.geometry })
+        let s = 1
+        if (g) { g.computeBoundingSphere(); s = 0.9 / (g.boundingSphere?.radius ?? 1) }
+
+        const m = new THREE.MeshPhysicalMaterial({
+            color: '#ffffff', metalness: 1.0, roughness: 0.04,
+            clearcoat: 1.0, clearcoatRoughness: 0.02,
+        })
+        m.onBeforeCompile = (shader) => {
+            shader.uniforms.uTime  = { value: 0 }
+            shader.uniforms.uHover = { value: 0 }
+            uniformsRef.current = shader.uniforms
+            shader.vertexShader = 'uniform float uTime;\nuniform float uHover;\n' + shader.vertexShader
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `#include <begin_vertex>
+                float wave = sin(position.y * 6.0 + uTime * 4.0) * 0.06 * uHover
+                           + sin(position.x * 5.0 + uTime * 3.2) * 0.04 * uHover;
+                transformed += normal * wave;`
+            )
+        }
+        return { geometry: g, material: m, normScale: s }
+    }, [scene])
+
+    useFrame((_, delta) => {
+        t.current += delta
+        hoverStrength.current += (_logoHovered.current ? 1 : -1) * delta * 4
+        hoverStrength.current = Math.max(0, Math.min(1, hoverStrength.current))
+        if (uniformsRef.current) {
+            uniformsRef.current.uTime.value = t.current
+            uniformsRef.current.uHover.value = hoverStrength.current
+        }
+    })
+
+    if (!geometry) return null
+    return (
+        <group rotation={[Math.PI / 2, 0, Math.PI]}>
+            <mesh geometry={geometry} material={material} scale={normScale} />
+        </group>
+    )
+}
+
+function SpineLogoLights() {
+    const keyRef = useRef()
+    const fillRef = useRef()
+    const intensity = useRef(0.6)
+
+    useFrame((_, delta) => {
+        const target = _logoHovered.current ? 1 : 0
+        intensity.current += (target - intensity.current) * Math.min(delta * 5, 1)
+        const i = intensity.current
+        if (keyRef.current) keyRef.current.intensity = 6 + i * 14
+        if (fillRef.current) fillRef.current.intensity = 2 + i * 5
+    })
+
+    return (
+        <>
+            <ambientLight intensity={0.6} color="#aabbcc" />
+            <pointLight ref={keyRef} position={[3, 4, 3]} intensity={6} color="#ffffff" />
+            <pointLight ref={fillRef} position={[-2, -2, 2]} intensity={2} color="#8899bb" />
+        </>
+    )
+}
+
+function SpineLogo() {
+    const [hovered, setHovered] = React.useState(false)
+    const [show, setShow] = useState(false)
+    useEffect(() => {
+        const id = setInterval(() => {
+            if (heroIntroState.phase === 'done' && loaderFullyHidden && heroIntroState.hasEntered) {
+                setShow(true)
+                clearInterval(id)
+            }
+        }, 100)
+        return () => clearInterval(id)
+    }, [])
+    return (
+        <div
+            onMouseEnter={() => { _logoHovered.current = true; setHovered(true); sfx.hover() }}
+            onMouseLeave={() => { _logoHovered.current = false; setHovered(false) }}
+            onClick={() => { if (!sfx.isMuted()) { const a = getItemBackAudio(); a.currentTime = 0; a.play().catch(() => {}) } _navToHero() }}
+            style={{
+                position: 'fixed',
+                top: '-4px',
+                left: '24px',
+                width: LOGO_SIZE, height: LOGO_SIZE,
+                zIndex: 200,
+                filter: hovered
+                    ? 'drop-shadow(0 0 10px rgba(180,210,255,0.65))'
+                    : 'drop-shadow(0 0 4px rgba(180,200,255,0.2))',
+                opacity: show ? 1 : 0,
+                transform: show ? 'translateY(0)' : 'translateY(-10px)',
+                transition: 'filter 0.3s ease, opacity 0.6s ease, transform 0.6s ease',
+                pointerEvents: show ? 'auto' : 'none',
+                overflow: 'hidden',
+                cursor: 'pointer',
+            }}
+        >
+            <Canvas
+                camera={{ position: [0, 0, 2.5], fov: 50 }}
+                dpr={[1, 2]}
+                gl={{ alpha: true, antialias: true }}
+                style={{ display: 'block', width: LOGO_SIZE, height: LOGO_SIZE }}
+            >
+                <React.Suspense fallback={null}>
+                    <SpineLogoModel />
+                    <SpineLogoLights />
+                    <Environment preset="city" />
+                </React.Suspense>
+            </Canvas>
+        </div>
+    )
+}
+
 function MuteButton() {
     const { muted, toggleMute } = useSFX()
     return (
@@ -6493,6 +6680,7 @@ function HeroSubtextCard({ scrollRef }) {
 export default function Portfolio() {
     const scrollRef = useRef(0)
     const currentSectionRef = useRef(0)
+    _navToHero = () => { currentSectionRef.current = 0 }
     const [activeProject, setActiveProject] = useState(null)
     const activeProjectRef = useRef(null)
     useEffect(() => { activeProjectRef.current = activeProject }, [activeProject])
@@ -6640,31 +6828,9 @@ export default function Portfolio() {
             }}>
                 <EliteLoader />
 
-                {/* LINKS — top-left on mobile, bottom-left on desktop */}
-                <div style={{
-                    position: 'fixed',
-                    ...(window.innerWidth <= 768
-                        ? { top: '16px', left: 'clamp(16px, 4vw, 40px)' }
-                        : { bottom: '28px', left: 'clamp(16px, 4vw, 40px)' }),
-                    zIndex: 200, display: 'flex', alignItems: 'center', gap: '20px',
-                    color: '#8899cc', fontSize: '13px', letterSpacing: '1px',
-                    textTransform: 'uppercase', fontFamily: 'var(--font-mono)',
-                    pointerEvents: 'auto', height: '36px'
-                }}>
-                    <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>RESUME</a>
-                    <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>LINKEDIN</a>
-                    <a href="https://github.com/moosefroggo" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>GITHUB</a>
-                    {window.innerWidth > 768 && <CopyEmailHud />}
-                </div>
-
-                {/* EMAIL — top-right on mobile only */}
-                {window.innerWidth <= 768 && (
-                    <div style={{ position: 'fixed', top: '16px', right: 'clamp(16px, 4vw, 40px)', zIndex: 200, display: 'flex', alignItems: 'center', pointerEvents: 'auto', height: '30px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                        <CopyEmailHud />
-                    </div>
-                )}
-
-                <MuteButton />
+                <NavLinks />
+                <SpineLogo />
+                {window.innerWidth > 768 && <MuteButton />}
                 <HeroSubtextCard scrollRef={scrollRef} />
                 <MobileProjectsOverlay scrollRef={scrollRef} onOpenProject={handleOpenProject} />
                 <ScrollHint scrollRef={scrollRef} />

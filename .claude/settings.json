@@ -9,7 +9,11 @@
       "Bash(sort -k2)",
       "Bash(du -sh /Users/mustafa/Documents/vs-code/hello-3d/node_modules/*)",
       "Bash(sort -rn -k1)",
-      "Bash(du -sh /Users/mustafa/Documents/vs-code/hello-3d/public/*)"
+      "Bash(du -sh /Users/mustafa/Documents/vs-code/hello-3d/public/*)",
+      "Bash(git add src/Portfolio2.jsx src/index.css vite.config.js)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:globe.gl)",
+      "WebFetch(domain:en.wikipedia.org)"
     ]
   }
 }
