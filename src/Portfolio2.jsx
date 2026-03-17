@@ -375,6 +375,7 @@ function CameraController({ scrollRef }) {
 
             if (heroIntroState.phase === 'loading') {
                 heroIntroState.phase = 'pullback'
+                if (!sfx.isMuted()) { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }
             }
 
             // Linger phase
@@ -2182,6 +2183,15 @@ function getDataAudio() {
         _dataAudio.volume = 0.6
     }
     return _dataAudio
+}
+
+let _zoomAudio = null
+function getZoomAudio() {
+    if (!_zoomAudio) {
+        _zoomAudio = new Audio('/sounds/zoom.mp3')
+        _zoomAudio.volume = 0.7
+    }
+    return _zoomAudio
 }
 
 function playMalletWithFX() {
