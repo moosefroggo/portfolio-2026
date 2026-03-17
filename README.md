@@ -22,6 +22,10 @@ npm run preview
 
 Dev server runs at `http://localhost:5173` by default.
 
+## Tools used
+
+Blender, Claude Code, Figma, Meshy.ai
+
 ## Stack
 
 | Layer | Tool |
