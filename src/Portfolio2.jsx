@@ -3698,7 +3698,7 @@ function CaseStudyOverlay({ project, onClose }) {
 
                         {/* Case study sections */}
                         {cs?.sections?.map((section, i) => (
-                            <CaseStudySection key={i} section={section} onMediaClick={setZoomMedia} />
+                            <CaseStudySection key={i} section={section} onMediaClick={(m) => { sfx.whoosh(); setZoomMedia(m) }} />
                         ))}
 
                         {/* Placeholder if no case study data */}

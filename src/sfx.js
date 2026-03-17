@@ -155,6 +155,30 @@ const sounds = {
         sweepOsc('sine', 1350, 2700, { attack: 0.025, decay: 0.3, peak: 0.08 })
     },
 
+    /** Quick whoosh — media zoom open */
+    whoosh() {
+        if (_muted) return
+        const ac = ctx()
+        const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * 0.35), ac.sampleRate)
+        const d = buf.getChannelData(0)
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+        const src = ac.createBufferSource()
+        src.buffer = buf
+        const bp = ac.createBiquadFilter()
+        bp.type = 'bandpass'
+        bp.frequency.setValueAtTime(4000, ac.currentTime)
+        bp.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 0.3)
+        bp.Q.value = 0.8
+        const g = ac.createGain()
+        g.gain.setValueAtTime(0, ac.currentTime)
+        g.gain.linearRampToValueAtTime(0.32, ac.currentTime + 0.04)
+        g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.32)
+        src.connect(bp); bp.connect(g); g.connect(master())
+        src.start(ac.currentTime)
+        src.stop(ac.currentTime + 0.36)
+        sweepOsc('sine', 1200, 200, { attack: 0.02, decay: 0.28, peak: 0.1 })
+    },
+
     /** Mechanical tick (cog / letter hover) */
     tick() {
         if (_muted) return
