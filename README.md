@@ -1,6 +1,6 @@
 # Portfolio 2026
 
-A WebGL portfolio built with React, Three.js, and React Three Fiber. Fully procedural 3D — no game engines, no canvas libraries beyond R3F.
+A WebGL portfolio built with React, Three.js, and React Three Fiber. Mix of procedural geometry (instanced cog letters, custom curves, shader-deformed meshes) and Draco-compressed GLB models — no game engines, no canvas libraries beyond R3F.
 
 ## Setup
 
