@@ -3598,6 +3598,12 @@ function CaseStudySection({ section, neon = false, onMediaClick }) {
         return (
             <div className={`cs-cta${prefix}`}>
                 {section.body}
+                <a
+                    href="mailto:hello@mstf.work"
+                    style={{ display: 'inline-block', marginTop: '12px', color: '#5588ff', fontSize: '12px', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', textDecoration: 'none', opacity: 0.85 }}
+                    onMouseEnter={e => e.target.style.opacity = 1}
+                    onMouseLeave={e => e.target.style.opacity = 0.85}
+                >hello@mstf.work →</a>
             </div>
         )
     } else if (section.type === 'images') {
