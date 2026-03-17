@@ -1007,7 +1007,7 @@ function VideoScreen({
     return (
         <group position={[3.4, 0.15, 0.9]} rotation={[0, -0.42, 0]}>
             <Html transform occlude={false} style={{ pointerEvents: onOpen ? 'auto' : 'none' }} distanceFactor={3.5}>
-                <div ref={containerRef} onClick={onOpen ?? undefined} onMouseEnter={() => { if (!sfx.isMuted()) { const a = getDataAudio(); a.currentTime = 0; a.play().catch(() => {}) } }} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
+                <div ref={containerRef} onClick={onOpen ?? undefined} onMouseEnter={() => { if (!sfx.isMuted()) { const a = getDataAudio(); a.currentTime = 0; a.play().catch(() => {}) } }} onMouseLeave={() => { if (_dataAudio) { _dataAudio.pause(); _dataAudio.currentTime = 0 } }} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <style>{`
                         @keyframes hud-blink { 0%,100%{opacity:1} 50%{opacity:0} }
                         @keyframes hud-scan  { 0%{top:-15%} 100%{top:115%} }
@@ -2346,7 +2346,7 @@ function EthosOverlay({ scrollRef }) {
         <div ref={wrapperRef} className="ethos-overlay" style={{ opacity: 0 }}>
             <div className="ethos-panel">
                 <div className="ethos-panel-header">
-                    <span className="ethos-eyebrow">ADAPTATION</span>
+                    <span className="ethos-eyebrow">ETHOS</span>
                     <h2 className="ethos-title">How i work</h2>
                 </div>
 
@@ -3939,12 +3939,15 @@ function DossierOverlay({ scrollRef }) {
                 <div className="about-name">MUSTAFA ALI AKBAR</div>
                 <div className="about-role">Senior Product Designer</div>
 
-                <p className="about-bio">
-                    I design at the intersection of <strong>systems thinking</strong> and <strong>motion</strong> — building products that feel alive without getting in the way. Currently at <strong>Dell</strong>, previously <strong>Motive</strong> and <strong>CBRE</strong>.
-                </p>
-                <p className="about-bio">
-                    I prototype in code and believe the gap between design and engineering is where the best work happens.
-                </p>
+                ⏺ <p className="about-bio">                  
+     Product designer finishing a Master's in Information Science,    
+  with six years of industry behind it. At Motive I designed the       
+  features that expanded the product to Mexico. At CBRE I redesigned   
+  complex lease abstraction flows. At Educative I built the design team
+   from one to ten.              
+  </p>                                                                 
+  <p className="about-bio">                             
+I prototype in code and experiment with AI. Some days it's hard to tell which one I'll end up doing.    </p>
 
                 <div className="about-divider" />
 
