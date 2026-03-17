@@ -4530,7 +4530,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
             {(() => {
                 let cubeTargetSpeed = 1.0
                 if (cubeHovered) cubeTargetSpeed = 0.4
-                else if (activeId) cubeTargetSpeed = 0
+                else if (hoveredNodeId) cubeTargetSpeed = 0
                 return (
                     <SpineChain
                         start={hubPos} end={cubePos}
