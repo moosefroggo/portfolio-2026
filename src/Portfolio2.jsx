@@ -375,7 +375,7 @@ function CameraController({ scrollRef }) {
 
             if (heroIntroState.phase === 'loading') {
                 heroIntroState.phase = 'pullback'
-                if (!sfx.isMuted()) { setTimeout(() => { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }, 400) }
+                if (!sfx.isMuted()) { setTimeout(() => { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }, 900) }
             }
 
             // Linger phase
@@ -6484,7 +6484,7 @@ function HeroSubtextCard({ scrollRef }) {
                     color: '#99aacc',
                     textAlign: window.innerWidth <= 768 ? 'left' : 'center',
                 }}>
-                Product Designer who makes complex systems feel simple and static interfaces feel alive. Shaped SmartFM's visual language at CBRE, connectivity experiences at MOTIVE, and a design team scaled to ten at EDUCATIVE.               </div>
+                Product Designer who makes complex systems feel simple and static interfaces feel alive. Redefined SmartFM's visual language at CBRE, connectivity experiences at MOTIVE, and a design team scaled to ten at EDUCATIVE.               </div>
            
             </div>
         </>
