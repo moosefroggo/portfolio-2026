@@ -2474,7 +2474,13 @@ function EthosSnakeSpine({ trigger }) {
     }, [trigger])
 
     useFrame((state, delta) => {
-        if (!inEthos()) return
+        if (!inEthos()) {
+            if (_insectoidAudio && !_insectoidAudio.paused) {
+                _insectoidAudio.pause()
+                _insectoidAudio.currentTime = 0
+            }
+            return
+        }
         if (!meshRef.current) return
 
         // Only progress if trigger is true, but DON'T reset if false
