@@ -375,7 +375,6 @@ function CameraController({ scrollRef }) {
 
             if (heroIntroState.phase === 'loading') {
                 heroIntroState.phase = 'pullback'
-                setTimeout(() => sfx.heroWhoosh(), 200)
             }
 
             // Linger phase
@@ -2167,14 +2166,6 @@ function getBoinXAudio() {
     return _boinXAudio
 }
 
-let _insectoidAudio = null
-function getInsectoidAudio() {
-    if (!_insectoidAudio) {
-        _insectoidAudio = new Audio('/sounds/insectoid.mp3')
-        _insectoidAudio.volume = 0.7
-    }
-    return _insectoidAudio
-}
 
 let _dataAudio = null
 function getDataAudio() {
@@ -2244,15 +2235,15 @@ function playMalletWithFX() {
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'I combine dev, design, and motion to build experiences that feel alive.',
+        text: 'Dev background. Design eye. I design, and then build interfaces.',
     },
     {
         label: 'SYSTEMS',
-        text: 'I have led a team to build world-class',
+        text: 'I have built a team of 10 designers and maintained a cohesive product experience.',
     },
     {
-        label: 'VISION',
-        text: 'A tech optimist who went from filtering AI slopcode to agentic development.',
+        label: 'PURPOSE',
+        text: 'Design is more than a job to me. It is something I enjoy doing and learning every single day',
     },
 ]
 
@@ -2475,22 +2466,8 @@ function EthosSnakeSpine({ trigger }) {
     const segments = 15
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
-    useEffect(() => {
-        if (!trigger) return
-        if (sfx.isMuted()) return
-        const audio = getInsectoidAudio()
-        audio.currentTime = 0
-        audio.play().catch(() => {})
-    }, [trigger])
-
     useFrame((state, delta) => {
-        if (!inEthos()) {
-            if (_insectoidAudio && !_insectoidAudio.paused) {
-                _insectoidAudio.pause()
-                _insectoidAudio.currentTime = 0
-            }
-            return
-        }
+        if (!inEthos()) return
         if (!meshRef.current) return
 
         // Only progress if trigger is true, but DON'T reset if false
