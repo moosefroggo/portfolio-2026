@@ -23,7 +23,7 @@ npm run preview
 Dev server runs at `http://localhost:5173` by default.
 
 ## Tools used
-| Tool | Used or |
+| Tool | For |
 |---|---|
 | Blender | Main 3D assets including cogs |
 | Claude Code | Extension for GitHub |
