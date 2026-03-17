@@ -4569,23 +4569,21 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                 />
             </group>
 
-            {/* Centered DOM popup — shown above the card row when a node or cube is active */}
+            {/* Popup — anchored to hovered node/cube world position */}
             {(activeId || cubeActive) && (() => {
                 const node = companyNodes.find(n => n.id === activeId)
                 const color = node ? node.color : '#3355aa'
                 const text = node ? node.desc : 'NEXT_ROLE.EXE\n???.???.????\n\nOpen to new opportunities.'
+                const pos = node ? node.pos : cubePos
                 return (
                     <Html
-                        position={[0, 0, 0]}
+                        position={pos}
                         style={{ pointerEvents: 'none' }}
                         zIndexRange={[100, 0]}
                     >
                         <div style={{
-                            position: 'fixed',
-                            left: '50%',
-                            top: '12%',
-                            transform: 'translateX(-50%)',
-                            width: '260px',
+                            transform: 'translate(16px, -50%)',
+                            width: '200px',
                             fontFamily: "'Space Mono', monospace",
                             userSelect: 'none',
                         }}>
