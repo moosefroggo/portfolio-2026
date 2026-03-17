@@ -3933,7 +3933,7 @@ function DossierOverlay({ scrollRef }) {
             <div ref={panelRef} className="about-panel hidden">
                 <div className="about-label">
                     <span className="about-dot" />
-                    About
+                    Open to work
                 </div>
 
                 <div className="about-name">MUSTAFA ALI AKBAR</div>
@@ -3943,8 +3943,8 @@ function DossierOverlay({ scrollRef }) {
      Product designer finishing a Master's in Information Science,    
   with six years of industry behind it. At Motive I designed the       
   features that expanded the product to Mexico. At CBRE I redesigned   
-  complex lease abstraction flows. At Educative I built the design team
-   from one to ten.              
+  complex lease abstraction flows and the visual language. At Educative I built the design team
+   from one to ten, suppporting the $12M Series A.              
   </p>                                                                 
   <p className="about-bio">                             
 I work best at the edge of design and engineering. If you're building something that needs both, let's talk.    </p>
