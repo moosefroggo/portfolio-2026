@@ -2166,6 +2166,15 @@ function getBoinXAudio() {
     return _boinXAudio
 }
 
+let _insectoidAudio = null
+function getInsectoidAudio() {
+    if (!_insectoidAudio) {
+        _insectoidAudio = new Audio('/sounds/insectoid.mp3')
+        _insectoidAudio.volume = 0.7
+    }
+    return _insectoidAudio
+}
+
 function playMalletWithFX() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -2455,6 +2464,14 @@ function EthosSnakeSpine({ trigger }) {
 
     const segments = 15
     const dummy = useMemo(() => new THREE.Object3D(), [])
+
+    useEffect(() => {
+        if (!trigger) return
+        if (sfx.isMuted()) return
+        const audio = getInsectoidAudio()
+        audio.currentTime = 0
+        audio.play().catch(() => {})
+    }, [trigger])
 
     useFrame((state, delta) => {
         if (!inEthos()) return
