@@ -2021,7 +2021,7 @@ function StarField() {
 
 function SpineHeroSection() {
     const { size } = useThree()
-    const { scene: spineScene } = useGLTF('/spine.glb')
+    const { scene: spineScene } = useGLTF('/spine2.glb')
     const highlightedCharRef = useRef(0)
     const highlightRotationRef = useRef(0)
     const rotationSpeedRef = useRef(5 + Math.random() * 6) // 5-11 rad/s for more visible rotation
@@ -2113,6 +2113,7 @@ function SpineHeroSection() {
 }
 
 useGLTF.preload('/spine.glb')
+useGLTF.preload('/spine2.glb')
 useGLTF.preload('/Truck.glb')
 useGLTF.preload('/sigil.glb')
 
@@ -4253,7 +4254,7 @@ function LockedCube({ onHover, onHoverOut, onClick, visible }) {
 
 // Samples a quadratic bezier, orients each spine cog along the tangent
 function SpineChain({ start, end, mid, color, active, interactive = true, segments = 20, rotationSpeed = 1.5, paused = false, targetSpeed = null, cogScale = 0.28 }) {
-    const { scene } = useGLTF('/spine.glb')
+    const { scene } = useGLTF('/spine2.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
     const posRefs = useRef([])
@@ -4359,7 +4360,7 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
 
 // Straight-line chain — cogs positioned along a lerp instead of bezier
 function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', active = false, interactive = false, segments = 20, rotationSpeed = 1.5, paused = false, targetSpeed = null, cogScale = 0.28 }) {
-    const { scene } = useGLTF('/spine.glb')
+    const { scene } = useGLTF('/spine2.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
     const posRefs = useRef([])
