@@ -375,7 +375,7 @@ function CameraController({ scrollRef }) {
 
             if (heroIntroState.phase === 'loading') {
                 heroIntroState.phase = 'pullback'
-                if (!sfx.isMuted()) { setTimeout(() => { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }, 900) }
+                if (!sfx.isMuted()) { setTimeout(() => { const z = getZoomAudio(); z.currentTime = 0; z.play().catch(() => {}) }, 1500) }
             }
 
             // Linger phase
@@ -2190,6 +2190,7 @@ function getZoomAudio() {
     if (!_zoomAudio) {
         _zoomAudio = new Audio('/sounds/zoom.mp3')
         _zoomAudio.volume = 0.7
+        _zoomAudio.playbackRate = 0.9
     }
     return _zoomAudio
 }
