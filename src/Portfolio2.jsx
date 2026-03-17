@@ -1007,7 +1007,7 @@ function VideoScreen({
     return (
         <group position={[3.4, 0.15, 0.9]} rotation={[0, -0.42, 0]}>
             <Html transform occlude={false} style={{ pointerEvents: onOpen ? 'auto' : 'none' }} distanceFactor={3.5}>
-                <div ref={containerRef} onClick={onOpen ?? undefined} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
+                <div ref={containerRef} onClick={onOpen ?? undefined} onMouseEnter={() => sfx.data05()} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <style>{`
                         @keyframes hud-blink { 0%,100%{opacity:1} 50%{opacity:0} }
                         @keyframes hud-scan  { 0%{top:-15%} 100%{top:115%} }
@@ -6442,8 +6442,8 @@ function HeroSubtextCard({ scrollRef }) {
                     color: '#99aacc',
                     textAlign: window.innerWidth <= 768 ? 'left' : 'center',
                 }}>
-                    Product Designer skilled in systems thinking and interactive 3D experiences. Previously designed SmartFM's visual language at CBRE, connectivity-based experiences at MOTIVE, and led a design team at EDUCATIVE.
-                </div>
+                Product Designer who makes complex systems feel simple and static interfaces feel alive. Shaped SmartFM's visual language at CBRE, connectivity experiences at MOTIVE, and a design team scaled to ten at EDUCATIVE.               </div>
+           
             </div>
         </>
     )

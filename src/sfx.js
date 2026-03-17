@@ -267,6 +267,13 @@ export const sfx = {
         }
     },
 
+    /** Data scan blip — rapid digital sweep, video panel hover */
+    data05() {
+        if (_muted) return
+        sweepOsc('square', 700, 2600, { attack: 0.003, decay: 0.08, peak: 0.13 })
+        noise({ attack: 0.001, decay: 0.045, peak: 0.07, bandpass: 3800 })
+    },
+
     /** Soft cog emergence tick */
     cogTick() {
         if (_muted) return
