@@ -2188,9 +2188,9 @@ function getDataAudio() {
 let _zoomAudio = null
 function getZoomAudio() {
     if (!_zoomAudio) {
-        _zoomAudio = new Audio('/sounds/zoom.mp3')
+        _zoomAudio = new Audio('/sounds/whoosh-bumpy.mp3')
         _zoomAudio.volume = 0.7
-        _zoomAudio.playbackRate = 0.9
+        _zoomAudio.playbackRate = 0.7
     }
     return _zoomAudio
 }
