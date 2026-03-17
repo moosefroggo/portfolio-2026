@@ -50,9 +50,12 @@ public/
 
 ## Audio
 
-Sound effects are fully procedural (Web Audio API oscillators + noise). No external audio library. Starts muted — user unmutes via the nav button.
+Two-layer audio system, no external library:
 
-Background track uses Opus/WebM with M4A fallback for Safari.
+- **Procedural sfx** (`sfx.js`) — hover, click, snap, ping, shimmer, whoosh etc. built with Web Audio API oscillators and noise buffers
+- **File-based sounds** — nav interactions (m4a), ambient piano loop, mallet atmosphere, video panel data sound, background music track
+- Background track uses Opus/WebM with M4A fallback for Safari
+- Starts muted — user unmutes via the button in the top-right nav
 
 ## 3D models
 
