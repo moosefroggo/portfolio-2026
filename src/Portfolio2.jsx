@@ -1007,7 +1007,7 @@ function VideoScreen({
     return (
         <group position={[3.4, 0.15, 0.9]} rotation={[0, -0.42, 0]}>
             <Html transform occlude={false} style={{ pointerEvents: onOpen ? 'auto' : 'none' }} distanceFactor={3.5}>
-                <div ref={containerRef} onClick={onOpen ?? undefined} onMouseEnter={() => sfx.data05()} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
+                <div ref={containerRef} onClick={onOpen ?? undefined} onMouseEnter={() => { if (!sfx.isMuted()) { const a = getDataAudio(); a.currentTime = 0; a.play().catch(() => {}) } }} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <style>{`
                         @keyframes hud-blink { 0%,100%{opacity:1} 50%{opacity:0} }
                         @keyframes hud-scan  { 0%{top:-15%} 100%{top:115%} }
@@ -2173,6 +2173,15 @@ function getInsectoidAudio() {
         _insectoidAudio.volume = 0.7
     }
     return _insectoidAudio
+}
+
+let _dataAudio = null
+function getDataAudio() {
+    if (!_dataAudio) {
+        _dataAudio = new Audio('/sounds/data.mp3')
+        _dataAudio.volume = 0.6
+    }
+    return _dataAudio
 }
 
 function playMalletWithFX() {
