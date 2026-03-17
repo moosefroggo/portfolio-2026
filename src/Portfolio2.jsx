@@ -3947,7 +3947,7 @@ function DossierOverlay({ scrollRef }) {
    from one to ten.              
   </p>                                                                 
   <p className="about-bio">                             
-I prototype in code and experiment with AI. Some days it's hard to tell which one I'll end up doing.    </p>
+I work best at the edge of design and engineering. If you're building something that needs both, let's talk.    </p>
 
                 <div className="about-divider" />
 
