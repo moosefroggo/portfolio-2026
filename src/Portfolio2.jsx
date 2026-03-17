@@ -2235,15 +2235,15 @@ function playMalletWithFX() {
 const ETHOS_CHECKPOINTS = [
     {
         label: 'CRAFT',
-        text: 'Dev background. Design eye. I design, and then build interfaces.',
+        text: 'Dev background. Design eye. I jump into code when the design calls for it',
     },
     {
         label: 'SYSTEMS',
-        text: 'I have built a team of 10 designers and maintained a cohesive product experience.',
+        text: 'I was the first designer at Educative. Left with a team of ten and a design system across six products.',
     },
     {
         label: 'PURPOSE',
-        text: 'Design is more than a job to me. It is something I enjoy doing and learning every single day',
+        text: 'Most software still feels like it was built by engineers for engineers. That gap is what drives me.',
     },
 ]
 
