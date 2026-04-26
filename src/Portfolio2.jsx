@@ -3222,7 +3222,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                             currentSectionRef.current = i
                             if (!sfx.isMuted()) { const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => { }) }
                             if (!sfx.isMuted() && i === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
-                                _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+                                _ambientPianoAudio = new Audio('/sounds/delosound-tense-suspense-background-music-442839.mp3')
                                 _ambientPianoAudio.loop = true
                                 _ambientPianoAudio.volume = 0.35
                                 sfx.registerAudio(_ambientPianoAudio)
@@ -4399,7 +4399,7 @@ function ResumeHub({ currentSectionRef }) {
         }
         sfx.snap()
         if (!sfx.isMuted() && !_ambientPianoAudio) {
-            _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+            _ambientPianoAudio = new Audio('/sounds/delosound-tense-suspense-background-music-442839.mp3')
             _ambientPianoAudio.loop = true
             _ambientPianoAudio.volume = 0.35
             sfx.registerAudio(_ambientPianoAudio)
@@ -7317,7 +7317,7 @@ export default function Portfolio() {
 
                 // Play ambient piano when entering dossier section
                 if (!sfx.isMuted() && newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
-                    _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+                    _ambientPianoAudio = new Audio('/sounds/delosound-tense-suspense-background-music-442839.mp3')
                     _ambientPianoAudio.loop = true
                     _ambientPianoAudio.volume = 0.35
                     sfx.registerAudio(_ambientPianoAudio)
@@ -7379,7 +7379,7 @@ export default function Portfolio() {
                 if (newSection === prevSection) return
                 if (!sfx.isMuted()) { const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => {}) }
                 if (!sfx.isMuted() && newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
-                    _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+                    _ambientPianoAudio = new Audio('/sounds/delosound-tense-suspense-background-music-442839.mp3')
                     _ambientPianoAudio.loop = true; _ambientPianoAudio.volume = 0.35
                     sfx.registerAudio(_ambientPianoAudio)
                     _ambientPianoAudio.play().catch(() => {})
