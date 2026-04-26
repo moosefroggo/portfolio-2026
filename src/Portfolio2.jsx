@@ -23,6 +23,7 @@ const dragRotState = {
 // ── Hero Intro Shared State (module-level) ────────────────────────────────────
 // Phase: 'loading' | 'pullback' | 'done'
 let loaderFullyHidden = false  // set true when EliteLoader unmounts
+let _canvas3DPointer = false   // true when hovering a clickable 3D object
 const heroIntroState = {
     phase: 'loading',
     morphProgress: 1,             // 1 = fully scattered, 0 = fully formed
@@ -1587,6 +1588,20 @@ function ProjectZoneGrid({ scrollRef }) {
     )
 }
 
+function ClickHint({ color }) {
+    const ref = useRef()
+    useFrame(({ clock }) => {
+        if (!ref.current) return
+        // Slow gentle pulse between 0.18 and 0.32
+        ref.current.material.opacity = 0.18 + Math.sin(clock.elapsedTime * 1.2) * 0.07
+    })
+    return (
+        <Text ref={ref} position={[0, 1.4, 0.2]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} anchorX="center" anchorY="middle" letterSpacing={0.18} color={color} material-toneMapped={false} material-transparent={true} material-opacity={0.22}>
+            click any object to open
+        </Text>
+    )
+}
+
 // ─── Project card — full assembly ─────────────────────────────────────────────
 function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
     const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
@@ -1615,8 +1630,8 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             ref={groupRef}
             position={config.pos}
             rotation={config.rot}
-            onPointerOver={e => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; sfx.piano() }}
-            onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
+            onPointerOver={e => { e.stopPropagation(); setHovered(true); _canvas3DPointer = true; sfx.piano() }}
+            onPointerOut={() => { setHovered(false); _canvas3DPointer = false }}
             onClick={e => { e.stopPropagation(); onOpen?.() }}
         >
             <ProjectPedestal color={config.color} appeared={appeared} />
@@ -1629,6 +1644,9 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             {!isMobile && <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.05} textAlign="center" material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>}
 
             {!isMobile && appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
+
+            {/* Click affordance — always faintly visible, brightens on hover */}
+            {!isMobile && appeared && <ClickHint color={config.color} />}
         </group>
     )
 }
@@ -6741,7 +6759,21 @@ function SpineLogo() {
     )
 }
 
-function ShortcutPanel({ activeProject }) {
+function ShortcutPanel({ activeProject, currentSectionRef }) {
+    const [inProjects, setInProjects] = useState(false)
+
+    useEffect(() => {
+        let rafId
+        const tick = () => {
+            // Sections 1, 2, 3 = NEXUS, Workflows, EXPERIENCE
+            const s = currentSectionRef?.current ?? 0
+            setInProjects(s >= 1 && s <= 3)
+            rafId = requestAnimationFrame(tick)
+        }
+        rafId = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(rafId)
+    }, [currentSectionRef])
+
     const KEY = {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: 36,
@@ -6783,8 +6815,21 @@ function ShortcutPanel({ activeProject }) {
                 <span style={KEY}>►</span>
                 <span style={LABEL}>navigate</span>
             </div>
-            <div style={{ width: 1, height: 20, background: 'rgba(100,140,220,0.15)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{
+                width: inProjects ? 1 : 0,
+                height: 20,
+                background: 'rgba(100,140,220,0.15)',
+                overflow: 'hidden',
+                transition: 'width 0.3s ease, opacity 0.3s ease',
+                opacity: inProjects ? 1 : 0,
+            }} />
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                opacity: inProjects ? 1 : 0,
+                transition: 'opacity 0.3s ease',
+                maxWidth: inProjects ? 200 : 0,
+                overflow: 'hidden',
+            }}>
                 <span style={{ ...KEY, padding: '0 16px' }}>space</span>
                 <span style={LABEL}>open / close</span>
             </div>
@@ -6878,6 +6923,21 @@ function CursorOrb() {
         const update = () => {
             if (orbRef.current) {
                 orbRef.current.style.transform = `translate3d(${mouse.current.x}px, ${mouse.current.y}px, 0)`
+            }
+            // Also expand orb when hovering a clickable 3D canvas object
+            if (_canvas3DPointer !== hoveredRef.current && soulRef.current && coreRef.current) {
+                hoveredRef.current = _canvas3DPointer
+                const s = _canvas3DPointer ? '28px' : '14px'
+                soulRef.current.style.width = s
+                soulRef.current.style.height = s
+                soulRef.current.style.boxShadow = _canvas3DPointer
+                    ? '0 0 18px #ff00ff, 0 0 32px #ff00ff'
+                    : '0 0 5px #ff00ff, 0 0 10px #ff00ff'
+                soulRef.current.style.background = _canvas3DPointer
+                    ? 'rgba(255, 0, 255, 0.35)'
+                    : 'rgba(255, 0, 255, 0.18)'
+                coreRef.current.style.width = _canvas3DPointer ? '5px' : '3px'
+                coreRef.current.style.height = _canvas3DPointer ? '5px' : '3px'
             }
             raf = requestAnimationFrame(update)
         }
@@ -7382,7 +7442,7 @@ export default function Portfolio() {
                 <HeroSubtextCard scrollRef={scrollRef} />
                 <MobileProjectsOverlay scrollRef={scrollRef} onOpenProject={handleOpenProject} />
                 <ScrollHint scrollRef={scrollRef} />
-                <ShortcutPanel activeProject={activeProject} />
+                <ShortcutPanel activeProject={activeProject} currentSectionRef={currentSectionRef} />
                 <BridgeForeshadow scrollRef={scrollRef} />
                 {/* <EthosOverlay scrollRef={scrollRef} /> */}
                 <BioOverlay scrollRef={scrollRef} />
