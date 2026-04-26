@@ -71,16 +71,16 @@ const CAMERA_PATH = [
 // Section snap stops — camera always rests at one of these t-values
 const SECTION_STOPS = [
     0.00,   // hero
-    0.24,   // ethos
+    // 0.24,   // ethos (hidden)
     0.44,   // card 1 park
     0.62,   // card 2 park
     0.96,   // bio patch
     1.10,   // dossier (close-up camera on bust + resume panel)
 ]
 const WHEEL_THRESHOLD = 300  // deltaY pixels to trigger a section advance
-const SECTION_LABELS = ['HERO', 'ETHOS', 'NEXUS', 'Workflows', 'EXPERIENCE', 'DOSSIER']
+const SECTION_LABELS = ['HERO', /*'ETHOS',*/ 'NEXUS', 'Workflows', 'EXPERIENCE', 'DOSSIER']
 // Visual positions in the nav bar (independent of scroll stops)
-const SECTION_BAR_POSITIONS = [0.00, 0.13, 0.30, 0.47, 0.67, 1.00]
+const SECTION_BAR_POSITIONS = [0.00, /*0.13,*/ 0.30, 0.47, 0.67, 1.00]
 
 // Shared flag: true when mouse is over an HTML UI element (not the canvas)
 const uiHoveredRef = { current: false }
@@ -349,9 +349,10 @@ function CameraController({ scrollRef }) {
     useFrame((state, delta) => {
         let isIntroFinished = heroIntroState.phase === 'done'
 
-        // Shared narrow compensation values (used by both intro end and scroll logic)
+        // Shared compensation values for both narrow and ultrawide screens
         const narrowFactor = Math.max(0, 1.6 - camera.aspect)
-        const aspectBoost = narrowFactor * 45
+        const wideFactor  = Math.max(0, camera.aspect - 1.78)  // kicks in past 16:9
+        const aspectBoost = narrowFactor * 45 - wideFactor * 18  // narrow → open FOV, wide → close it
         const narrowZPullback = narrowFactor * 4
 
         let targetFov = 70
@@ -2279,6 +2280,198 @@ function EthosCheckpoint({ checkpoint, active }) {
     )
 }
 
+// ─── Bridge Scene Overlay — dims the 3D scene during bridge transition ────────
+function BridgeSceneOverlay({ scrollRef }) {
+    const overlayRef = useRef()
+    const prevT = useRef(0)
+
+    useEffect(() => {
+        let raf
+        const tick = () => {
+            const t = scrollRef.current ?? 0
+            const scrollingForward = t >= prevT.current
+            prevT.current = t
+
+            const progress = (t - BRIDGE_ENTER) / (BRIDGE_EXIT - BRIDGE_ENTER)
+
+            if (overlayRef.current) {
+                if (progress <= 0 || progress >= 1 || !scrollingForward) {
+                    overlayRef.current.style.opacity = 0
+                } else {
+                    const PEAK = 0.45
+                    let op
+                    if (progress <= PEAK) {
+                        const p = progress / PEAK
+                        // ease in quadratic
+                        op = (p * p) * 1.0
+                    } else {
+                        const p = (progress - PEAK) / (1 - PEAK)
+                        // ease out quadratic
+                        op = (1 - p * p) * 1.0
+                    }
+                    overlayRef.current.style.opacity = op
+                }
+            }
+            raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [scrollRef])
+
+    return (
+        <div
+            ref={overlayRef}
+            style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'black',
+                zIndex: 85,
+                pointerEvents: 'none',
+                opacity: 0,
+            }}
+        />
+    )
+}
+
+// Inject bridge flicker keyframe once
+if (typeof document !== 'undefined' && !document.getElementById('bridge-flicker-style')) {
+    const s = document.createElement('style')
+    s.id = 'bridge-flicker-style'
+    s.textContent = `@keyframes bridge-flicker {
+        0%   { opacity: 1; }
+        20%  { opacity: 0.35; }
+        35%  { opacity: 0.85; }
+        55%  { opacity: 0.2; }
+        70%  { opacity: 0.7; }
+        85%  { opacity: 0.45; }
+        100% { opacity: 1; }
+    }`
+    document.head.appendChild(s)
+}
+
+// ─── Bridge Foreshadow — sweeps left→center→right during hero→work transition ──
+// t=0.24: enters from left  |  t=0.30: readable at center  |  t=0.38: exits right
+const BRIDGE_ENTER = 0.22
+const BRIDGE_EXIT  = 0.44
+
+function BridgeForeshadow({ scrollRef }) {
+    const wrapperRef = useRef()
+    const prevT = useRef(0)
+    const flickerFired = useRef(false)
+    const flickerActive = useRef(false)
+
+    useEffect(() => {
+        let raf
+        const tick = () => {
+            const t = scrollRef.current ?? 0
+            const scrollingForward = t >= prevT.current
+            prevT.current = t
+
+            const progress = (t - BRIDGE_ENTER) / (BRIDGE_EXIT - BRIDGE_ENTER) // 0→1
+            if (progress <= 0 || progress >= 1 || !scrollingForward) {
+                if (wrapperRef.current) wrapperRef.current.style.opacity = 0
+                if (progress <= 0) flickerFired.current = false
+                raf = requestAnimationFrame(tick)
+                return
+            }
+            const PEAK = 0.50
+            let tx, tz, op
+            if (progress <= PEAK) {
+                const p = progress / PEAK
+                // Sine ease-out: sweeps in fast, derivative → 0 at center (true near-halt)
+                const ease = Math.sin(p * Math.PI / 2)
+                tx = 600 * (1 - ease)
+                tz = -320 * (1 - ease)
+                op = Math.min(1, p * 2)
+            } else {
+                const p = (progress - PEAK) / (1 - PEAK)
+                // Quintic ease-in: derivative = 0 at center, then explosive acceleration
+                const ease = Math.pow(p, 5)
+                tx = -780 * ease
+                tz = -320 * ease
+                op = Math.max(0, 1 - p * 1.4)
+            }
+
+            // Flicker as text approaches center (~progress 0.38)
+            if (progress > 0.38 && !flickerFired.current && wrapperRef.current) {
+                flickerFired.current = true
+                flickerActive.current = true
+                wrapperRef.current.style.animation = 'bridge-flicker 0.35s ease-in-out forwards'
+                setTimeout(() => {
+                    flickerActive.current = false
+                    if (wrapperRef.current) wrapperRef.current.style.animation = 'none'
+                }, 360)
+            }
+
+            if (wrapperRef.current) {
+                if (!flickerActive.current) wrapperRef.current.style.opacity = op
+                wrapperRef.current.style.transform = `perspective(900px) translateX(calc(-50% + ${tx}px)) translateZ(${tz}px)`
+            }
+            raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [scrollRef])
+
+    return (
+        <div
+            ref={wrapperRef}
+            style={{
+                position: 'fixed',
+                top: '42%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 90,
+                pointerEvents: 'none',
+                opacity: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 18,
+            }}
+        >
+            <span style={{
+                fontFamily: "'RocketCommandExpand', sans-serif",
+                fontSize: 'clamp(48px, 9vw, 96px)',
+                letterSpacing: '0.12em',
+                color: 'rgba(220,235,255,1)',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+                textShadow: [
+                    // extrusion layers — dark navy going bottom-right
+                    '1px 1px 0px rgba(20,50,160,0.95)',
+                    '2px 2px 0px rgba(15,40,140,0.85)',
+                    '3px 3px 0px rgba(10,30,120,0.75)',
+                    '4px 4px 0px rgba(8,22,100,0.65)',
+                    '5px 5px 0px rgba(5,15,80,0.55)',
+                    '6px 6px 0px rgba(3,10,60,0.45)',
+                    // chromatic aberration
+                    '-3px 0 rgba(255,60,60,0.7)',
+                    '3px 0 rgba(40,210,255,0.7)',
+                    // glow
+                    '0 0 30px rgba(120,180,255,0.8)',
+                    '0 0 70px rgba(80,140,255,0.4)',
+                ].join(', '),
+            }}>
+                my work
+            </span>
+            <span style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: 'clamp(48px, 9vw, 96px)',
+                color: 'rgba(180,210,255,0.6)',
+                lineHeight: 1,
+                textShadow: [
+                    '1px 1px 0px rgba(20,50,160,0.9)',
+                    '2px 2px 0px rgba(10,30,120,0.7)',
+                    '3px 3px 0px rgba(5,15,80,0.5)',
+                    '-3px 0 rgba(255,60,60,0.6)',
+                    '3px 0 rgba(40,210,255,0.6)',
+                    '0 0 30px rgba(120,180,255,0.6)',
+                ].join(', '),
+            }}>→</span>
+        </div>
+    )
+}
+
 // ─── Ethos Overlay (fixed HTML outside Canvas) ───────────────────────────────
 // Bullet 1 fires on scroll entry. Bullets 2 & 3 auto-sequence via timers.
 function EthosOverlay({ scrollRef }) {
@@ -2815,39 +3008,93 @@ function RaveAfterglowLights({ active }) {
 }
 
 function BioGrid({ active }) {
-    const groupRef = useRef()
-    const matsRef = useRef([])
+    const meshRef = useRef()
+    const opacityRef = useRef(0)
 
-    const lines = useMemo(() => {
-        const pts = []
-        const size = 12, step = 2
-        for (let i = -size; i <= size; i += step) {
-            pts.push({ p1: [i, -4, -size], p2: [i, -4, size] })
-            pts.push({ p1: [-size, -4, i], p2: [size, -4, i] })
+    useFrame((state, delta) => {
+        if (!meshRef.current) return
+
+        const time = state.clock.elapsedTime
+        const geo = meshRef.current.geometry
+        if (!geo) return
+
+        // Smooth opacity fade in/out
+        const targetOp = active ? 0.025 : 0
+        opacityRef.current += (targetOp - opacityRef.current) * Math.min(1, delta * 2.5)
+        meshRef.current.material.opacity = opacityRef.current
+
+        const posAttr = geo.getAttribute('position')
+        if (!posAttr) return
+
+        // Initialize color attribute once if missing (same pattern as AnimatedGrid)
+        if (!geo.getAttribute('color')) {
+            const colors = new Float32Array(posAttr.array.length)
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
         }
-        return pts
-    }, [])
+        const colAttr = geo.getAttribute('color')
 
-    useFrame((state) => {
-        if (!groupRef.current || !active) return
-        if (matsRef.current.length === 0)
-            groupRef.current.traverse(child => { if (child.material) matsRef.current.push(child.material) })
-        const baseOpacity = 0.08 + Math.sin(state.clock.elapsedTime * 0.8) * 0.03
-        matsRef.current.forEach(m => { m.opacity = baseOpacity })
+        if (!posAttr.original) posAttr.original = posAttr.array.slice()
+        const orig = posAttr.original
+        const pos  = posAttr.array
+        const col  = colAttr.array
+
+        for (let i = 0; i < orig.length; i += 3) {
+            const x = orig[i]       // width axis
+            const y = orig[i + 1]   // depth axis: +y in plane space = toward horizon
+
+            // Multi-directional waves — primary, cross, two diagonals
+            const wave1 = Math.sin(y * 0.28 - time * 1.8)  * 0.10   // toward horizon
+            const wave2 = Math.sin(x * 0.22 - time * 1.2)  * 0.07   // left → right
+            const wave3 = Math.sin(x * 0.15 + time * 0.85) * 0.05   // right → left (slower)
+            const wave4 = Math.sin((x + y) * 0.18 - time * 1.3) * 0.06  // diagonal ↗
+            const wave5 = Math.sin((x - y) * 0.14 + time * 1.05) * 0.04  // diagonal ↘
+            const wave6 = Math.sin(y * 0.55 - time * 2.4)  * 0.03   // fast ripple
+
+            const totalDisp = wave1 + wave2 + wave3 + wave4 + wave5 + wave6
+            pos[i + 2] = totalDisp
+
+            // Collision detection — constructive interference creates bright spikes
+            const collision = Math.max(0, totalDisp)             // only positive peaks
+            const spike     = Math.pow(collision * 5, 3.0)       // nonlinear amplification
+
+            // Base brightness from dominant wave directions
+            const dist  = Math.sqrt(x * x + y * y)
+            const crest = (Math.sin(y * 0.28 - time * 1.8)       * 0.5 + 0.5) * 0.5
+                        + (Math.sin((x + y) * 0.18 - time * 1.3) * 0.5 + 0.5) * 0.3
+                        + (Math.sin(x * 0.22 - time * 1.2)        * 0.5 + 0.5) * 0.2
+            const fade  = Math.max(0, 1 - dist / 80)
+            const b     = (Math.pow(crest, 1.6) + spike) * fade
+
+            // Collision shifts color toward golden-silver at peaks
+            const boost  = Math.min(1, spike * 1.5)
+            col[i]     = b * 0.12 + boost * 0.92   // R — gold
+            col[i + 1] = b * 0.40 + boost * 0.78   // G — silver-gold
+            col[i + 2] = b * 1.00 + boost * 0.28   // B — warm, not blue
+        }
+
+        posAttr.needsUpdate = true
+        colAttr.needsUpdate = true
     })
 
-    if (!active) return null
     return (
-        <group ref={groupRef}>
-            {lines.map((l, i) => <Line key={i} points={[l.p1, l.p2]} color="#2244aa" lineWidth={0.5} transparent opacity={0.08} toneMapped={false} />)}
-        </group>
+        <mesh ref={meshRef} rotation={[-Math.PI / 2 + 0.72, 0, 0]} position={[0, -5, -18]}>
+            <planeGeometry args={[200, 400, 80, 180]} />
+            <meshBasicMaterial
+                vertexColors
+                wireframe
+                transparent
+                opacity={0}
+                depthWrite={false}
+                fog={false}
+            />
+        </mesh>
     )
 }
 
 // ScrollBar shows all sections except the last (DOSSIER lives outside the progress arc)
 const SCROLLBAR_STOPS = SECTION_STOPS
 const SCROLLBAR_LABELS = SECTION_LABELS
-const SCROLLBAR_VISUAL_PERCENTS = [0, 17, 34, 53, 74, 100]
+const SCROLLBAR_VISUAL_PERCENTS = [0, 25, 50, 74, 100]
 const SCROLLBAR_HIDE_T = SECTION_STOPS[SECTION_STOPS.length - 1] + 0.1
 
 function ScrollBar({ scrollRef, currentSectionRef }) {
@@ -4106,16 +4353,7 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible, is
 
             <pointLight color={config.color} intensity={isActive ? 1.8 : (hovered ? 0.8 : 0.3)} distance={3} />
 
-            {/* Label — to the left of the jack */}
-            {!isMobile && <Text
-                position={[-0.7, 0, 0.5]}
-                font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
-                fontSize={0.2} letterSpacing={0.08} anchorX="right" anchorY="middle"
-                color={hovered || isActive ? config.color : '#2a3d55'}
-                material-toneMapped={false}
-                material-depthTest={false}
-                renderOrder={5}
-            >{config.title}</Text>}
+            {/* Label removed — replaced by hub title */}
 
             {/* Active ring highlight */}
             {isActive && (
@@ -4555,6 +4793,19 @@ function ModularResumePatch({ visible, currentSectionRef }) {
 
             <group position={hubPos}>
                 <ResumeHub currentSectionRef={currentSectionRef} />
+                <Text
+                    position={[0, 1.5, 0]}
+                    font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
+                    fontSize={0.28}
+                    letterSpacing={0.14}
+                    anchorX="center"
+                    anchorY="middle"
+                    color="#b8d6ff"
+                    material-toneMapped={false}
+                    material-transparent={true}
+                    material-opacity={visible ? 1 : 0}
+                    renderOrder={5}
+                >EXPERIENCE</Text>
             </group>
             <group position={cubePos}>
                 <LockedCube
@@ -5751,6 +6002,41 @@ function PostProcessingEffects() {
     )
 }
 
+// ─── Bridge Curve Line — decorative arc visible during hero→project transition ─
+// Camera at bridge: pos [80, 0.5, 12] looking at [80, 0, 0] — so x stays near 80,
+// y and z carry the shape so it reads as a ribbon plunging into depth.
+const BRIDGE_CURVE_POINTS = [
+    new THREE.Vector3(80,   3,   7),
+    new THREE.Vector3(79,   1,   4),
+    new THREE.Vector3(80,   0,   1),
+    new THREE.Vector3(81,  -2,  -2),
+    new THREE.Vector3(80,  -1,  -6),
+]
+const _bridgeCurve = new THREE.CatmullRomCurve3(BRIDGE_CURVE_POINTS, false, 'catmullrom', 0.5)
+const BRIDGE_LINE_PTS = _bridgeCurve.getPoints(80).map(p => [p.x, p.y, p.z])
+
+function BridgeCurveLine({ scrollRef }) {
+    const lineRef = useRef()
+    useFrame(() => {
+        if (!lineRef.current) return
+        const t = scrollRef.current ?? 0
+        const fadeIn  = Math.min(1, Math.max(0, (t - 0.22) / 0.06))
+        const fadeOut = Math.min(1, Math.max(0, (0.42 - t) / 0.06))
+        const op = Math.min(fadeIn, fadeOut)
+        lineRef.current.material.opacity = op * 0.85
+    })
+    return (
+        <Line
+            ref={lineRef}
+            points={BRIDGE_LINE_PTS}
+            color="#b8d6ff"
+            lineWidth={2}
+            transparent
+            opacity={0}
+        />
+    )
+}
+
 function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
     const isMobile = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
     return (
@@ -5774,7 +6060,7 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <InteractiveParticleField count={300} />
             <StarField />
             <SpineHeroSection />
-            <EthosSection scrollRef={scrollRef} />
+            {/* <EthosSection scrollRef={scrollRef} /> */}
             <ProjectsSection scrollRef={scrollRef} onOpenProject={onOpenProject} />
             <BioSection scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
@@ -5808,25 +6094,74 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
 // ═════════════════════════════════════════════════════════════════════════════
 // LOADING SCREEN
 // ═════════════════════════════════════════════════════════════════════════════
+const LOADER_QUIPS = [
+    'switching from Opus 4.7 to 4.6...',
+    'getting rid of hallucinations...',
+    'cooking the website...',
+    'arguing with the GPU...',
+    'hiding the bugs...',
+    'asking Claude to fix one more thing...',
+    'compiling good taste...',
+    'untangling the cogs...',
+    'bribing the render pipeline...',
+    'making it look easy...',
+    'pretending this is intentional...',
+    'converting coffee to pixels...',
+]
+
+function CyclingLoaderText() {
+    const [index, setIndex] = useState(0)
+    const [visible, setVisible] = useState(true)
+
+    useEffect(() => {
+        const cycle = setInterval(() => {
+            setVisible(false)
+            setTimeout(() => {
+                setIndex(i => (i + 1) % LOADER_QUIPS.length)
+                setVisible(true)
+            }, 300)
+        }, 2000)
+        return () => clearInterval(cycle)
+    }, [])
+
+    return (
+        <span style={{ transition: 'opacity 0.3s ease', opacity: visible ? 1 : 0 }}>
+            {LOADER_QUIPS[index]}
+        </span>
+    )
+}
+
+
 function EliteLoader() {
     const { progress, active } = useProgress()
     const [isFading, setIsFading] = useState(false)
     const [isHidden, setIsHidden] = useState(false)
     const [canEnter, setCanEnter] = useState(false)
+    const [exitAnim, setExitAnim] = useState(false)
     const progressTargetRef = useRef(0)
     const displayProgressRef = useRef(0)
     const progressTextRef = useRef(null)
+    const loaderDivRef = useRef(null)
+    const cornerTLRef = useRef(null)
+    const cornerTRRef = useRef(null)
+    const cornerBLRef = useRef(null)
+    const cornerBRRef = useRef(null)
+    const cornerLerpRef = useRef(0.35)
 
-    // Keep target ref in sync with actual progress (no re-render)
+    // Keep target ref in sync with actual progress — never let it go backwards
     useEffect(() => {
-        progressTargetRef.current = progress
+        progressTargetRef.current = Math.max(progressTargetRef.current, progress)
     }, [progress])
 
-    // Single persistent RAF — lerp toward target, write directly to DOM
+    // Single persistent RAF — lerp progress counter + corner positions toward target
     useEffect(() => {
         let rafId
+        const hw = window.innerWidth / 2
+        const hh = window.innerHeight / 2
+        const inset = Math.min(40, window.innerWidth * 0.04)
         const tick = () => {
             const target = progressTargetRef.current
+            // Progress text
             const cur = displayProgressRef.current
             const diff = target - cur
             const next = Math.abs(diff) < 0.05 ? target : cur + diff * 0.08
@@ -5839,6 +6174,18 @@ function EliteLoader() {
                         : next.toFixed(2)
                 progressTextRef.current.textContent = `${formatted} %`
             }
+            // Corner bezels — lerp from center (p=0) to edges (p=1) as progress hits 100
+            const targetP = target / 100
+            const curP = cornerLerpRef.current
+            const diffP = targetP - curP
+            cornerLerpRef.current = Math.abs(diffP) < 0.001 ? targetP : curP + diffP * 0.06
+            const p = cornerLerpRef.current
+            const tx = ((hw - inset) * (1 - p)).toFixed(1)
+            const ty = ((hh - inset) * (1 - p)).toFixed(1)
+            if (cornerTLRef.current) cornerTLRef.current.style.transform = `translate(${tx}px, ${ty}px)`
+            if (cornerTRRef.current) cornerTRRef.current.style.transform = `translate(-${tx}px, ${ty}px)`
+            if (cornerBLRef.current) cornerBLRef.current.style.transform = `translate(${tx}px, -${ty}px)`
+            if (cornerBRRef.current) cornerBRRef.current.style.transform = `translate(-${tx}px, -${ty}px)`
             rafId = requestAnimationFrame(tick)
         }
         rafId = requestAnimationFrame(tick)
@@ -5852,51 +6199,42 @@ function EliteLoader() {
         }
     }, [progress, active, canEnter])
 
+    // Enter key shortcut
+    useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Enter' && canEnter) handleEnter() }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [canEnter])
+
     const handleEnter = () => {
         if (!sfx.isMuted()) { const click = getDigitalClickAudio(); click.currentTime = 0; click.play().catch(() => {}) }
-        setIsFading(true)
         heroIntroState.hasEntered = true
-        setTimeout(() => {
-            setIsHidden(true)
-            loaderFullyHidden = true
-        }, 1200)
+        setExitAnim(true)
+        setTimeout(() => { setIsFading(true) }, 150)
+        setTimeout(() => { setIsHidden(true); loaderFullyHidden = true }, 650)
     }
 
     if (isHidden) return null
 
-    const letters = (canEnter ? "SUCCESS" : "LOADING").split('')
+    const PHOTO_CARDS = [
+        'https://picsum.photos/seed/mstf1/400/300',
+        'https://picsum.photos/seed/mstf2/400/300',
+        'https://picsum.photos/seed/mstf3/400/300',
+        'https://picsum.photos/seed/mstf4/400/300',
+        'https://picsum.photos/seed/mstf5/400/300',
+        'https://picsum.photos/seed/mstf6/400/300',
+        'https://picsum.photos/seed/mstf7/400/300',
+        'https://picsum.photos/seed/mstf8/400/300',
+    ]
 
     return (
-        <div style={{
+        <div ref={loaderDivRef} style={{
             position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
             backgroundColor: '#02040a', zIndex: 9999, overflow: 'hidden',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            opacity: isFading ? 0 : 1, transition: 'opacity 1s cubic-bezier(0.87, 0, 0.13, 1)',
+            opacity: isFading ? 0 : 1, transition: 'opacity 0.5s ease',
             pointerEvents: (canEnter && !isFading) ? 'all' : 'none', fontFamily: 'var(--font-mono)', color: '#8899cc'
         }}>
             <style>{`
-                @keyframes kinetic-wave {
-                    0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.35; }
-                    50% { transform: translate3d(0, -10px, 0); opacity: 1; }
-                }
-                .kinetic-letter {
-                    display: inline-block;
-                    font-size: clamp(32px, 10vw, 64px);
-                    font-weight: 200;
-                    letter-spacing: 0.2em;
-                    animation: kinetic-wave 2s ease-in-out infinite;
-                    will-change: transform, opacity;
-                    color: #8899cc;
-                    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
-                }
-                .loader-bg-grid {
-                    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                    background-image: 
-                        linear-gradient(rgba(136, 153, 204, 0.05) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(136, 153, 204, 0.05) 1px, transparent 1px);
-                    background-size: 40px 40px;
-                    z-index: -2;
-                }
                 @keyframes sweep {
                     0% { transform: translate3d(0, -10vh, 0); }
                     100% { transform: translate3d(0, 110vh, 0); }
@@ -5912,81 +6250,171 @@ function EliteLoader() {
                     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
                     width: 300px; height: 300px; border-radius: 50%;
                     background: radial-gradient(circle, rgba(255, 0, 255, 0.08) 0%, transparent 70%);
-                    z-index: -1;
-                    filter: blur(20px);
+                    z-index: -1; filter: blur(20px);
                 }
-                .loader-corner-tl { position: absolute; top: clamp(20px, 4vw, 40px); left: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
-                .loader-corner-tr { position: absolute; top: clamp(20px, 4vw, 40px); right: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-top: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
-                .loader-corner-bl { position: absolute; bottom: clamp(20px, 4vw, 40px); left: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-left: 2px solid rgba(136, 153, 204, 0.3); }
-                .loader-corner-br { position: absolute; bottom: clamp(20px, 4vw, 40px); right: clamp(20px, 4vw, 40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136, 153, 204, 0.3); border-right: 2px solid rgba(136, 153, 204, 0.3); }
+                .loader-corner-tl { position: absolute; top: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(136,153,204,0.3); border-left: 2px solid rgba(136,153,204,0.3); }
+                .loader-corner-tr { position: absolute; top: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(136,153,204,0.3); border-right: 2px solid rgba(136,153,204,0.3); }
+                .loader-corner-bl { position: absolute; bottom: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136,153,204,0.3); border-left: 2px solid rgba(136,153,204,0.3); }
+                .loader-corner-br { position: absolute; bottom: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136,153,204,0.3); border-right: 2px solid rgba(136,153,204,0.3); }
+                @property --ba { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+                @keyframes border-spin { to { --ba: 360deg; } }
+                .loader-btn-wrap {
+                    position: absolute;
+                    top: 50%; left: 50%;
+                    transform: translate(-50%, -50%);
+                    padding: 1px;
+                }
+                .loader-btn-wrap::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    padding: 1px;
+                    background: conic-gradient(from var(--ba), transparent 0% 55%, rgba(140,160,210,0.25) 65%, rgba(210,220,240,0.8) 72%, rgba(255,255,255,1) 75%, rgba(210,220,240,0.8) 78%, rgba(140,160,210,0.25) 85%, transparent 95% 100%);
+                    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                    -webkit-mask-composite: xor;
+                    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                    mask-composite: exclude;
+                    animation: border-spin 2.5s linear infinite;
+                }
+                .loader-enter-btn {
+                    display: block;
+                    border: none;
+                    transition: background 0.35s, backdrop-filter 0.35s;
+                }
+                /* Solid silver border — fades in on hover, covering the shimmer */
+                .loader-btn-wrap::after {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    padding: 1px;
+                    background: rgba(200, 215, 240, 0.8);
+                    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                    -webkit-mask-composite: xor;
+                    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                    mask-composite: exclude;
+                    opacity: 0;
+                    transition: opacity 0.35s;
+                    pointer-events: none;
+                }
+                .loader-btn-wrap:hover::after { opacity: 1; }
+                .loader-btn-wrap:hover::before { opacity: 0; transition: opacity 0.35s; }
+                .loader-btn-wrap:hover .loader-enter-btn {
+                    background: rgba(180, 200, 240, 0.07) !important;
+                    backdrop-filter: blur(3px);
+                    -webkit-backdrop-filter: blur(3px);
+                }
             `}</style>
 
-            <div className="loader-bg-grid" />
             <div className="loader-sweep" style={{ animationPlayState: canEnter ? 'paused' : 'running', opacity: canEnter ? 0 : 1, transition: 'opacity 0.6s' }} />
             <div className="loader-orb" />
+            <div ref={cornerTLRef} className="loader-corner-tl" />
+            <div ref={cornerTRRef} className="loader-corner-tr" />
+            <div ref={cornerBLRef} className="loader-corner-bl" />
+            <div ref={cornerBRRef} className="loader-corner-br" />
 
-            <div className="loader-corner-tl" />
-            <div className="loader-corner-tr" />
-            <div className="loader-corner-bl" />
-            <div className="loader-corner-br" />
-
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-                {letters.map((char, i) => (
-                    <span key={i} className="kinetic-letter" style={{ animationDelay: `${i * 0.15}s` }}>
-                        {char}
-                    </span>
-                ))}
-            </div>
-
+            {/* Loading text — dead center, fades out before button appears */}
             <div style={{
-                fontSize: 'clamp(9px, 2vw, 11px)', letterSpacing: '0.3em', position: 'relative', zIndex: 1, transition: 'all 0.6s',
-                opacity: canEnter ? 1 : 0.5,
-                color: canEnter ? '#00e5ff' : '#8899cc',
-                textShadow: canEnter ? '0 0 12px rgba(0, 229, 255, 0.8), 0 0 24px rgba(0, 229, 255, 0.4)' : 'none',
-                textAlign: 'center', padding: '0 16px',
+                position: 'absolute',
+                top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+                opacity: canEnter ? 0 : 1,
+                transition: 'opacity 0.3s',
+                pointerEvents: 'none',
+                zIndex: 2,
+                whiteSpace: 'nowrap',
             }}>
-                {canEnter ? 'SYS // SYSTEMS READY // AWAITING ENTRY' : 'SYS // INITIALIZING GRAPHICS'}
+                <div ref={progressTextRef} style={{ color: '#ffffff', fontSize: '20px', fontWeight: 200, letterSpacing: '0.2em', fontFamily: 'var(--font-mono)' }}>
+                    00.00 %
+                </div>
+                <div style={{ fontSize: '10px', letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+                    <CyclingLoaderText />
+                </div>
             </div>
 
-            <div ref={progressTextRef} style={{ marginTop: '30px', color: '#ffffff', fontSize: '18px', fontWeight: 200, letterSpacing: '0.15em', opacity: canEnter ? 0 : 1, transition: 'opacity 0.5s' }}>
-                00.00 %
+            {/* Strip + button — centered */}
+            <div style={{
+                position: 'absolute',
+                top: '50%', left: 0, right: 0,
+                transform: exitAnim ? 'translateY(calc(-50% - 16px))' : 'translateY(-50%)',
+                transition: 'transform 0.45s cubic-bezier(0.4, 0, 1, 1)',
+                display: 'flex', justifyContent: 'center',
+            }}>
+                {/* Photo cards — commented out until real photos are ready
+                <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    display: 'flex', gap: '10px', padding: '0 10px',
+                    maskImage: 'linear-gradient(to right, transparent 0%, black 12%, transparent 40%, transparent 60%, black 88%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 12%, transparent 40%, transparent 60%, black 88%, transparent 100%)',
+                    opacity: 0.55,
+                }}>
+                    {PHOTO_CARDS.map((src, i) => (
+                        <img key={i} src={src} style={{
+                            width: '160px', height: '110px',
+                            flexShrink: 0, objectFit: 'cover',
+                            borderRadius: '4px',
+                            filter: 'grayscale(40%) brightness(0.65)',
+                        }} />
+                    ))}
+                </div>
+                */}
+
+                {/* Button */}
+                <div className="loader-btn-wrap" style={{
+                    opacity: exitAnim ? 0 : canEnter ? 1 : 0,
+                    transition: 'opacity 0.5s cubic-bezier(0.23, 1, 0.32, 1)',
+                    pointerEvents: canEnter && !exitAnim ? 'all' : 'none',
+                }}>
+                    <button
+                        className="loader-enter-btn"
+                        onClick={canEnter ? handleEnter : undefined}
+                        onPointerOver={() => canEnter && sfx.piano()}
+                        style={{
+                            background: 'transparent',
+                            color: '#ffffff',
+                            padding: '12px 40px',
+                            fontSize: '14px',
+                            letterSpacing: '0.6em',
+                            cursor: 'pointer',
+                            outline: 'none',
+                            textIndent: '0.6em',
+                            whiteSpace: 'nowrap',
+                            transition: 'background 0.3s',
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                        }}
+                    >
+                        MEET MUSTAFA
+                        <span style={{ fontSize: '16px', letterSpacing: 0, opacity: 0.7 }}>→</span>
+                    </button>
+                </div>
             </div>
 
-            <button
-                    onClick={canEnter ? handleEnter : undefined}
-                    onPointerOver={() => canEnter && sfx.piano()}
-                    style={{
-                        marginTop: '40px',
-                        background: 'transparent',
-                        border: '1px solid rgba(136, 153, 204, 0.4)',
-                        color: '#ffffff',
-                        padding: '12px 40px',
-                        fontSize: '14px',
-                        letterSpacing: '0.6em',
-                        cursor: canEnter ? 'pointer' : 'default',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)',
-                        outline: 'none',
-                        textIndent: '0.6em',
-                        opacity: canEnter ? 1 : 0,
-                        pointerEvents: canEnter ? 'auto' : 'none',
-                    }}
-                    onMouseEnter={e => {
-                        e.target.style.background = 'rgba(136, 153, 204, 0.1)'
-                        e.target.style.borderColor = 'rgba(136, 153, 204, 0.8)'
-                        e.target.style.boxShadow = '0 0 20px rgba(136, 153, 204, 0.2)'
-                        e.target.style.transform = 'translateY(-2px)'
-                    }}
-                    onMouseLeave={e => {
-                        e.target.style.background = 'transparent'
-                        e.target.style.borderColor = 'rgba(136, 153, 204, 0.4)'
-                        e.target.style.boxShadow = 'none'
-                        e.target.style.transform = 'translateY(0)'
-                    }}
-                >
-                    ENTER
-                </button>
+            {/* Enter key hint — bottom left */}
+            <div style={{
+                position: 'absolute',
+                bottom: 'clamp(20px, 4vw, 40px)',
+                left: 0, right: 0,
+                justifyContent: 'center',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                opacity: exitAnim ? 0 : canEnter ? 1 : 0,
+                transition: 'opacity 0.5s',
+                pointerEvents: 'none',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '10px', letterSpacing: '0.15em',
+                color: 'rgba(255,255,255,0.25)',
+            }}>
+                <span>PRESS</span>
+                <kbd style={{
+                    color: 'rgba(255,255,255,0.4)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '3px',
+                    padding: '2px 6px',
+                    fontSize: '12px',
+                    lineHeight: 1,
+                    fontFamily: 'inherit',
+                }}>↵</kbd>
+                <span>TO ENTER</span>
+            </div>
         </div>
     )
 }
@@ -6313,6 +6741,57 @@ function SpineLogo() {
     )
 }
 
+function ShortcutPanel({ activeProject }) {
+    const KEY = {
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: 36,
+        background: 'rgba(10,12,30,0.45)',
+        border: '1px solid rgba(100,140,220,0.12)',
+        backdropFilter: 'blur(8px)',
+        borderRadius: 6,
+        color: 'rgba(136,153,204,0.85)',
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 13,
+        lineHeight: 1,
+        padding: '0 10px',
+        whiteSpace: 'nowrap',
+    }
+    const LABEL = {
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 11,
+        color: 'rgba(136,153,204,0.45)',
+        letterSpacing: '0.06em',
+        whiteSpace: 'nowrap',
+    }
+
+    return (
+        <div style={{
+            position: 'fixed',
+            bottom: '28px',
+            left: 'clamp(16px, 4vw, 40px)',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            height: 36,
+            gap: 12,
+            opacity: activeProject ? 0 : 1,
+            transition: 'opacity 0.3s ease',
+            pointerEvents: 'none',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={KEY}>◄</span>
+                <span style={KEY}>►</span>
+                <span style={LABEL}>navigate</span>
+            </div>
+            <div style={{ width: 1, height: 20, background: 'rgba(100,140,220,0.15)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ ...KEY, padding: '0 16px' }}>space</span>
+                <span style={LABEL}>open / close</span>
+            </div>
+        </div>
+    )
+}
+
 function MuteButton() {
     const { muted, toggleMute } = useSFX()
     return (
@@ -6321,7 +6800,7 @@ function MuteButton() {
             title={muted ? 'Unmute sound' : 'Mute sound'}
             style={{
                 position: 'fixed', bottom: '28px', right: 'clamp(16px, 4vw, 40px)', zIndex: 200,
-                background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.2)',
+                background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.12)',
                 backdropFilter: 'blur(8px)', borderRadius: '50%',
                 width: '36px', height: '36px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -6591,8 +7070,9 @@ function MobileProjectsOverlay({ scrollRef, onOpenProject }) {
 
 function HeroSubtextCard({ scrollRef }) {
     const [show, setShow] = useState(false)
-    const [inHero, setInHero] = useState(true)
-    const inHeroRef = useRef(true)
+    const topRef = useRef(null)
+    const bottomRef = useRef(null)
+    const showProgressRef = useRef(0)
 
     useEffect(() => {
         const id = setInterval(() => {
@@ -6604,56 +7084,72 @@ function HeroSubtextCard({ scrollRef }) {
         return () => { clearInterval(id) }
     }, [])
 
+    // Fully RAF-driven: appear lerp × scroll exit parallax
     useEffect(() => {
+        if (!show) return
         let rafId
+        const EXIT = 0.14 // scroll range over which they fully exit
         const tick = () => {
-            const next = (scrollRef.current ?? 0) < 0.08
-            if (next !== inHeroRef.current) { inHeroRef.current = next; setInHero(next) }
+            const t = scrollRef.current ?? 0
+            // Appear: lerp 0→1 on first frames
+            showProgressRef.current = Math.min(1, showProgressRef.current + 0.018)
+            const appear = showProgressRef.current
+            // Exit: starts immediately at any scroll, done by EXIT
+            const exit = Math.min(1, t / EXIT)
+            const opacity = appear * (1 - exit)
+            const topY = -70 * exit
+            const botY = 70 * exit
+
+            if (topRef.current) {
+                topRef.current.style.opacity = opacity
+                topRef.current.style.transform = `translateX(-50%) translateY(${topY}px)`
+            }
+            if (bottomRef.current) {
+                bottomRef.current.style.opacity = opacity
+                bottomRef.current.style.transform = window.innerWidth > 768
+                    ? `translateX(-50%) translateY(${botY}px)`
+                    : `translateY(${botY}px)`
+            }
             rafId = requestAnimationFrame(tick)
         }
         rafId = requestAnimationFrame(tick)
         return () => cancelAnimationFrame(rafId)
-    }, [scrollRef])
-
-    const visible = show && inHero
+    }, [show, scrollRef])
 
     return (
         <>
-            {/* Roles — desktop only, above the 3D MUSTAFA text */}
+            {/* Open for work — above the 3D MUSTAFA text */}
             {window.innerWidth > 768 && (
-                <div style={{
+                <div ref={topRef} style={{
                     position: 'absolute',
                     top: 'clamp(12%, 18%, 22%)',
                     left: '50%',
-                    transform: `translateX(-50%) translateY(${visible ? '0px' : '-20px'})`,
-                    opacity: visible ? 1 : 0,
-                    transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s, transform 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s',
-                    display: 'flex', alignItems: 'center', gap: '24px',
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: 'clamp(13px, 1.2vw, 16px)',
-                    letterSpacing: '0.22em',
-                    color: 'rgba(160,180,230,0.55)',
-                    textTransform: 'uppercase',
+                    transform: 'translateX(-50%) translateY(0px)',
+                    opacity: 0,
+                    display: 'flex', alignItems: 'center', gap: '8px',
                     pointerEvents: 'none',
                     zIndex: 40,
                     whiteSpace: 'nowrap',
                 }}>
-                    <span>Product Designer @ Dell</span>
-                    <span style={{ opacity: 0.35 }}>·</span>
-                    <span>UX Engineer @ iSchool</span>
+                    <span style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: 'clamp(11px, 1vw, 13px)',
+                        letterSpacing: '0.18em',
+                        color: 'rgba(160,180,230,0.55)',
+                        textTransform: 'uppercase',
+                    }}>Open for work</span>
                 </div>
             )}
 
             {/* Subtext card — below the 3D MUSTAFA text */}
-            <div style={{
+            <div ref={bottomRef} style={{
                 position: 'absolute',
-                bottom: 'clamp(12%, 20%, 24%)',
+                bottom: 'clamp(16%, 24%, 28%)',
                 ...(window.innerWidth <= 768
                     ? { left: 'clamp(16px, 4vw, 40px)' }
-                    : { left: '50%', transform: `translateX(-50%) translateY(${visible ? '0px' : '60px'})` }),
-                ...(window.innerWidth > 768 ? {} : { transform: `translateY(${visible ? '0px' : '60px'})` }),
-                opacity: visible ? 1 : 0,
-                transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s, transform 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s',
+                    : { left: '50%' }),
+                transform: window.innerWidth > 768 ? 'translateX(-50%) translateY(0px)' : 'translateY(0px)',
+                opacity: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: window.innerWidth <= 768 ? 'flex-start' : 'center',
@@ -6670,8 +7166,7 @@ function HeroSubtextCard({ scrollRef }) {
                     color: '#99aacc',
                     textAlign: window.innerWidth <= 768 ? 'left' : 'center',
                 }}>
-                Product Designer who makes complex systems feel simple and static interfaces feel alive. Redefined SmartFM's visual language at CBRE, connectivity experiences at MOTIVE, and a design team scaled to ten at EDUCATIVE.               </div>
-           
+                Product Designer, currently designing an AI alert response agent for Dell's data centers. Previously at CBRE, Motive, and Educative.</div>
             </div>
         </>
     )
@@ -6764,11 +7259,11 @@ export default function Portfolio() {
                     pick.play().catch(() => { })
                 }
 
-                // Play mallet when entering ethos section (only once per session)
-                if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
-                    _malletPlayed = true
-                    playMalletWithFX()
-                }
+                // Play mallet when entering ethos section (only once per session) — ethos hidden
+                // if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
+                //     _malletPlayed = true
+                //     playMalletWithFX()
+                // }
 
                 // Play ambient piano when entering dossier section
                 if (!sfx.isMuted() && newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
@@ -6794,11 +7289,11 @@ export default function Portfolio() {
                     back.play().catch(() => { })
                 }
 
-                // Play mallet when entering ethos section (only once per session)
-                if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
-                    _malletPlayed = true
-                    playMalletWithFX()
-                }
+                // Play mallet when entering ethos section (only once per session) — ethos hidden
+                // if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
+                //     _malletPlayed = true
+                //     playMalletWithFX()
+                // }
 
                 // Stop ambient piano when leaving dossier
                 if (prevSection === DOSSIER_SECTION_INDEX && newSection !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
@@ -6812,8 +7307,61 @@ export default function Portfolio() {
             }
         }
 
+        const onKeyDown = (e) => {
+            // Spacebar toggles project overlay open/closed
+            if (e.key === ' ' && heroIntroState.phase === 'done') {
+                e.preventDefault()
+                if (activeProjectRef.current) {
+                    if (!sfx.isMuted()) { const back = getItemBackAudio(); back.currentTime = 0; back.play().catch(() => {}) }
+                    setActiveProject(null)
+                } else {
+                    const cardIndex = currentSectionRef.current - 1  // section 1→card 0, section 2→card 1
+                    if (cardIndex >= 0 && cardIndex < PROJECT_CARDS.length) {
+                        handleOpenProject(PROJECT_CARDS[cardIndex])
+                    }
+                }
+                return
+            }
+
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+            if (heroIntroState.phase !== 'done') return
+            if (activeProjectRef.current) return
+            e.preventDefault()
+
+            if (e.key === 'ArrowRight') {
+                const prevSection = currentSectionRef.current
+                currentSectionRef.current = Math.min(currentSectionRef.current + 1, SECTION_STOPS.length - 1)
+                const newSection = currentSectionRef.current
+                if (newSection === prevSection) return
+                if (!sfx.isMuted()) { const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => {}) }
+                if (!sfx.isMuted() && newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
+                    _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
+                    _ambientPianoAudio.loop = true; _ambientPianoAudio.volume = 0.35
+                    sfx.registerAudio(_ambientPianoAudio)
+                    _ambientPianoAudio.play().catch(() => {})
+                }
+                sfx.snap()
+            } else {
+                const prevSection = currentSectionRef.current
+                currentSectionRef.current = Math.max(currentSectionRef.current - 1, 0)
+                const newSection = currentSectionRef.current
+                if (newSection === prevSection) return
+                if (!sfx.isMuted()) { const back = getItemBackAudio(); back.currentTime = 0; back.play().catch(() => {}) }
+                if (prevSection === DOSSIER_SECTION_INDEX && newSection !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
+                    sfx.unregisterAudio(_ambientPianoAudio)
+                    _ambientPianoAudio.pause(); _ambientPianoAudio.currentTime = 0; _ambientPianoAudio = null
+                }
+                sfx.snap()
+            }
+        }
+
         window.addEventListener('wheel', onWheel, { passive: false })
-        return () => { window.removeEventListener('wheel', onWheel); clearTimeout(unlockTimer) }
+        window.addEventListener('keydown', onKeyDown)
+        return () => {
+            window.removeEventListener('wheel', onWheel)
+            window.removeEventListener('keydown', onKeyDown)
+            clearTimeout(unlockTimer)
+        }
     }, [])
 
     return (
@@ -6834,7 +7382,9 @@ export default function Portfolio() {
                 <HeroSubtextCard scrollRef={scrollRef} />
                 <MobileProjectsOverlay scrollRef={scrollRef} onOpenProject={handleOpenProject} />
                 <ScrollHint scrollRef={scrollRef} />
-                <EthosOverlay scrollRef={scrollRef} />
+                <ShortcutPanel activeProject={activeProject} />
+                <BridgeForeshadow scrollRef={scrollRef} />
+                {/* <EthosOverlay scrollRef={scrollRef} /> */}
                 <BioOverlay scrollRef={scrollRef} />
                 <DossierOverlay scrollRef={scrollRef} />
                 <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />

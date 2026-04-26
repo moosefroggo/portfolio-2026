@@ -186,48 +186,29 @@ const sounds = {
         noise({ attack: 0.001, decay: 0.012, peak: 0.1, bandpass: 6000 })
     },
 
-    /** Soft piano note — random pentatonic pitch, plucked feel */
+    /** Soft thud kick — gentle sub bump, no distortion */
     piano() {
         if (_muted) return
-        // C pentatonic major across 2 octaves: C4 D4 E4 G4 A4 C5 D5 E5 G5 A5
-        const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00]
-        const freq = NOTES[Math.floor(Math.random() * NOTES.length)]
         const ac = ctx()
+        const now = ac.currentTime
 
-        // Gain envelope — fast attack, natural piano decay
-        const g = ac.createGain()
-        g.gain.setValueAtTime(0, ac.currentTime)
-        g.gain.linearRampToValueAtTime(0.22, ac.currentTime + 0.006)
-        g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 1.2)
+        // Sub sine sweep — 90Hz → 38Hz in 60ms, the core "thud"
+        const out = ac.createGain()
+        out.gain.setValueAtTime(0.0001, now)
+        out.gain.linearRampToValueAtTime(0.14, now + 0.006)
+        out.gain.exponentialRampToValueAtTime(0.0001, now + 0.22)
+        out.connect(master())
 
-        // Warm lowpass to soften the sine into something piano-adjacent
-        const lp = ac.createBiquadFilter()
-        lp.type = 'lowpass'
-        lp.frequency.setValueAtTime(freq * 6, ac.currentTime)
-        lp.frequency.exponentialRampToValueAtTime(freq * 1.5, ac.currentTime + 0.8)
-        lp.Q.value = 0.8
+        const o = ac.createOscillator()
+        o.type = 'sine'
+        o.frequency.setValueAtTime(65, now)
+        o.frequency.exponentialRampToValueAtTime(28, now + 0.08)
+        o.connect(out)
+        o.start(now)
+        o.stop(now + 0.25)
 
-        // Fundamental + soft 2nd harmonic for body
-        const o1 = ac.createOscillator()
-        o1.type = 'sine'
-        o1.frequency.value = freq
-
-        const o2 = ac.createOscillator()
-        o2.type = 'sine'
-        o2.frequency.value = freq * 2
-        const g2 = ac.createGain()
-        g2.gain.value = 0.12
-        o2.connect(g2)
-        g2.connect(lp)
-
-        o1.connect(lp)
-        lp.connect(g)
-        g.connect(master())
-
-        o1.start(ac.currentTime)
-        o2.start(ac.currentTime)
-        o1.stop(ac.currentTime + 1.25)
-        o2.stop(ac.currentTime + 1.25)
+        // Barely-there transient — sub-body texture only
+        noise({ attack: 0.001, decay: 0.018, peak: 0.025, bandpass: 120 })
     },
 }
 
