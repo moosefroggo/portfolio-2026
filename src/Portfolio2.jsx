@@ -71,16 +71,15 @@ const CAMERA_PATH = [
 // Section snap stops — camera always rests at one of these t-values
 const SECTION_STOPS = [
     0.00,   // hero
-    // 0.24,   // ethos (hidden)
     0.44,   // card 1 park
     0.62,   // card 2 park
     0.96,   // bio patch
     1.10,   // dossier (close-up camera on bust + resume panel)
 ]
 const WHEEL_THRESHOLD = 300  // deltaY pixels to trigger a section advance
-const SECTION_LABELS = ['HERO', /*'ETHOS',*/ 'NEXUS', 'Workflows', 'EXPERIENCE', 'DOSSIER']
+const SECTION_LABELS = ['HERO', 'NEXUS', 'Workflows', 'EXPERIENCE', 'DOSSIER']
 // Visual positions in the nav bar (independent of scroll stops)
-const SECTION_BAR_POSITIONS = [0.00, /*0.13,*/ 0.30, 0.47, 0.67, 1.00]
+const SECTION_BAR_POSITIONS = [0.00, 0.30, 0.53, 0.74, 1.00]
 
 // Shared flag: true when mouse is over an HTML UI element (not the canvas)
 const uiHoveredRef = { current: false }
@@ -271,7 +270,7 @@ const SCROLL_SMOOTHING = 3  // higher = snappier, lower = more damped
 
 // Module-level scroll value — updated every frame, readable by any component without prop drilling
 let _scrollT = 0
-let _navToHero = () => {}
+let _navToHero = () => { }
 
 function ScrollSmoother({ currentSectionRef, scrollRef }) {
     useFrame((_, delta) => {
@@ -283,11 +282,11 @@ function ScrollSmoother({ currentSectionRef, scrollRef }) {
 }
 
 // Section active range helpers (with margin so transitions feel smooth)
-const inHero     = () => _scrollT < 0.18
-const inEthos    = () => _scrollT > 0.05 && _scrollT < 0.40
+const inHero = () => _scrollT < 0.18
+const inEthos = () => _scrollT > 0.05 && _scrollT < 0.40
 const inProjects = () => _scrollT > 0.35 && _scrollT < 0.85
-const inBio      = () => _scrollT > 0.80 && _scrollT < 1.05
-const inDossier  = () => _scrollT > 1.00
+const inBio = () => _scrollT > 0.80 && _scrollT < 1.05
+const inDossier = () => _scrollT > 1.00
 
 // Max camera strafe offset in world units — camera drifts toward mouse position
 const PROJ_NUDGE_X = 1.6   // horizontal lean (world units)
@@ -1009,7 +1008,7 @@ function VideoScreen({
     return (
         <group position={[3.4, 0.15, 0.9]} rotation={[0, -0.42, 0]}>
             <Html transform occlude={false} style={{ pointerEvents: onOpen ? 'auto' : 'none' }} distanceFactor={3.5}>
-                <div ref={containerRef} onClick={onOpen ?? undefined} onMouseEnter={() => { if (!sfx.isMuted()) { const a = getDataAudio(); a.currentTime = 0; a.play().catch(() => {}) } }} onMouseLeave={() => { if (_dataAudio) { _dataAudio.pause(); _dataAudio.currentTime = 0 } }} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
+                <div ref={containerRef} onClick={onOpen ?? undefined} onMouseEnter={() => { if (!sfx.isMuted()) { const a = getDataAudio(); a.currentTime = 0; a.play().catch(() => { }) } }} onMouseLeave={() => { if (_dataAudio) { _dataAudio.pause(); _dataAudio.currentTime = 0 } }} style={{ opacity: 0, fontFamily: "'Space Mono', monospace", userSelect: 'none', width: '262px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <style>{`
                         @keyframes hud-blink { 0%,100%{opacity:1} 50%{opacity:0} }
                         @keyframes hud-scan  { 0%{top:-15%} 100%{top:115%} }
@@ -1921,7 +1920,7 @@ function AnimatedSpotLight() {
             position={[0, 12, 8]}
             angle={0.6}
             penumbra={0.3}
-            intensity={150}
+            intensity={200}
             color="#ffffff"
             castShadow
             shadow-mapSize-width={2048}
@@ -2041,7 +2040,7 @@ function SpineHeroSection() {
         clearcoat: 1.0,
         clearcoatRoughness: 0.0,
         emissive: '#a1a1a1ff',
-        emissiveIntensity: 10,
+        emissiveIntensity: 12,
     }), [])
 
     // Responsive scale: fit MUSTAFA into targetFraction of the viewport width.
@@ -2125,8 +2124,7 @@ useGLTF.preload('/sigil.glb')
 
 const ETHOS_ENTER = 0.08   // scroll fraction: ethos begins
 const ETHOS_EXIT = 0.32   // scroll fraction: ethos ends
-const DOSSIER_SECTION_INDEX = 5  // final section index
-const ETHOS_SECTION_INDEX = 1    // ethos section index
+const DOSSIER_SECTION_INDEX = 4  // final section index
 
 // ─── Audio tracks for section transitions ────────────────────────────────────
 let _malletPlayed = false
@@ -2231,8 +2229,8 @@ function playMalletWithFX() {
 
                 src.start()
                 src.onended = () => setTimeout(() => ctx.close(), 4000)
-            }).catch(() => {})
-    } catch (e) {}
+            }).catch(() => { })
+    } catch (e) { }
 }
 
 const ETHOS_CHECKPOINTS = [
@@ -3094,7 +3092,7 @@ function BioGrid({ active }) {
 // ScrollBar shows all sections except the last (DOSSIER lives outside the progress arc)
 const SCROLLBAR_STOPS = SECTION_STOPS
 const SCROLLBAR_LABELS = SECTION_LABELS
-const SCROLLBAR_VISUAL_PERCENTS = [0, 25, 50, 74, 100]
+const SCROLLBAR_VISUAL_PERCENTS = [0, 34, 53, 74, 100]
 const SCROLLBAR_HIDE_T = SECTION_STOPS[SECTION_STOPS.length - 1] + 0.1
 
 function ScrollBar({ scrollRef, currentSectionRef }) {
@@ -3204,13 +3202,13 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                         onClick={() => {
                             const prev = currentSectionRef.current
                             currentSectionRef.current = i
-                            if (!sfx.isMuted()) { const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => {}) }
+                            if (!sfx.isMuted()) { const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => { }) }
                             if (!sfx.isMuted() && i === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
                                 _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
                                 _ambientPianoAudio.loop = true
                                 _ambientPianoAudio.volume = 0.35
                                 sfx.registerAudio(_ambientPianoAudio)
-                                _ambientPianoAudio.play().catch(() => {})
+                                _ambientPianoAudio.play().catch(() => { })
                             }
                             if (prev === DOSSIER_SECTION_INDEX && i !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
                                 sfx.unregisterAudio(_ambientPianoAudio)
@@ -4191,15 +4189,15 @@ function DossierOverlay({ scrollRef }) {
                 <div className="about-name">MUSTAFA ALI AKBAR</div>
                 <div className="about-role">Senior Product Designer</div>
 
-                ⏺ <p className="about-bio">                  
-     Product designer finishing a Master's in Information Science,    
-  with six years of industry behind it. At Motive I designed the       
-  features that expanded the product to Mexico. At CBRE I redesigned   
-  complex lease abstraction flows and the visual language. At Educative I built the design team
-   from one to ten, suppporting the $12M Series A.              
-  </p>                                                                 
-  <p className="about-bio">                             
-I work best at the edge of design and engineering. If you're building something that needs both, let's talk.    </p>
+                ⏺ <p className="about-bio">
+                    Product designer finishing a Master's in Information Science,
+                    with six years of industry behind it. At Motive I designed the
+                    features that expanded the product to Mexico. At CBRE I redesigned
+                    complex lease abstraction flows and the visual language. At Educative I built the design team
+                    from one to ten, suppporting the $12M Series A.
+                </p>
+                <p className="about-bio">
+                    I work best at the edge of design and engineering. If you're building something that needs both, let's talk.    </p>
 
                 <div className="about-divider" />
 
@@ -4379,7 +4377,7 @@ function ResumeHub({ currentSectionRef }) {
         e.stopPropagation()
         if (currentSectionRef) currentSectionRef.current = SECTION_STOPS.length - 1
         if (!sfx.isMuted()) {
-            const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => {})
+            const pick = getItemPick1Audio(); pick.currentTime = 0; pick.play().catch(() => { })
         }
         sfx.snap()
         if (!sfx.isMuted() && !_ambientPianoAudio) {
@@ -4387,7 +4385,7 @@ function ResumeHub({ currentSectionRef }) {
             _ambientPianoAudio.loop = true
             _ambientPianoAudio.volume = 0.35
             sfx.registerAudio(_ambientPianoAudio)
-            _ambientPianoAudio.play().catch(() => {})
+            _ambientPianoAudio.play().catch(() => { })
         }
     }
     return (
@@ -4783,7 +4781,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                 <SynthNode
                     key={node.id} config={node}
                     isActive={hoveredNodeId === node.id}
-                    onClick={() => {}}
+                    onClick={() => { }}
                     onHover={() => setHoveredNodeId(node.id)}
                     onHoverOut={() => setHoveredNodeId(null)}
                     visible={visible}
@@ -4811,7 +4809,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                 <LockedCube
                     onHover={() => setCubeHovered(true)}
                     onHoverOut={() => setCubeHovered(false)}
-                    onClick={() => {}}
+                    onClick={() => { }}
                     visible={visible}
                 />
             </group>
@@ -5770,7 +5768,7 @@ function BioSection({ scrollRef, currentSectionRef }) {
 // 5. MAIN SCENE & APP EXPORT
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Cards live at SECTION_STOPS indices 3, 4 → cardIndex 0, 1
+// Cards live at SECTION_STOPS indices 1, 2 → cardIndex 0, 1
 function DragController({ currentSectionRef }) {
     const { gl } = useThree()
 
@@ -5778,8 +5776,8 @@ function DragController({ currentSectionRef }) {
         const el = gl.domElement
 
         const onDown = (e) => {
-            const ci = currentSectionRef.current - 2
-            if (ci < 0 || ci > 2) return
+            const ci = currentSectionRef.current - 1
+            if (ci < 0 || ci > 1) return
             dragRotState.isDragging = true
             dragRotState.cardIndex = ci
             dragRotState.lastX = e.clientX
@@ -6045,8 +6043,8 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <CameraController scrollRef={scrollRef} />
             <DragController currentSectionRef={currentSectionRef} />
 
-            <ambientLight intensity={0.03} />
-            <Environment preset="night" />
+            <ambientLight intensity={0.05} />
+            <Environment preset="night" environmentIntensity={0.8} />
 
             <PostProcessingEffects />
 
@@ -6059,8 +6057,8 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <CursorFX />
             <InteractiveParticleField count={300} />
             <StarField />
+            <AnimatedSpotLight />
             <SpineHeroSection />
-            {/* <EthosSection scrollRef={scrollRef} /> */}
             <ProjectsSection scrollRef={scrollRef} onOpenProject={onOpenProject} />
             <BioSection scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
 
@@ -6084,8 +6082,6 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
         </group>
     )
 }
-
-// EthosOverlay removed — ethos is now an in-scene 3D component (EthosSection)
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PROJECT TERMINAL OVERLAY
@@ -6636,7 +6632,7 @@ function SpineLogoModel() {
             clearcoat: 1.0, clearcoatRoughness: 0.02,
         })
         m.onBeforeCompile = (shader) => {
-            shader.uniforms.uTime  = { value: 0 }
+            shader.uniforms.uTime = { value: 0 }
             shader.uniforms.uHover = { value: 0 }
             uniformsRef.current = shader.uniforms
             shader.vertexShader = 'uniform float uTime;\nuniform float uHover;\n' + shader.vertexShader
@@ -6707,7 +6703,7 @@ function SpineLogo() {
         <div
             onMouseEnter={() => { _logoHovered.current = true; setHovered(true); sfx.hover() }}
             onMouseLeave={() => { _logoHovered.current = false; setHovered(false) }}
-            onClick={() => { if (!sfx.isMuted()) { const a = getItemBackAudio(); a.currentTime = 0; a.play().catch(() => {}) } _navToHero() }}
+            onClick={() => { if (!sfx.isMuted()) { const a = getItemBackAudio(); a.currentTime = 0; a.play().catch(() => { }) } _navToHero() }}
             style={{
                 position: 'fixed',
                 top: '-4px',
@@ -7259,12 +7255,6 @@ export default function Portfolio() {
                     pick.play().catch(() => { })
                 }
 
-                // Play mallet when entering ethos section (only once per session) — ethos hidden
-                // if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
-                //     _malletPlayed = true
-                //     playMalletWithFX()
-                // }
-
                 // Play ambient piano when entering dossier section
                 if (!sfx.isMuted() && newSection === DOSSIER_SECTION_INDEX && !_ambientPianoAudio) {
                     _ambientPianoAudio = new Audio('/sounds/AmbientPianoLoop10-790BPM.m4a')
@@ -7288,12 +7278,6 @@ export default function Portfolio() {
                     back.currentTime = 0
                     back.play().catch(() => { })
                 }
-
-                // Play mallet when entering ethos section (only once per session) — ethos hidden
-                // if (newSection === ETHOS_SECTION_INDEX && !_malletPlayed) {
-                //     _malletPlayed = true
-                //     playMalletWithFX()
-                // }
 
                 // Stop ambient piano when leaving dossier
                 if (prevSection === DOSSIER_SECTION_INDEX && newSection !== DOSSIER_SECTION_INDEX && _ambientPianoAudio) {
@@ -7384,7 +7368,6 @@ export default function Portfolio() {
                 <ScrollHint scrollRef={scrollRef} />
                 <ShortcutPanel activeProject={activeProject} />
                 <BridgeForeshadow scrollRef={scrollRef} />
-                {/* <EthosOverlay scrollRef={scrollRef} /> */}
                 <BioOverlay scrollRef={scrollRef} />
                 <DossierOverlay scrollRef={scrollRef} />
                 <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
@@ -7396,7 +7379,7 @@ export default function Portfolio() {
                     </React.Suspense>
                 </Canvas>
 
-                <CaseStudyOverlay project={activeProject} onClose={() => { if (!sfx.isMuted()) { const back = getItemBackAudio(); back.currentTime = 0; back.play().catch(() => {}) } setActiveProject(null) }} />
+                <CaseStudyOverlay project={activeProject} onClose={() => { if (!sfx.isMuted()) { const back = getItemBackAudio(); back.currentTime = 0; back.play().catch(() => { }) } setActiveProject(null) }} />
             </div>
         </>
     )
