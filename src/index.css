@@ -111,13 +111,13 @@ body::after {
 :root {
   --font-mono: 'Space Mono', monospace;
   --font-body: 'Inter', system-ui, sans-serif;
-  --color-text: #c8d4e8;
-  --color-text-muted: rgba(180, 200, 230, 0.45);
-  --color-text-dim: rgba(160, 185, 215, 0.22);
-  --color-accent: #3366ff;
-  --color-accent-bright: #5588ff;
-  --color-accent-red: #cc1122;
-  --color-accent-red-bright: #ee3344;
+  --color-text: #e8d4b8;
+  --color-text-muted: rgba(232, 200, 160, 0.45);
+  --color-text-dim: rgba(220, 185, 140, 0.22);
+  --color-accent: #d97706;
+  --color-accent-bright: #f59e0b;
+  --color-accent-red: #cc5500;
+  --color-accent-red-bright: #ff7722;
   --color-border: rgba(255, 255, 255, 0.07);
   --color-border-active: rgba(255, 255, 255, 0.16);
 }
@@ -223,7 +223,7 @@ body::after {
 /* Case Study Hover Glitch */
 .project-section .case-card:hover {
   background: rgba(0, 0, 0, 0.8);
-  box-shadow: 4px 0 0 rgba(204, 17, 34, 0.8), -4px 0 0 rgba(51, 102, 255, 0.8);
+  box-shadow: 4px 0 0 rgba(204, 85, 0, 0.8), -4px 0 0 rgba(217, 119, 6, 0.8);
   transform: translate(4px, -2px);
 }
 
@@ -297,7 +297,7 @@ body::after {
 
   5% {
     border-color: var(--color-accent-bright);
-    box-shadow: inset 0 0 20px rgba(51, 102, 255, 0.2);
+    box-shadow: inset 0 0 20px rgba(217, 119, 6, 0.2);
   }
 
   10% {
@@ -509,7 +509,7 @@ body::after {
 
 .bio-link--primary:hover {
   color: #ffffff;
-  background: rgba(204, 17, 34, 0.12);
+  background: rgba(204, 85, 0, 0.12);
 }
 
 /* ─── Precision DOM Crosshair ─────────────────────────────────────────────── */
@@ -603,7 +603,7 @@ button:hover~.precision-crosshair .cross-center,
   flex-direction: column;
   justify-content: center;
   padding: 0 clamp(40px, 7vw, 100px);
-  background: linear-gradient(to right, rgba(5, 5, 16, 0.88) 60%, transparent);
+  background: linear-gradient(to right, rgba(10, 8, 5, 0.88) 60%, transparent);
 }
 
 .ethos-panel-header {
@@ -614,7 +614,7 @@ button:hover~.precision-crosshair .cross-center,
   display: block;
   font-size: 10px;
   letter-spacing: 0.3em;
-  color: #00aaff;
+  color: #ff9933;
   text-transform: uppercase;
   margin-bottom: 12px;
 }
@@ -649,8 +649,8 @@ button:hover~.precision-crosshair .cross-center,
 
 .ethos-line {
   width: 100%;
-  background: linear-gradient(180deg, #00aaff 0%, #0055aa 100%);
-  box-shadow: 0 0 8px rgba(0, 170, 255, 0.4), 0 0 20px rgba(0, 170, 255, 0.15);
+  background: linear-gradient(180deg, #ff9933 0%, #cc5500 100%);
+  box-shadow: 0 0 8px rgba(255, 153, 51, 0.4), 0 0 20px rgba(255, 153, 51, 0.15);
   transition: height 0.1s linear;
   border-radius: 0 0 1px 1px;
 }
@@ -693,8 +693,8 @@ button:hover~.precision-crosshair .cross-center,
 }
 
 .ethos-bullet.active {
-  border-color: #00aaff;
-  box-shadow: 0 0 10px rgba(0, 170, 255, 0.5), 0 0 25px rgba(0, 170, 255, 0.2);
+  border-color: #ff9933;
+  box-shadow: 0 0 10px rgba(255, 153, 51, 0.5), 0 0 25px rgba(255, 153, 51, 0.2);
   animation: ethos-bullet-pulse 2s ease-in-out infinite;
 }
 
@@ -707,19 +707,19 @@ button:hover~.precision-crosshair .cross-center,
 }
 
 .ethos-bullet.active .ethos-bullet-inner {
-  background: #00aaff;
-  box-shadow: 0 0 6px rgba(0, 170, 255, 0.7);
+  background: #ff9933;
+  box-shadow: 0 0 6px rgba(255, 153, 51, 0.7);
 }
 
 @keyframes ethos-bullet-pulse {
 
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(0, 170, 255, 0.5), 0 0 25px rgba(0, 170, 255, 0.2);
+    box-shadow: 0 0 10px rgba(255, 153, 51, 0.5), 0 0 25px rgba(255, 153, 51, 0.2);
   }
 
   50% {
-    box-shadow: 0 0 16px rgba(0, 170, 255, 0.7), 0 0 35px rgba(0, 170, 255, 0.3);
+    box-shadow: 0 0 16px rgba(255, 153, 51, 0.7), 0 0 35px rgba(255, 153, 51, 0.3);
   }
 }
 
@@ -749,7 +749,7 @@ button:hover~.precision-crosshair .cross-center,
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.25em;
-  color: #00aaff;
+  color: #ff9933;
   display: flex;
   overflow: hidden;
   font-family: 'RocketCommandExpand', monospace;
@@ -781,7 +781,7 @@ button:hover~.precision-crosshair .cross-center,
 .ethos-text {
   font-family: 'Space Mono', monospace;
   font-size: 14px;
-  color: rgba(180, 200, 230, 0.55);
+  color: rgba(232, 200, 160, 0.55);
   line-height: 1.8;
   min-height: 48px;
   max-width: 340px;
@@ -814,7 +814,7 @@ button:hover~.precision-crosshair .cross-center,
   }
   .ethos-panel {
     width: 100%;
-    background: linear-gradient(to right, rgba(5, 5, 16, 0.88) 60%, transparent);
+    background: linear-gradient(to right, rgba(10, 8, 5, 0.88) 60%, transparent);
   }
   .ethos-title {
     font-size: clamp(22px, 6vw, 36px);
@@ -879,7 +879,7 @@ button:hover~.precision-crosshair .cross-center,
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle, rgba(0, 80, 255, 0.18) 1px, transparent 1px);
+    radial-gradient(circle, rgba(204, 102, 34, 0.18) 1px, transparent 1px);
   background-size: 36px 36px;
   animation: loader-drift 20s linear infinite;
 }
@@ -927,29 +927,29 @@ button:hover~.precision-crosshair .cross-center,
 .loader-corner.tl {
   top: 28px;
   left: 28px;
-  border-top: 1px solid #0044ee;
-  border-left: 1px solid #0044ee;
+  border-top: 1px solid #cc6622;
+  border-left: 1px solid #cc6622;
 }
 
 .loader-corner.tr {
   top: 28px;
   right: 28px;
-  border-top: 1px solid #0044ee;
-  border-right: 1px solid #0044ee;
+  border-top: 1px solid #cc6622;
+  border-right: 1px solid #cc6622;
 }
 
 .loader-corner.bl {
   bottom: 28px;
   left: 28px;
-  border-bottom: 1px solid #0044ee;
-  border-left: 1px solid #0044ee;
+  border-bottom: 1px solid #cc6622;
+  border-left: 1px solid #cc6622;
 }
 
 .loader-corner.br {
   bottom: 28px;
   right: 28px;
-  border-bottom: 1px solid #0044ee;
-  border-right: 1px solid #0044ee;
+  border-bottom: 1px solid #cc6622;
+  border-right: 1px solid #cc6622;
 }
 
 /* Centre stack */
@@ -966,7 +966,7 @@ button:hover~.precision-crosshair .cross-center,
 .loader-eyebrow {
   font-size: 10px;
   letter-spacing: 0.4em;
-  color: #0055ff;
+  color: #ff9933;
   text-transform: uppercase;
   animation: loader-pulse 2.4s ease-in-out infinite;
 }
@@ -980,7 +980,7 @@ button:hover~.precision-crosshair .cross-center,
 
   50% {
     opacity: 1;
-    text-shadow: 0 0 12px #0055ff99;
+    text-shadow: 0 0 12px #ff993399;
   }
 }
 
@@ -1004,12 +1004,12 @@ button:hover~.precision-crosshair .cross-center,
 }
 
 .loader-title::before {
-  color: #ff0066;
+  color: #e85d04;
   animation: loader-glitch-a 5s infinite;
 }
 
 .loader-title::after {
-  color: #00ffee;
+  color: #ffd60a;
   animation: loader-glitch-b 5s infinite;
 }
 
@@ -1086,7 +1086,7 @@ button:hover~.precision-crosshair .cross-center,
 .loader-rule {
   width: 180px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #0044ee88, #0044ee, #0044ee88, transparent);
+  background: linear-gradient(90deg, transparent, #cc662288, #cc6622, #cc662288, transparent);
 }
 
 /* Segmented progress bar */
@@ -1098,15 +1098,15 @@ button:hover~.precision-crosshair .cross-center,
 .loader-seg {
   width: 10px;
   height: 4px;
-  background: #070f1e;
-  border: 1px solid #0d1f3a;
+  background: #1a0e06;
+  border: 1px solid #3a1e0a;
   transition: background 0.1s, box-shadow 0.1s, border-color 0.1s;
 }
 
 .loader-seg.active {
-  background: #0055ff;
-  border-color: #4488ff;
-  box-shadow: 0 0 6px #0055ffcc, 0 0 14px #0033cc55;
+  background: #ff9933;
+  border-color: #ffcc66;
+  box-shadow: 0 0 6px #ff9933cc, 0 0 14px #cc550055;
 }
 
 .loader-seg.active:last-child {
@@ -1138,14 +1138,14 @@ button:hover~.precision-crosshair .cross-center,
   letter-spacing: 0.08em;
   color: #fff;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 24px #0044ffaa;
+  text-shadow: 0 0 24px #ff9933aa;
   min-width: 5ch;
 }
 
 .loader-status {
   font-size: 9px;
   letter-spacing: 0.28em;
-  color: #1e3566;
+  color: #5c3010;
   text-transform: uppercase;
   max-width: 260px;
   text-align: left;
@@ -1163,11 +1163,11 @@ button:hover~.precision-crosshair .cross-center,
   padding: 0 44px;
   font-size: 8px;
   letter-spacing: 0.22em;
-  color: #122040;
+  color: #3a1808;
   text-transform: uppercase;
 }
 .nav-link {
-  color: #8899cc;
+  color: #9b7040;
   text-decoration: none;
   transition: color 0.2s ease;
 }

@@ -90,11 +90,11 @@ const SUBTITLE_FONT = '/fonts/Space_Mono/SpaceMono-Regular.ttf'
 
 const PROJECT_CARDS = [
     {
-        pos: [100, -2, 0], rot: [0, 0, 0], color: '#00aaff', appear: 0.44,
+        pos: [100, -2, 0], rot: [0, 0, 0], color: '#ff9933', appear: 0.44,
         title: 'Engine Immobilizer', subtitle: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         desc: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
-        stats: { role: 'Product Design Lead', year: '2024', company: 'Motive' },
+        stats: { role: 'Product Design Lead', impact: '7-figure impact', company: 'Motive' },
         objectType: 'truck_immobilizer',
         video: '/demos/ei-noborder.mp4',
         caseStudy: {
@@ -171,11 +171,11 @@ const PROJECT_CARDS = [
         },
     },
     {
-        pos: [120, -2.5, 0], rot: [0, 0.2, 0], color: '#44ff88', appear: 0.62,
+        pos: [120, -2.5, 0], rot: [0, 0.2, 0], color: '#cc6622', appear: 0.62,
         title: 'Workflows', subtitle: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         desc: 'A central hub for project and documentation management helping development teams reduce Slack messages',
         tech: ['Figma', 'Microsoft Clarity', 'JavaScript', 'FigJam'],
-        stats: { role: 'Product Design', year: '2023', company: 'Educative' },
+        stats: { role: 'Product Design', impact: 'Scaled 50->600+', company: 'Educative' },
         objectType: 'workflows',
         video: '/demos/wf-noborder.mp4',
         caseStudy: {
@@ -559,8 +559,8 @@ function CursorFX() {
                 <mesh renderOrder={98}>
                     <sphereGeometry args={[0.22, 32, 32]} />
                     <meshStandardMaterial
-                        color="#0a1a44"
-                        emissive="#112266"
+                        color="#1a0a00"
+                        emissive="#331100"
                         emissiveIntensity={0.6}
                         roughness={0.0}
                         metalness={0.95}
@@ -575,8 +575,8 @@ function CursorFX() {
                 <mesh renderOrder={100}>
                     <sphereGeometry args={[0.22, 32, 32]} />
                     <meshStandardMaterial
-                        color="#ff00ff"
-                        emissive="#ff00ff"
+                        color="#ff6622"
+                        emissive="#ff6622"
                         emissiveIntensity={0.8}
                         roughness={0.0}
                         metalness={0.85}
@@ -591,7 +591,7 @@ function CursorFX() {
                 {/* Inner glow core */}
                 <mesh scale={0.52} renderOrder={101}>
                     <sphereGeometry args={[0.22, 16, 16]} />
-                    <meshBasicMaterial color="#ff00ff" transparent opacity={0.7} toneMapped={false} depthTest={false} />
+                    <meshBasicMaterial color="#ff6622" transparent opacity={0.7} toneMapped={false} depthTest={false} />
                 </mesh>
                 {/* Hot nucleus for bloom */}
                 <mesh scale={0.20} renderOrder={102}>
@@ -599,7 +599,7 @@ function CursorFX() {
                     <meshBasicMaterial color="#ffffff" transparent opacity={1.0} toneMapped={false} depthTest={false} />
                 </mesh>
                 {/* Inner light — illuminates the glass shell from inside */}
-                <pointLight intensity={32} color="#ff00ff" distance={2.5} decay={2} />
+                <pointLight intensity={32} color="#ff6622" distance={2.5} decay={2} />
             </group>
 
             <group ref={rimRef}>
@@ -607,7 +607,7 @@ function CursorFX() {
                 <mesh position={[-0.36, 0, 0]} rotation={[0, 0, Math.PI / 2]} renderOrder={100}>
                     <coneGeometry args={[0.026, 0.18, 6]} />
                     <meshStandardMaterial
-                        color="#ff00ff" emissive="#ff00ff" emissiveIntensity={1.6}
+                        color="#ff6622" emissive="#ff6622" emissiveIntensity={1.6}
                         roughness={0} metalness={0.3}
                         transparent opacity={0.9} toneMapped={false} depthTest={false}
                     />
@@ -616,7 +616,7 @@ function CursorFX() {
                 <mesh position={[0.36, 0, 0]} rotation={[0, 0, -Math.PI / 2]} renderOrder={100}>
                     <coneGeometry args={[0.026, 0.18, 6]} />
                     <meshStandardMaterial
-                        color="#00ffff" emissive="#00ffff" emissiveIntensity={1.6}
+                        color="#fbbf24" emissive="#fbbf24" emissiveIntensity={1.6}
                         roughness={0} metalness={0.3}
                         transparent opacity={0.9} toneMapped={false} depthTest={false}
                     />
@@ -624,7 +624,7 @@ function CursorFX() {
             </group>
 
             <group ref={illumRef}>
-                <pointLight intensity={24} color="#ff00ff" distance={30} decay={1.5} />
+                <pointLight intensity={24} color="#ff6622" distance={30} decay={1.5} />
             </group>
         </>
     )
@@ -683,7 +683,7 @@ function InteractiveParticleField({ count = 300 }) {
             <bufferGeometry>
                 <bufferAttribute attach="attributes-position" count={count} array={currentPositions} itemSize={3} />
             </bufferGeometry>
-            <pointsMaterial size={0.04} color="#8899cc" transparent opacity={0.4} depthWrite={false} />
+            <pointsMaterial size={0.04} color="#c4a882" transparent opacity={0.4} depthWrite={false} />
         </points>
     )
 }
@@ -728,7 +728,7 @@ const SIGIL_VARIANTS = [
     () => [makePoly(64, 1.3), makeTri(0.9), makeTri(0.9, true), makePoly(4, 0.45)],       // hexagram + inner square + ring
 ]
 
-function Sigil({ variant = 0, position, scale = 1, rotSpeeds = [0.1, 0.15, 0.08], color = '#3366ff' }) {
+function Sigil({ variant = 0, position, scale = 1, rotSpeeds = [0.1, 0.15, 0.08], color = '#d97706' }) {
     const groupRef = useRef()
     const strokes = useMemo(() => SIGIL_VARIANTS[variant % SIGIL_VARIANTS.length](), [variant])
 
@@ -760,7 +760,7 @@ const CORRIDOR_ZSTEP = 16
 // Staggered X/Y for depth impact — equal spacing on Z is the constant
 const CORRIDOR_X = [0, -4, 4, -2, 2, -4, 4, 0]
 const CORRIDOR_Y = [0, 1, -1, 1.5, -0.5, 0.5, -1.2, 0]
-const CORRIDOR_COLORS = ['#4477ff', '#5544ff', '#3366ee', '#6644ff', '#2255dd', '#5566ff', '#4433ee', '#3355ff']
+const CORRIDOR_COLORS = ['#cc5500', '#aa4400', '#dd6611', '#bb4400', '#993300', '#dd5500', '#bb4411', '#cc4400']
 
 function SigilCorridor() {
     return (
@@ -869,7 +869,7 @@ function makeTexturedHologramClone(scene, accentColor, targetSize) {
 
 // WiFi arc waves expanding from immobilizer, fading before reaching truck
 const _wifiTarget = new THREE.Vector3()
-function WifiWaves({ origin, toward, color = '#aa66ff', visible = true }) {
+function WifiWaves({ origin, toward, color = '#ffcc44', visible = true }) {
     const COUNT = 4
     const groupRef = useRef()
     const waveRefs = useRef([])
@@ -920,10 +920,10 @@ function TruckImmobilizerScene({ appeared, cardIndex, onOpen }) {
     const autoRotY = useRef(0)
 
     const { clone: truckClone, mats: truckMats } =
-        useMemo(() => makeTexturedHologramClone(truckScene, '#00aaff', 2.2), [truckScene])
+        useMemo(() => makeTexturedHologramClone(truckScene, '#ff9933', 2.2), [truckScene])
 
     const { clone: immClone, mats: immMats } =
-        useMemo(() => makeTexturedHologramClone(immScene, '#aa66ff', 1.0), [immScene])
+        useMemo(() => makeTexturedHologramClone(immScene, '#ffcc44', 1.0), [immScene])
 
     useFrame((state, delta) => {
         truckOpRef.current = dampValue(truckOpRef.current, appeared ? 0.5 : 0, 5, delta)
@@ -952,14 +952,14 @@ function TruckImmobilizerScene({ appeared, cardIndex, onOpen }) {
             {/* Engine Immobilizer — textured hologram, upper-right */}
             <group ref={immGroupRef} position={[1.6, 0.9, 0.3]}>
                 <primitive object={immClone} />
-                <pointLight color="#aa66ff" intensity={appeared ? 2.5 : 0} distance={4} decay={2} />
+                <pointLight color="#ffcc44" intensity={appeared ? 2.5 : 0} distance={4} decay={2} />
             </group>
 
             {/* WiFi waves — signal radiating from immobilizer toward truck */}
             <WifiWaves
                 origin={[1.6, 0.9, 0.3]}
                 toward={[0, -0.3, 0.9]}
-                color="#aa66ff"
+                color="#ffcc44"
                 visible={appeared}
             />
             {/* Simple Box Hitbox for entire scene optimization */}
@@ -983,8 +983,8 @@ function VideoScreen({
     buildUrl = "https://github.com/moosefroggo/portfolio-2026/commit/7bf4176",
     cornerLabel = "SIG 4/5",
     footerLabel = "$1M Customer Acquired",
-    colorHex = "#44ff88",
-    colorRgb = "68,255,136",
+    colorHex = "#cc6622",
+    colorRgb = "204,102,34",
     onOpen = null,
 }) {
     const containerRef = useRef()
@@ -1091,10 +1091,10 @@ function VideoScreen({
 function BrainPlatform({ opRef }) {
     const { boxMat, hexMat, edgeMat, traceMat } = useMemo(() => ({
         boxMat: new THREE.MeshStandardMaterial({
-            color: '#c2d4e6', metalness: 0.92, roughness: 0.06, transparent: true, opacity: 0,
+            color: '#f5c890', metalness: 0.92, roughness: 0.06, transparent: true, opacity: 0,
         }),
         hexMat: new THREE.MeshStandardMaterial({
-            color: '#001133', emissive: new THREE.Color('#00ccff'), emissiveIntensity: 2.8,
+            color: '#1a0800', emissive: new THREE.Color('#f59e0b'), emissiveIntensity: 2.8,
             metalness: 0.8, roughness: 0.1, transparent: true, opacity: 0, toneMapped: false,
         }),
         edgeMat: new THREE.LineBasicMaterial({ color: new THREE.Color(0, 0.8, 1.0), transparent: true, opacity: 0 }),
@@ -1169,7 +1169,7 @@ function BrainWires({ opRef }) {
             [new THREE.Vector3(-0.08, 1.70, -0.05), new THREE.Vector3(-1.0, 0.5, -0.05), new THREE.Vector3(-2.1, 0.05, -0.1), new THREE.Vector3(-2.4, -1.0, -0.4)],
         ]
         const mats = wireDefs.map(() => new THREE.MeshStandardMaterial({
-            color: '#001133', emissive: new THREE.Color('#00aaff'), emissiveIntensity: 2.2,
+            color: '#1a0800', emissive: new THREE.Color('#ff9933'), emissiveIntensity: 2.2,
             metalness: 0.5, roughness: 0.3, transparent: true, opacity: 0, toneMapped: false,
         }))
         return { mats, tubes: wireDefs.map(p => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(p), 12, 0.022, 5, false)) }
@@ -1201,7 +1201,7 @@ function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
     const autoRotY = useRef(0)
 
     const { clone: brainClone, mats: brainMats } =
-        useMemo(() => makeTexturedHologramClone(brainScene, '#00ccff', 2.2), [brainScene])
+        useMemo(() => makeTexturedHologramClone(brainScene, '#f59e0b', 2.2), [brainScene])
 
     useFrame((state, delta) => {
         opRef.current = dampValue(opRef.current, appeared ? 0.88 : 0, 5, delta)
@@ -1225,7 +1225,7 @@ function WorkflowsScene({ hovered, appeared, cardIndex, onOpen }) {
                 <group position={[0, 1.85, 0]}>
                     <primitive object={brainClone} />
                 </group>
-                <pointLight color="#00ccff" intensity={appeared ? 1.8 : 0} distance={7} decay={2} position={[0, 1.5, 0]} />
+                <pointLight color="#f59e0b" intensity={appeared ? 1.8 : 0} distance={7} decay={2} position={[0, 1.5, 0]} />
                 <pointLight color="#ffffff" intensity={appeared ? 0.6 : 0} distance={5} decay={2} position={[0, 2.5, 2]} />
                 {/* Simple Box Hitbox for Brain assembly optimization */}
                 <mesh visible={false} position={[0, 1.8, 0]}>
@@ -1333,13 +1333,13 @@ function HudPanel({ stats, tech, color, appeared, side = 'left' }) {
 
     return (
         <group ref={groupRef} position={[xPos, 0, 0.1]}>
-            <Text position={[0, 0.65, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>ROLE ──────────────────</Text>
+            <Text position={[0, 0.65, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#9b7040" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>ROLE ──────────────────</Text>
             <Text position={[0, 0.48, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.role}</Text>
-            <Text position={[0, 0.18, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>YEAR ──────────────────</Text>
-            <Text position={[0, 0.02, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.year}</Text>
-            <Text position={[0, -0.28, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#4466aa" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>Company ─────────────────</Text>
+            <Text position={[0, 0.18, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#9b7040" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>IMPACT ─────────────────</Text>
+            <Text position={[0, 0.02, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.impact}</Text>
+            <Text position={[0, -0.28, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.09} color="#9b7040" anchorX={anchor} letterSpacing={0.12} material-toneMapped={false} material-transparent={true} material-opacity={0}>Company ─────────────────</Text>
             <Text position={[0, -0.44, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.14} color={color} anchorX={anchor} letterSpacing={0.08} material-toneMapped={false} material-transparent={true} material-opacity={0}>{stats.company}</Text>
-            <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#334466" anchorX={anchor} letterSpacing={0.1} material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')}</Text>
+            <Text position={[0, -0.74, 0]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.085} color="#7a5530" anchorX={anchor} letterSpacing={0.1} material-toneMapped={false} material-transparent={true} material-opacity={0}>{tech.join('  ·  ')}</Text>
         </group>
     )
 }
@@ -1443,15 +1443,15 @@ function NexusHubCore({ scrollRef }) {
         <group ref={groupRef} position={[170, 5.5, -195]}>
             <mesh ref={coreRef}>
                 <sphereGeometry args={[4, 32, 32]} />
-                <meshStandardMaterial color="#00aaff" emissive="#00aaff" emissiveIntensity={4} wireframe transparent opacity={0.4} />
+                <meshStandardMaterial color="#ff9933" emissive="#ff9933" emissiveIntensity={4} wireframe transparent opacity={0.4} />
             </mesh>
             {[5.5, 7.5, 10].map((radius, i) => (
                 <mesh key={i} ref={el => ringsRef.current[i] = el}>
                     <torusGeometry args={[radius, 0.04, 16, 100]} />
-                    <meshStandardMaterial color="#44ff88" emissive="#44ff88" emissiveIntensity={1.5} transparent opacity={0.2} />
+                    <meshStandardMaterial color="#cc6622" emissive="#cc6622" emissiveIntensity={1.5} transparent opacity={0.2} />
                 </mesh>
             ))}
-            <pointLight intensity={40} color="#00aaff" distance={30} decay={2} />
+            <pointLight intensity={40} color="#ff9933" distance={30} decay={2} />
         </group>
     )
 }
@@ -1495,7 +1495,7 @@ function NexusDataStreams({ scrollRef }) {
     return (
         <instancedMesh ref={meshRef} args={[null, null, count]}>
             <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial color="#44ff88" emissive="#44ff88" emissiveIntensity={3} transparent opacity={0.4} />
+            <meshStandardMaterial color="#cc6622" emissive="#cc6622" emissiveIntensity={3} transparent opacity={0.4} />
         </instancedMesh>
     )
 }
@@ -1534,7 +1534,7 @@ function NexusDataThreads({ scrollRef }) {
     return (
         <group ref={groupRef}>
             {threads.map((p, i) => (
-                <Line key={i} points={[p.start, p.end]} color="#00aaff" lineWidth={0.15} transparent opacity={0.15} toneMapped={false} />
+                <Line key={i} points={[p.start, p.end]} color="#ff9933" lineWidth={0.15} transparent opacity={0.15} toneMapped={false} />
             ))}
         </group>
     )
@@ -1576,12 +1576,12 @@ function ProjectZoneGrid({ scrollRef }) {
     return (
         <group ref={groupRef}>
             {lines.map((l, i) => (
-                <Line key={i} points={[l.p1, l.p2]} color="#00aaff" lineWidth={0.3} transparent opacity={0} toneMapped={false} userData={{ dim: l.dim }} />
+                <Line key={i} points={[l.p1, l.p2]} color="#ff9933" lineWidth={0.3} transparent opacity={0} toneMapped={false} userData={{ dim: l.dim }} />
             ))}
             {/* Haze shifted down to the floor level (was accidentally at Y=0) */}
             <mesh position={[120, -3.4, -5]} rotation-x={-Math.PI / 2}>
                 <planeGeometry args={[70, 20]} />
-                <meshStandardMaterial color="#001144" transparent opacity={0.1 * opacityRef.current} />
+                <meshStandardMaterial color="#1a0600" transparent opacity={0.1 * opacityRef.current} />
             </mesh>
         </group>
     )
@@ -1640,7 +1640,7 @@ function ProjectCard({ config, scrollRef, cardIndex, onOpen }) {
             {!isMobile && <HudPanel stats={config.stats} tech={config.tech} color={config.color} appeared={appeared} side="left" />}
 
             {!isMobile && <Text position={[0, 2.15, 0.1]} font="/fonts/Rocket%20Command/rocketcommandexpand.ttf" fontSize={0.45} anchorX="center" anchorY="middle" letterSpacing={0.05} color={config.color} material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0}>{config.title}</Text>}
-            {!isMobile && <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#8899dd" anchorX="center" anchorY="middle" letterSpacing={0.05} textAlign="center" material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>}
+            {!isMobile && <Text position={[0, 1.75, 0.1]} font="/fonts/Space_Mono/SpaceMono-Regular.ttf" fontSize={0.1} color="#c4a882" anchorX="center" anchorY="middle" letterSpacing={0.05} textAlign="center" material-toneMapped={false} material-transparent={true} material-opacity={appeared ? 1 : 0} maxWidth={4.5} lineHeight={1.5}>{config.subtitle}</Text>}
 
             {!isMobile && appeared && <HudLine x1={-2.2} y1={-2.55} z1={0} x2={2.2} y2={-2.55} z2={0} color={config.color} opacity={0.3} />}
 
@@ -2449,23 +2449,23 @@ function BridgeForeshadow({ scrollRef }) {
                 fontFamily: "'RocketCommandExpand', sans-serif",
                 fontSize: 'clamp(48px, 9vw, 96px)',
                 letterSpacing: '0.12em',
-                color: 'rgba(220,235,255,1)',
+                color: 'rgba(255,235,200,1)',
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
                 textShadow: [
                     // extrusion layers — dark navy going bottom-right
-                    '1px 1px 0px rgba(20,50,160,0.95)',
-                    '2px 2px 0px rgba(15,40,140,0.85)',
-                    '3px 3px 0px rgba(10,30,120,0.75)',
-                    '4px 4px 0px rgba(8,22,100,0.65)',
-                    '5px 5px 0px rgba(5,15,80,0.55)',
-                    '6px 6px 0px rgba(3,10,60,0.45)',
+                    '1px 1px 0px rgba(120,60,10,0.95)',
+                    '2px 2px 0px rgba(100,50,8,0.85)',
+                    '3px 3px 0px rgba(80,40,6,0.75)',
+                    '4px 4px 0px rgba(60,30,4,0.65)',
+                    '5px 5px 0px rgba(40,20,2,0.55)',
+                    '6px 6px 0px rgba(30,15,2,0.45)',
                     // chromatic aberration
-                    '-3px 0 rgba(255,60,60,0.7)',
-                    '3px 0 rgba(40,210,255,0.7)',
+                    '-3px 0 rgba(255,140,40,0.7)',
+                    '3px 0 rgba(255,210,40,0.7)',
                     // glow
-                    '0 0 30px rgba(120,180,255,0.8)',
-                    '0 0 70px rgba(80,140,255,0.4)',
+                    '0 0 30px rgba(255,200,120,0.8)',
+                    '0 0 70px rgba(255,160,80,0.4)',
                 ].join(', '),
             }}>
                 my work
@@ -2473,15 +2473,15 @@ function BridgeForeshadow({ scrollRef }) {
             <span style={{
                 fontFamily: "'Space Mono', monospace",
                 fontSize: 'clamp(48px, 9vw, 96px)',
-                color: 'rgba(180,210,255,0.6)',
+                color: 'rgba(255,210,160,0.6)',
                 lineHeight: 1,
                 textShadow: [
-                    '1px 1px 0px rgba(20,50,160,0.9)',
-                    '2px 2px 0px rgba(10,30,120,0.7)',
-                    '3px 3px 0px rgba(5,15,80,0.5)',
-                    '-3px 0 rgba(255,60,60,0.6)',
-                    '3px 0 rgba(40,210,255,0.6)',
-                    '0 0 30px rgba(120,180,255,0.6)',
+                    '1px 1px 0px rgba(120,60,10,0.9)',
+                    '2px 2px 0px rgba(80,40,6,0.7)',
+                    '3px 3px 0px rgba(40,20,2,0.5)',
+                    '-3px 0 rgba(255,140,40,0.6)',
+                    '3px 0 rgba(255,210,40,0.6)',
+                    '0 0 30px rgba(255,200,120,0.6)',
                 ].join(', '),
             }}>→</span>
         </div>
@@ -2606,7 +2606,7 @@ function RotatingBust({ url, position, tiltAxis, rotSpeed = 0.3, scale = 1, acti
 
 // ─── Pillar with bust on top ───────────────────────────────────────────────────
 function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
-    const MAT = { color: '#080812', emissive: '#1a2d55', emissiveIntensity: 0.5, metalness: 0.85, roughness: 0.25, toneMapped: false }
+    const MAT = { color: '#0a0805', emissive: '#2a1500', emissiveIntensity: 0.5, metalness: 0.85, roughness: 0.25, toneMapped: false }
     return (
         <group position={position}>
             {/* Base slab */}
@@ -2622,7 +2622,7 @@ function Pillar({ position, bustUrl, bustRotSpeed = 0.05, bustScale = 3 }) {
             {/* Top cap */}
             <mesh position={[0, 2.1, 0]}>
                 <boxGeometry args={[0.8, 0.16, 0.8]} />
-                <meshStandardMaterial {...MAT} emissive="#3355cc" emissiveIntensity={0.8} />
+                <meshStandardMaterial {...MAT} emissive="#aa5500" emissiveIntensity={0.8} />
             </mesh>
             {/* Bust */}
             <RotatingBust
@@ -2781,9 +2781,9 @@ function EthosSection({ scrollRef }) {
                 activeCheck={inEthos}
             />
 
-            <pointLight position={[0, 2, 6]} intensity={200} color="#6699ff" distance={18} decay={2} />
-            <pointLight position={[4, 1, 4]} intensity={60} color="#3355ff" distance={10} decay={2} />
-            <pointLight position={[-4, 1, 4]} intensity={60} color="#3355ff" distance={10} decay={2} />
+            <pointLight position={[0, 2, 6]} intensity={200} color="#ff8833" distance={18} decay={2} />
+            <pointLight position={[4, 1, 4]} intensity={60} color="#cc4400" distance={10} decay={2} />
+            <pointLight position={[-4, 1, 4]} intensity={60} color="#cc4400" distance={10} decay={2} />
         </group>
     )
 }
@@ -2811,18 +2811,18 @@ const GRAY_1x1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAf
 const PLACEHOLDER_IMAGES = [GRAY_1x1, GRAY_1x1, GRAY_1x1]
 
 const DEBRIS_PIECES = [
-    { startPos: [-20, 2, 8], geo: 'oct', color: '#3366ff', speed: 2.8 },
-    { startPos: [10, -3, 6], geo: 'ico', color: '#2244cc', speed: 3.2 },
-    { startPos: [30, 1, -4], geo: 'box', color: '#1133aa', speed: 2.5 },
-    { startPos: [70, 3, 10], geo: 'oct', color: '#4455ff', speed: 3.8 },
-    { startPos: [75, -2, -6], geo: 'ico', color: '#3344ee', speed: 2.9 },
-    { startPos: [100, 0, 4], geo: 'oct', color: '#00aaff', speed: 4.2 },
-    { startPos: [120, -1, 3], geo: 'tor', color: '#ff3366', speed: 3.6 },
-    { startPos: [140, 1, 5], geo: 'ico', color: '#44ff88', speed: 4.8 },
-    { startPos: [50, 4, -8], geo: 'box', color: '#2255dd', speed: 3.1 },
-    { startPos: [90, -4, 7], geo: 'oct', color: '#1144bb', speed: 3.4 },
-    { startPos: [110, 2, -5], geo: 'ico', color: '#3355cc', speed: 2.7 },
-    { startPos: [130, -3, 6], geo: 'tor', color: '#0099ee', speed: 3.9 },
+    { startPos: [-20, 2, 8], geo: 'oct', color: '#d97706', speed: 2.8 },
+    { startPos: [10, -3, 6], geo: 'ico', color: '#662200', speed: 3.2 },
+    { startPos: [30, 1, -4], geo: 'box', color: '#552200', speed: 2.5 },
+    { startPos: [70, 3, 10], geo: 'oct', color: '#cc5500', speed: 3.8 },
+    { startPos: [75, -2, -6], geo: 'ico', color: '#aa4400', speed: 2.9 },
+    { startPos: [100, 0, 4], geo: 'oct', color: '#ff9933', speed: 4.2 },
+    { startPos: [120, -1, 3], geo: 'tor', color: '#ff6622', speed: 3.6 },
+    { startPos: [140, 1, 5], geo: 'ico', color: '#cc6622', speed: 4.8 },
+    { startPos: [50, 4, -8], geo: 'box', color: '#993300', speed: 3.1 },
+    { startPos: [90, -4, 7], geo: 'oct', color: '#663300', speed: 3.4 },
+    { startPos: [110, 2, -5], geo: 'ico', color: '#aa5500', speed: 2.7 },
+    { startPos: [130, -3, 6], geo: 'tor', color: '#ff7722', speed: 3.9 },
 ]
 
 function DebrisPiece({ piece, progress, exploded }) {
@@ -2957,7 +2957,7 @@ function GlassShard({ index, totalShards, uvOffset, uvSize, worldPos, worldSize,
                     transparent opacity={0}
                     roughness={0.02} metalness={0.1}
                     envMapIntensity={2.5}
-                    color="#cce8ff"
+                    color="#f5d9b0"
                     toneMapped={false}
                 />
             </mesh>
@@ -3001,7 +3001,7 @@ function FragmentedPortrait({ appeared, exploded }) {
 
 function RaveAfterglowLights({ active }) {
     const light1Ref = useRef(), light2Ref = useRef(), light3Ref = useRef()
-    const hueRef = useRef(0.6)
+    const hueRef = useRef(0.08)
 
     useFrame((state, delta) => {
         if (!active) return
@@ -3122,9 +3122,9 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
 
     useEffect(() => {
         let raf
-        const ACCENT = '#3a6a99'
-        const PAST = '#1e3a66'
-        const IDLE = '#08111f'
+        const ACCENT = '#cc7722'
+        const PAST = '#5c2800'
+        const IDLE = '#180a00'
 
         function loop() {
             const t = scrollRef.current ?? 0
@@ -3158,8 +3158,8 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                 const isPast = SCROLLBAR_STOPS[i] < t + 0.01
                 const isHome = i === 0
                 dot.style.background = isActive ? ACCENT : isPast ? PAST : IDLE
-                dot.style.borderColor = isActive ? ACCENT : isPast ? '#2a4a88' : '#182440'
-                dot.style.boxShadow = isActive ? `0 0 10px ${ACCENT}, 0 0 22px ${ACCENT}55` : isPast ? `0 0 5px #1e3a6688` : 'none'
+                dot.style.borderColor = isActive ? ACCENT : isPast ? '#884422' : '#281000'
+                dot.style.boxShadow = isActive ? `0 0 10px ${ACCENT}, 0 0 22px ${ACCENT}55` : isPast ? `0 0 5px #5c280088` : 'none'
                 const scale = isActive ? 1.6 : 1
                 dot.style.transform = isHome
                     ? `scale(${scale})`
@@ -3195,8 +3195,8 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                 {/* Glowing Liquid Fill */}
                 <div ref={fillRef} style={{
                     position: 'absolute', top: 0, left: 0, height: '100%', width: '0%',
-                    background: 'linear-gradient(90deg, #0066ff, #00e5ff, #fff)',
-                    boxShadow: '0 0 15px #00aaff, 0 0 30px #00aaff44',
+                    background: 'linear-gradient(90deg, #cc6600, #fbbf24, #fff5e0)',
+                    boxShadow: '0 0 15px #ff9933, 0 0 30px #ff993344',
                     borderRadius: '1px',
                     transition: 'width 100ms cubic-bezier(0.23, 1, 0.32, 1)',
                 }}>
@@ -3235,7 +3235,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                         }}
                         onMouseEnter={() => {
                             const dot = dotRefs.current[i]
-                            if (dot) { dot.style.borderColor = '#00aaff'; dot.style.boxShadow = '0 0 8px #00aaff88' }
+                            if (dot) { dot.style.borderColor = '#ff9933'; dot.style.boxShadow = '0 0 8px #ff993388' }
                             sfx.piano()
                         }}
                         onMouseLeave={() => {
@@ -3245,7 +3245,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                         {/* Diamond (circle for home) */}
                         <div ref={el => dotRefs.current[i] = el} style={{
                             width: '7px', height: '7px',
-                            border: '1px solid #2a3a5a', background: '#08111f',
+                            border: '1px solid #3a1e0a', background: '#180a00',
                             borderRadius: i === 0 ? '50%' : '0',
                             transform: i === 0 ? 'rotate(0deg)' : 'rotate(45deg)',
                             transition: 'background 0.25s, box-shadow 0.25s, transform 0.25s, border-color 0.25s',
@@ -3255,7 +3255,7 @@ function ScrollBar({ scrollRef, currentSectionRef }) {
                             <span className="nav-label" style={{
                                 position: 'absolute', top: '20px', left: '50%',
                                 transform: 'translateX(-50%)',
-                                fontSize: '8px', color: '#3a5a90',
+                                fontSize: '8px', color: '#7a5030',
                                 fontFamily: 'var(--font-mono)', userSelect: 'none',
                                 letterSpacing: '1px', opacity: 0.7,
                             }}>⌂</span>
@@ -3305,9 +3305,9 @@ const CASE_STUDY_CSS = `
     position: relative;
     width: min(640px, 52vw);
     height: 100vh;
-    background: rgba(6, 7, 20, 0.82);
+    background: rgba(20, 12, 4, 0.82);
     backdrop-filter: blur(28px) saturate(1.4);
-    border-left: 1px solid rgba(100, 130, 220, 0.18);
+    border-left: 1px solid rgba(180, 100, 30, 0.18);
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
@@ -3332,15 +3332,15 @@ const CASE_STUDY_CSS = `
 }
 .cs-header {
     padding: 20px 28px;
-    border-bottom: 1px solid rgba(100, 130, 220, 0.12);
+    border-bottom: 1px solid rgba(180, 100, 30, 0.12);
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
 }
 .cs-close-btn {
     background: none;
-    border: 1px solid rgba(100, 130, 220, 0.25);
-    color: #8899cc;
+    border: 1px solid rgba(180, 100, 30, 0.25);
+    color: #c4a882;
     width: 32px;
     height: 32px;
     min-width: 32px;
@@ -3356,16 +3356,16 @@ const CASE_STUDY_CSS = `
     transition: all 0.2s ease;
 }
 .cs-close-btn:hover {
-    background: rgba(100, 130, 220, 0.1);
-    border-color: rgba(100, 130, 220, 0.4);
-    color: #b8d6ff;
+    background: rgba(180, 100, 30, 0.1);
+    border-color: rgba(180, 100, 30, 0.4);
+    color: #f5c890;
 }
 .cs-body {
     flex: 1;
     overflow-y: auto;
     padding: 32px 28px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(100, 130, 220, 0.2) transparent;
+    scrollbar-color: rgba(180, 100, 30, 0.2) transparent;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 .cs-body::-webkit-scrollbar {
@@ -3375,11 +3375,11 @@ const CASE_STUDY_CSS = `
     background: transparent;
 }
 .cs-body::-webkit-scrollbar-thumb {
-    background: rgba(100, 130, 220, 0.2);
+    background: rgba(180, 100, 30, 0.2);
     border-radius: 3px;
 }
 .cs-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 130, 220, 0.35);
+    background: rgba(180, 100, 30, 0.35);
 }
 .cs-meta-row {
     display: flex;
@@ -3389,13 +3389,13 @@ const CASE_STUDY_CSS = `
 .cs-meta-item label {
     font-size: 9px;
     letter-spacing: 0.12em;
-    color: #729bec;
+    color: #cc8844;
     display: block;
     text-transform: uppercase;
 }
 .cs-meta-item span {
     font-size: 13px;
-    color: #8899cc;
+    color: #c4a882;
     margin-top: 6px;
 }
 .cs-section {
@@ -3404,29 +3404,29 @@ const CASE_STUDY_CSS = `
 .cs-section-label {
     font-size: 9px;
     letter-spacing: 0.14em;
-    color: #729bec;
+    color: #cc8844;
     margin-bottom: 8px;
     text-transform: uppercase;
 }
 .cs-section-title {
     font-size: 18px;
-    color: #b8d6ff;
+    color: #f5c890;
     margin-bottom: 12px;
     font-weight: 500;
 }
 .cs-section-body {
     font-size: 13px;
-    color: #7788bb;
+    color: #aa7744;
     line-height: 1.7;
 }
 .cs-quote {
-    border-left: 2px solid rgba(100, 130, 220, 0.3);
+    border-left: 2px solid rgba(180, 100, 30, 0.3);
     padding: 10px 16px;
     margin: 10px 0;
     font-size: 13px;
-    color: #8899cc;
+    color: #c4a882;
     font-style: italic;
-    background: rgba(30, 40, 80, 0.2);
+    background: rgba(40, 20, 5, 0.2);
 }
 .cs-feature-grid {
     display: flex;
@@ -3434,21 +3434,21 @@ const CASE_STUDY_CSS = `
     gap: 12px;
 }
 .cs-feature-card {
-    background: rgba(30, 40, 80, 0.4);
-    border: 1px solid rgba(100, 130, 220, 0.12);
+    background: rgba(40, 20, 5, 0.4);
+    border: 1px solid rgba(180, 100, 30, 0.12);
     border-radius: 4px;
     padding: 14px;
 }
 .cs-feature-name {
     font-size: 11px;
     letter-spacing: 0.1em;
-    color: #00aaff;
+    color: #ff9933;
     margin-bottom: 6px;
     text-transform: uppercase;
 }
 .cs-feature-desc {
     font-size: 12px;
-    color: #7788bb;
+    color: #aa7744;
     line-height: 1.5;
     margin-bottom: 8px;
 }
@@ -3456,26 +3456,26 @@ const CASE_STUDY_CSS = `
     width: 100%;
     height: auto;
     border-radius: 4px;
-    border: 1px solid rgba(100, 130, 220, 0.2);
+    border: 1px solid rgba(180, 100, 30, 0.2);
     display: block;
 }
 .cs-cta {
     font-size: 13px;
-    color: #7788bb;
+    color: #aa7744;
     line-height: 1.7;
     padding: 16px;
-    background: rgba(100, 130, 220, 0.05);
-    border: 1px solid rgba(100, 130, 220, 0.1);
+    background: rgba(180, 100, 30, 0.05);
+    border: 1px solid rgba(180, 100, 30, 0.1);
     border-radius: 4px;
     margin-bottom: 20px;
 }
 .cs-placeholder {
     padding: 40px 20px;
-    color: #7788bb;
+    color: #aa7744;
 }
 .cs-placeholder-title {
     font-size: 16px;
-    color: #8899cc;
+    color: #c4a882;
     margin-bottom: 12px;
 }
 .cs-img-full { width: 100%; border-radius: 4px; display: block; }
@@ -3486,7 +3486,7 @@ const CASE_STUDY_CSS = `
 .cs-img-trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .cs-img-trio img { width: 100%; border-radius: 4px; display: block; }
 .cs-img-wrap { margin-bottom: 20px; }
-.cs-img-caption { font-size: 11px; color: #7e8aa0; line-height: 1.5; margin-top: 7px; font-family: 'Space Mono', monospace; }
+.cs-img-caption { font-size: 11px; color: #8a7a60; line-height: 1.5; margin-top: 7px; font-family: 'Space Mono', monospace; }
 .cs-zoom-overlay {
     position: fixed;
     inset: 0;
@@ -3530,7 +3530,7 @@ const CASE_STUDY_CSS = `
 }
 .cs-zoom-title {
     font-size: 18px;
-    color: #b8d6ff;
+    color: #f5c890;
     margin-bottom: 12px;
     font-weight: 500;
     font-family: 'Space Mono', monospace;
@@ -3594,8 +3594,8 @@ const CASE_STUDY_CSS = `
 // ─── Cyberpunk Neon Variant ──
 const CASE_STUDY_CSS_NEON = `
 @keyframes neon-glow {
-    0%, 100% { background: linear-gradient(135deg, rgba(0, 20, 40, 0.9) 0%, rgba(0, 255, 255, 0.05) 50%, rgba(255, 0, 255, 0.03) 100%); }
-    50% { background: linear-gradient(135deg, rgba(0, 30, 60, 0.95) 0%, rgba(0, 255, 255, 0.08) 50%, rgba(255, 0, 255, 0.06) 100%); }
+    0%, 100% { background: linear-gradient(135deg, rgba(20, 8, 0, 0.9) 0%, rgba(255, 153, 51, 0.05) 50%, rgba(255, 102, 34, 0.03) 100%); }
+    50% { background: linear-gradient(135deg, rgba(25, 10, 0, 0.95) 0%, rgba(255, 153, 51, 0.08) 50%, rgba(255, 102, 34, 0.06) 100%); }
 }
 .cs-panel-neon {
     position: fixed;
@@ -3622,10 +3622,10 @@ const CASE_STUDY_CSS_NEON = `
     position: relative;
     width: min(640px, 52vw);
     height: 100vh;
-    background: linear-gradient(135deg, rgba(0, 20, 40, 0.9) 0%, rgba(0, 255, 255, 0.05) 50%, rgba(255, 0, 255, 0.03) 100%);
+    background: linear-gradient(135deg, rgba(20, 8, 0, 0.9) 0%, rgba(255, 153, 51, 0.05) 50%, rgba(255, 102, 34, 0.03) 100%);
     animation: neon-glow 8s ease-in-out infinite;
-    border-left: 2px solid #00ffff;
-    box-shadow: inset -20px 0 40px rgba(0, 255, 255, 0.1), 0 0 30px rgba(0, 255, 255, 0.3);
+    border-left: 2px solid #ff9933;
+    box-shadow: inset -20px 0 40px rgba(255, 153, 51, 0.1), 0 0 30px rgba(255, 153, 51, 0.3);
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
@@ -3637,17 +3637,17 @@ const CASE_STUDY_CSS_NEON = `
 }
 .cs-header-neon {
     padding: 20px 28px;
-    border-bottom: 1px solid rgba(0, 255, 255, 0.4);
+    border-bottom: 1px solid rgba(255, 153, 51, 0.4);
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    background: linear-gradient(135deg, rgba(0, 255, 255, 0.05) 0%, transparent 100%);
-    box-shadow: 0 4px 15px rgba(0, 255, 255, 0.15);
+    background: linear-gradient(135deg, rgba(255, 153, 51, 0.05) 0%, transparent 100%);
+    box-shadow: 0 4px 15px rgba(255, 153, 51, 0.15);
 }
 .cs-close-btn-neon {
     background: transparent;
-    border: 1px solid rgba(0, 255, 255, 0.5);
-    color: #00ffff;
+    border: 1px solid rgba(255, 153, 51, 0.5);
+    color: #fbbf24;
     width: 32px;
     height: 32px;
     min-width: 32px;
@@ -3661,91 +3661,91 @@ const CASE_STUDY_CSS_NEON = `
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+    text-shadow: 0 0 8px rgba(255, 153, 51, 0.6);
 }
 .cs-close-btn-neon:hover {
-    background: rgba(0, 255, 255, 0.1);
-    border-color: rgba(0, 255, 255, 0.8);
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+    background: rgba(255, 153, 51, 0.1);
+    border-color: rgba(255, 153, 51, 0.8);
+    box-shadow: 0 0 15px rgba(255, 153, 51, 0.8);
 }
 .cs-body-neon {
     flex: 1;
     overflow-y: auto;
     padding: 32px 28px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 255, 255, 0.3) transparent;
+    scrollbar-color: rgba(255, 153, 51, 0.3) transparent;
     font-family: 'Space Mono', monospace;
 }
 .cs-body-neon::-webkit-scrollbar {
     width: 6px;
 }
 .cs-body-neon::-webkit-scrollbar-thumb {
-    background: rgba(0, 255, 255, 0.3);
-    box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+    background: rgba(255, 153, 51, 0.3);
+    box-shadow: 0 0 8px rgba(255, 153, 51, 0.5);
 }
 .cs-meta-row-neon {
     display: flex;
     gap: 32px;
     margin-bottom: 36px;
     padding: 16px;
-    background: rgba(0, 255, 255, 0.05);
-    border: 1px solid rgba(0, 255, 255, 0.2);
-    box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05);
+    background: rgba(255, 153, 51, 0.05);
+    border: 1px solid rgba(255, 153, 51, 0.2);
+    box-shadow: inset 0 0 20px rgba(255, 153, 51, 0.05);
 }
 .cs-meta-item-neon label {
     font-size: 9px;
     letter-spacing: 0.2em;
-    color: #00ffff;
+    color: #fbbf24;
     display: block;
     text-transform: uppercase;
-    text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+    text-shadow: 0 0 6px rgba(255, 153, 51, 0.6);
 }
 .cs-meta-item-neon span {
     font-size: 13px;
-    color: #00ffff;
+    color: #fbbf24;
     margin-top: 6px;
-    text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+    text-shadow: 0 0 8px rgba(255, 153, 51, 0.5);
 }
 .cs-section-neon {
     margin-bottom: 36px;
     padding: 16px;
-    background: rgba(0, 255, 255, 0.03);
-    border: 1px solid rgba(0, 255, 255, 0.2);
-    border-left: 3px solid rgba(0, 255, 255, 0.6);
+    background: rgba(255, 153, 51, 0.03);
+    border: 1px solid rgba(255, 153, 51, 0.2);
+    border-left: 3px solid rgba(255, 153, 51, 0.6);
 }
 .cs-section-label-neon {
     font-size: 9px;
     letter-spacing: 0.2em;
-    color: #00ffff;
+    color: #fbbf24;
     margin-bottom: 8px;
     text-transform: uppercase;
-    text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+    text-shadow: 0 0 6px rgba(255, 153, 51, 0.6);
 }
 .cs-section-title-neon {
     font-size: 18px;
-    color: #00ffff;
+    color: #fbbf24;
     margin-bottom: 12px;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+    text-shadow: 0 0 10px rgba(255, 153, 51, 0.7);
 }
 .cs-section-body-neon {
     font-size: 12px;
     color: #00ff88;
     line-height: 1.7;
-    text-shadow: 0 0 4px rgba(0, 255, 255, 0.3);
+    text-shadow: 0 0 4px rgba(255, 153, 51, 0.3);
 }
 .cs-quote-neon {
-    border-left: 3px solid #ff00ff;
+    border-left: 3px solid #ff6622;
     padding: 12px 16px;
     margin: 12px 0;
     font-size: 12px;
-    color: #ff00ff;
+    color: #ff6622;
     font-style: italic;
-    background: rgba(255, 0, 255, 0.08);
-    box-shadow: inset 0 0 15px rgba(255, 0, 255, 0.1), 0 0 10px rgba(255, 0, 255, 0.2);
-    text-shadow: 0 0 8px rgba(255, 0, 255, 0.5);
+    background: rgba(255, 102, 34, 0.08);
+    box-shadow: inset 0 0 15px rgba(255, 102, 34, 0.1), 0 0 10px rgba(255, 102, 34, 0.2);
+    text-shadow: 0 0 8px rgba(255, 120, 30, 0.5);
 }
 .cs-feature-grid-neon {
     display: grid;
@@ -3755,18 +3755,18 @@ const CASE_STUDY_CSS_NEON = `
 }
 .cs-feature-card-neon {
     background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(0, 255, 255, 0.4);
+    border: 1px solid rgba(255, 153, 51, 0.4);
     border-radius: 0;
     padding: 14px;
-    box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05), 0 0 15px rgba(0, 255, 255, 0.15);
+    box-shadow: inset 0 0 15px rgba(255, 153, 51, 0.05), 0 0 15px rgba(255, 153, 51, 0.15);
 }
 .cs-feature-name-neon {
     font-size: 9px;
     letter-spacing: 0.15em;
-    color: #00ffff;
+    color: #fbbf24;
     margin-bottom: 6px;
     text-transform: uppercase;
-    text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+    text-shadow: 0 0 6px rgba(255, 153, 51, 0.6);
 }
 .cs-feature-desc-neon {
     font-size: 11px;
@@ -3777,21 +3777,21 @@ const CASE_STUDY_CSS_NEON = `
 .cs-feature-video-neon {
     width: 100%;
     height: auto;
-    border: 1px solid rgba(0, 255, 255, 0.3);
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    border: 1px solid rgba(255, 153, 51, 0.3);
+    box-shadow: 0 0 10px rgba(255, 153, 51, 0.2);
     display: block;
 }
 .cs-cta-neon {
     font-size: 12px;
-    color: #00ffff;
+    color: #fbbf24;
     line-height: 1.7;
     padding: 16px;
     background: rgba(0, 0, 0, 0.8);
-    border: 1px solid rgba(0, 255, 255, 0.4);
-    border-left: 3px solid #ff00ff;
+    border: 1px solid rgba(255, 153, 51, 0.4);
+    border-left: 3px solid #ff6622;
     margin-bottom: 20px;
-    box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05), 0 0 20px rgba(0, 255, 255, 0.15);
-    text-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
+    box-shadow: inset 0 0 15px rgba(255, 153, 51, 0.05), 0 0 20px rgba(255, 153, 51, 0.15);
+    text-shadow: 0 0 6px rgba(255, 153, 51, 0.5);
 }
 `
 
@@ -3812,7 +3812,7 @@ function CaseStudySection({ section, neon = false, onMediaClick }) {
                 <div className={`cs-section-label${prefix}`}>{section.label}</div>
                 <div className={`cs-section-title${prefix}`}>{section.title}</div>
                 <div className={`cs-section-body${prefix}`}>{section.body}</div>
-                {section.stat && <div style={{ marginTop: 12, fontSize: 12, color: neon ? '#00ffff' : '#00aaff', fontWeight: 500, textShadow: neon ? '0 0 6px rgba(0,255,255,0.6)' : 'none' }}>→ {section.stat}</div>}
+                {section.stat && <div style={{ marginTop: 12, fontSize: 12, color: neon ? '#fbbf24' : '#ff9933', fontWeight: 500, textShadow: neon ? '0 0 6px rgba(255,153,51,0.6)' : 'none' }}>→ {section.stat}</div>}
             </div>
         )
     } else if (section.type === 'quotes') {
@@ -3863,7 +3863,7 @@ function CaseStudySection({ section, neon = false, onMediaClick }) {
         return (
             <div className={`cs-cta${prefix}`}>
                 {section.body}
-                <div style={{ marginTop: '12px', fontSize: '12px', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', color: '#5588ff' }}>
+                <div style={{ marginTop: '12px', fontSize: '12px', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', color: '#f59e0b' }}>
                     <CopyEmailHud />
                 </div>
             </div>
@@ -3931,7 +3931,7 @@ function CaseStudyOverlay({ project, onClose }) {
                     <div className="cs-header">
                         <div>
                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color, letterSpacing: '0.08em' }}>{displayProject.title}</div>
-                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '13px', letterSpacing: '0.08em', color: '#556688', marginTop: '6px', lineHeight: 1.5 }}>{displayProject.subtitle}</div>
+                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '13px', letterSpacing: '0.08em', color: '#8a6040', marginTop: '6px', lineHeight: 1.5 }}>{displayProject.subtitle}</div>
                         </div>
                         <button className="cs-close-btn" onClick={onClose}>&times;</button>
                     </div>
@@ -3973,12 +3973,12 @@ function CaseStudyOverlay({ project, onClose }) {
                         {!cs && (
                             <div className="cs-placeholder">
                                 <div className="cs-placeholder-title">Case study coming soon</div>
-                                <div style={{ fontSize: '13px', color: '#556688', lineHeight: 1.7 }}>
+                                <div style={{ fontSize: '13px', color: '#8a6040', lineHeight: 1.7 }}>
                                     {displayProject.desc}
                                 </div>
                                 <div style={{ marginTop: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                     {displayProject.tech.map(t => (
-                                        <span key={t} style={{ fontSize: '10px', letterSpacing: '0.1em', color: '#556688', padding: '3px 8px', border: '1px solid #1a2444', borderRadius: '2px', fontFamily: 'var(--font-mono)' }}>{t}</span>
+                                        <span key={t} style={{ fontSize: '10px', letterSpacing: '0.1em', color: '#8a6040', padding: '3px 8px', border: '1px solid #3a1e0a', borderRadius: '2px', fontFamily: 'var(--font-mono)' }}>{t}</span>
                                     ))}
                                 </div>
                             </div>
@@ -4042,7 +4042,7 @@ const MOBILE_RING_CSS = `
 .mobile-marquee-item video {
     width: 100%; height: 100%; object-fit: cover;
     border-radius: 10px;
-    border: 1px solid rgba(80,120,255,0.45);
+    border: 1px solid rgba(200,130,60,0.45);
     box-shadow: 0 0 18px rgba(60,100,255,0.35), 0 4px 20px rgba(0,0,0,0.5);
     display: block;
     filter: saturate(0.1) brightness(0.85) contrast(1.1) hue-rotate(180deg);
@@ -4099,7 +4099,7 @@ const ABOUT_CSS = `
         max-height: 80vh;
         overflow-y: auto;
         padding: 24px 20px calc(28px + 36px + 16px);
-        background: rgba(6, 7, 20, 0.92);
+        background: rgba(20, 12, 4, 0.92);
         backdrop-filter: blur(20px);
     }
     @keyframes about-in {
@@ -4109,42 +4109,42 @@ const ABOUT_CSS = `
 }
 .about-label {
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.32em;
-    color: rgba(136,160,255,0.4); text-transform: uppercase;
+    color: rgba(200,140,60,0.4); text-transform: uppercase;
     display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
 }
 .about-label::after {
     content: ''; flex: 1; height: 1px;
-    background: linear-gradient(to right, rgba(100,130,220,0.25), transparent);
+    background: linear-gradient(to right, rgba(180,100,30,0.25), transparent);
 }
 .about-dot {
     width: 4px; height: 4px; border-radius: 50%;
-    background: #3366ff; box-shadow: 0 0 5px #3366ff;
+    background: #d97706; box-shadow: 0 0 5px #d97706;
     animation: about-blink 1.4s step-end infinite; flex-shrink: 0;
 }
 @keyframes about-blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .about-name {
     font-family: var(--font-mono); font-size: 18px; letter-spacing: 0.15em;
-    color: #eef2ff; margin: 0 0 4px; font-weight: 400;
+    color: #fff5e8; margin: 0 0 4px; font-weight: 400;
 }
 .about-role {
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.26em;
-    color: rgba(136,160,255,0.45); margin: 0 0 18px; text-transform: uppercase;
+    color: rgba(200,140,60,0.45); margin: 0 0 18px; text-transform: uppercase;
 }
 .about-bio {
     font-family: 'Space Mono', monospace; font-size: 13px;
-    color: rgba(180,200,240,0.65); line-height: 1.75; letter-spacing: 0.01em;
+    color: rgba(232,200,160,0.65); line-height: 1.75; letter-spacing: 0.01em;
     margin: 0 0 18px;
 }
-.about-bio strong { color: rgba(200,220,255,0.85); font-weight: 400; }
+.about-bio strong { color: rgba(245,220,180,0.85); font-weight: 400; }
 .about-divider {
-    height: 1px; background: linear-gradient(to right, rgba(100,130,220,0.2), transparent);
+    height: 1px; background: linear-gradient(to right, rgba(180,100,30,0.2), transparent);
     margin: 0 0 16px;
 }
 .about-skills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 18px; }
 .about-skill {
     font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
-    color: rgba(100,140,220,0.6); padding: 3px 7px;
-    border: 1px solid rgba(80,110,200,0.18); border-radius: 2px;
+    color: rgba(200,130,60,0.6); padding: 3px 7px;
+    border: 1px solid rgba(180,100,30,0.18); border-radius: 2px;
     text-transform: uppercase;
 }
 .about-contact {
@@ -4152,13 +4152,13 @@ const ABOUT_CSS = `
 }
 .about-contact-btn {
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
-    color: rgba(180,210,255,0.9); text-transform: uppercase; text-decoration: none;
-    padding: 10px 20px; border: 1px solid rgba(100,150,255,0.45); border-radius: 2px;
-    background: rgba(40,70,180,0.12); cursor: pointer;
-    box-shadow: 0 0 12px rgba(80,130,255,0.1), inset 0 0 8px rgba(80,130,255,0.06);
+    color: rgba(245,210,160,0.9); text-transform: uppercase; text-decoration: none;
+    padding: 10px 20px; border: 1px solid rgba(200,130,60,0.45); border-radius: 2px;
+    background: rgba(120,60,10,0.12); cursor: pointer;
+    box-shadow: 0 0 12px rgba(200,120,40,0.1), inset 0 0 8px rgba(180,100,30,0.06);
     transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.about-contact-btn:hover { background: rgba(50,90,220,0.22); color: #fff; border-color: rgba(120,160,255,0.7); box-shadow: 0 0 20px rgba(80,130,255,0.25), inset 0 0 12px rgba(80,130,255,0.1); }
+.about-contact-btn:hover { background: rgba(180,80,0,0.22); color: #fff; border-color: rgba(255,160,80,0.7); box-shadow: 0 0 20px rgba(200,120,40,0.25), inset 0 0 12px rgba(200,120,40,0.1); }
 .about-contact-btn.copied { background: rgba(0,80,40,0.22); color: #00ff88; border-color: rgba(0,200,100,0.2); }
 `
 
@@ -4323,7 +4323,7 @@ function SynthNode({ config, isActive, onClick, onHover, onHoverOut, visible, is
                 args={[0.75, 0.75, 0.75]} radius={0.09} smoothness={4}
             >
                 <meshStandardMaterial
-                    color="#0a0a1a"
+                    color="#0a0805"
                     emissive={config.color}
                     emissiveIntensity={isActive ? 0.35 : (hovered ? 0.15 : 0.05)}
                     metalness={0.85} roughness={0.08}
@@ -4415,15 +4415,15 @@ function ResumeHub({ currentSectionRef }) {
             >
                 <icosahedronGeometry args={[0.7, 1]} />
                 <meshStandardMaterial
-                    color="#eef2ff" emissive="#3366ff" emissiveIntensity={hovered ? 1.2 : 0.6}
+                    color="#fff5e8" emissive="#d97706" emissiveIntensity={hovered ? 1.2 : 0.6}
                     metalness={0.8} roughness={0.1} toneMapped={false}
                 />
             </mesh>
             <mesh ref={ringRef}>
                 <torusGeometry args={[1.1, 0.02, 8, 64]} />
-                <meshBasicMaterial color="#3366ff" transparent opacity={0.45} toneMapped={false} />
+                <meshBasicMaterial color="#d97706" transparent opacity={0.45} toneMapped={false} />
             </mesh>
-            <pointLight color="#3366ff" intensity={2.5} distance={7} />
+            <pointLight color="#d97706" intensity={2.5} distance={7} />
         </group>
     )
 }
@@ -4463,8 +4463,8 @@ function LockedCube({ onHover, onHoverOut, onClick, visible }) {
             <mesh ref={meshRef}>
                 <boxGeometry args={[1.1, 1.1, 1.1]} />
                 <meshStandardMaterial
-                    color="#0a0a1a"
-                    emissive={hovered ? '#2244aa' : '#0a1a55'}
+                    color="#0a0805"
+                    emissive={hovered ? '#662200' : '#1a0800'}
                     emissiveIntensity={hovered ? 1.2 : 0.7}
                     metalness={0.9} roughness={0.15} toneMapped={false}
                 />
@@ -4472,7 +4472,7 @@ function LockedCube({ onHover, onHoverOut, onClick, visible }) {
             <mesh ref={wireRef}>
                 <boxGeometry args={[1.16, 1.16, 1.16]} />
                 <meshBasicMaterial
-                    color={hovered ? '#6688cc' : '#3355aa'}
+                    color={hovered ? '#cc8833' : '#993300'}
                     wireframe transparent
                     opacity={hovered ? 0.85 : 0.55}
                     toneMapped={false}
@@ -4483,7 +4483,7 @@ function LockedCube({ onHover, onHoverOut, onClick, visible }) {
             <Text position={[0, -0.9, 0]}
                 font="/fonts/Rocket%20Command/rocketcommandexpand.ttf"
                 fontSize={0.22} letterSpacing={0.1} anchorX="center" anchorY="middle"
-                color={hovered ? '#6688cc' : '#3355aa'}
+                color={hovered ? '#cc8833' : '#993300'}
                 material-toneMapped={false}
             >{'???'}</Text>
 
@@ -4491,11 +4491,11 @@ function LockedCube({ onHover, onHoverOut, onClick, visible }) {
             {hovered && (
                 <group>
                     <Line points={[[0.55, 0, 0], [1.0, 0.5, 0], [1.5, 0.5, 0]]}
-                        color="#3366ff" lineWidth={0.7} transparent opacity={0.5} />
+                        color="#d97706" lineWidth={0.7} transparent opacity={0.5} />
                     <Text position={[1.6, 0.5, 0.5]}
                         font={SUBTITLE_FONT}
                         fontSize={0.14} lineHeight={1.5} anchorX="left" anchorY="middle"
-                        color="#aabbcc" material-toneMapped={false} material-transparent={true}
+                        color="#c4a882" material-toneMapped={false} material-transparent={true}
                         material-depthTest={false} renderOrder={5}
                     >{'NEXT_ROLE.EXE\n???.???.????'}</Text>
                 </group>
@@ -4611,7 +4611,7 @@ function SpineChain({ start, end, mid, color, active, interactive = true, segmen
 }
 
 // Straight-line chain — cogs positioned along a lerp instead of bezier
-function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#3366ff', active = false, interactive = false, segments = 20, rotationSpeed = 1.5, paused = false, targetSpeed = null, cogScale = 0.28 }) {
+function StraightChain({ start = [0, 0, 0], end = [5, 0, 0], color = '#d97706', active = false, interactive = false, segments = 20, rotationSpeed = 1.5, paused = false, targetSpeed = null, cogScale = 0.28 }) {
     const { scene } = useGLTF('/spine2.glb')
     const _up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
     const spinRefs = useRef([])
@@ -4787,7 +4787,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                     <SpineChain
                         start={hubPos} end={cubePos}
                         mid={[(hubPos[0] + cubePos[0]) / 2, (hubPos[1] + cubePos[1]) / 2 - 2, 0]}
-                        color="#3366ff"
+                        color="#d97706"
                         active={false}
                         targetSpeed={cubeTargetSpeed}
                         interactive={false}
@@ -4816,7 +4816,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                     letterSpacing={0.14}
                     anchorX="center"
                     anchorY="middle"
-                    color="#b8d6ff"
+                    color="#f5c890"
                     material-toneMapped={false}
                     material-transparent={true}
                     material-opacity={visible ? 1 : 0}
@@ -4835,7 +4835,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
             {/* Popup — anchored to hovered node/cube world position */}
             {(hoveredNodeId || cubeHovered) && (() => {
                 const node = companyNodes.find(n => n.id === hoveredNodeId)
-                const color = node ? node.color : '#3355aa'
+                const color = node ? node.color : '#993300'
                 const text = node ? node.desc : 'NEXT_ROLE.EXE\n???.???.????\n\nOpen to new opportunities.'
                 const pos = node ? node.pos : cubePos
                 return (
@@ -4877,7 +4877,7 @@ function ModularResumePatch({ visible, currentSectionRef }) {
                                 background: 'rgba(5,8,20,0.88)',
                                 border: `1px solid ${color}44`,
                                 borderTop: 'none',
-                                color: '#aabbdd',
+                                color: '#c4a882',
                                 fontSize: '11px',
                                 lineHeight: '1.7',
                                 letterSpacing: '0.04em',
@@ -5108,7 +5108,7 @@ function WavySpine({ introTRef }) {
             <bufferGeometry>
                 <bufferAttribute attach="attributes-position" array={_spineWaveBuf} count={TRAIN_N_TOT} itemSize={3} />
             </bufferGeometry>
-            <lineBasicMaterial color="#00eeff" transparent opacity={0} toneMapped={false} />
+            <lineBasicMaterial color="#ffd60a" transparent opacity={0} toneMapped={false} />
         </line>
     )
 }
@@ -5177,7 +5177,7 @@ function SinglePhotoInner({ tex, isVideo, angle, radius, hoveredIdx, setHoveredI
     const mat = useMemo(() => {
         const m = new THREE.MeshStandardMaterial({
             map: tex,
-            ...(isVideo ? {} : { emissiveMap: tex, emissive: new THREE.Color('#aaccff') }),
+            ...(isVideo ? {} : { emissiveMap: tex, emissive: new THREE.Color('#f5c890') }),
             transparent: true, opacity: 0, side: THREE.DoubleSide,
             toneMapped: false, depthWrite: false,
         })
@@ -5443,14 +5443,14 @@ function exportSigilSVG() {
         const x1 = tx(Math.cos(startRad) * R), y1 = ty(Math.sin(startRad) * R)
         const x2 = tx(Math.cos(endRad) * R), y2 = ty(Math.sin(endRad) * R)
         const r = R * S
-        paths.push(`<path d="M ${x1} ${y1} A ${r} ${r} 0 0 0 ${x2} ${y2}" stroke="#00aaff" stroke-width="4.5" fill="none"/>`)
+        paths.push(`<path d="M ${x1} ${y1} A ${r} ${r} 0 0 0 ${x2} ${y2}" stroke="#ff9933" stroke-width="4.5" fill="none"/>`)
     }
 
     // 2. Tick marks — 8 short lines at gap midpoints
     for (let i = 0; i < 8; i++) {
         const a = THREE.MathUtils.degToRad(i * 45)
         const r0 = 2.44, r1 = 2.66
-        paths.push(`<line x1="${tx(Math.cos(a) * r0)}" y1="${ty(Math.sin(a) * r0)}" x2="${tx(Math.cos(a) * r1)}" y2="${ty(Math.sin(a) * r1)}" stroke="#00aaff" stroke-width="6"/>`)
+        paths.push(`<line x1="${tx(Math.cos(a) * r0)}" y1="${ty(Math.sin(a) * r0)}" x2="${tx(Math.cos(a) * r1)}" y2="${ty(Math.sin(a) * r1)}" stroke="#ff9933" stroke-width="6"/>`)
     }
 
     // 3. 4-pointed star (quadratic bezier outline)
@@ -5459,14 +5459,14 @@ function exportSigilSVG() {
       Q ${tx(0.18)} ${ty(-0.18)} ${tx(0)} ${ty(-1.8)}
       Q ${tx(-0.18)} ${ty(-0.18)} ${tx(-0.9)} ${ty(0)}
       Q ${tx(-0.18)} ${ty(0.18)} ${tx(0)} ${ty(1.8)} Z`
-    paths.push(`<path d="${sd}" stroke="#00aaff" stroke-width="3" fill="none"/>`)
+    paths.push(`<path d="${sd}" stroke="#ff9933" stroke-width="3" fill="none"/>`)
 
     // 4. Rune strokes — CatmullRom sampled to polyline (30 pts each)
     RUNE_PATHS.forEach(pts => {
         const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)))
         const samples = curve.getPoints(30)
         const d = samples.map((p, j) => `${j === 0 ? 'M' : 'L'} ${tx(p.x).toFixed(1)} ${ty(p.y).toFixed(1)}`).join(' ')
-        paths.push(`<path d="${d}" stroke="#00aaff" stroke-width="2.8" fill="none"/>`)
+        paths.push(`<path d="${d}" stroke="#ff9933" stroke-width="2.8" fill="none"/>`)
     })
 
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
@@ -5493,8 +5493,8 @@ function TechnoSigil({ position = [0, 0, 0], scale = 1 }) {
 
     // Shared base material
     const baseMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#001122',
-        emissive: '#00aaff',
+        color: '#140600',
+        emissive: '#ff9933',
         emissiveIntensity: 2.2,
         metalness: 0.9,
         roughness: 0.08,
@@ -5599,7 +5599,7 @@ function TechnoSigil({ position = [0, 0, 0], scale = 1 }) {
 function SigilModel({ position = [0, 0, 0], scale = 1 }) {
     const { scene } = useGLTF('/sigil.glb')
     const sigilMat = useMemo(() => new THREE.MeshPhysicalMaterial({
-        color: '#d8e8f8',
+        color: '#f5d9b0',
         metalness: 0.7,
         roughness: 0.2,
         clearcoat: 1.0,
@@ -5645,7 +5645,7 @@ function SigilModel({ position = [0, 0, 0], scale = 1 }) {
 // ─── Glass accent orbs for Dossier section ───────────────────────────────────
 function DossierGlassAccents() {
     const glassMat = useMemo(() => new THREE.MeshPhysicalMaterial({
-        color: '#aacfff',
+        color: '#f5c890',
         transmission: 0.93,
         roughness: 0.03,
         metalness: 0.05,
@@ -5700,9 +5700,9 @@ function BustDiptych({ scrollRef }) {
     const [appeared, setAppeared] = useState(false)
     const appearedRef = useRef(false)
 
-    const k_x = -67, k_y = -5, k_z = -160, k_intensity = 2000, k_color = '#0079ff'
-    const r_x = -62, r_y = -66, r_z = -222, r_intensity = 2000, r_color = '#6d50ff'
-    const f_x = -110, f_y = 39, f_z = -191, f_intensity = 2000, f_color = '#a200ff'
+    const k_x = -67, k_y = -5, k_z = -160, k_intensity = 2000, k_color = '#ff7700'
+    const r_x = -62, r_y = -66, r_z = -222, r_intensity = 2000, r_color = '#ff8833'
+    const f_x = -110, f_y = 39, f_z = -191, f_intensity = 2000, f_color = '#cc5500'
 
     useFrame((_, delta) => {
         const t = scrollRef.current ?? 0
@@ -5862,29 +5862,29 @@ function Logo3D({ position = [-5, 3.5, 3] }) {
             {/* Left vertical bar */}
             <mesh position={[-0.6, 0, 0]}>
                 <boxGeometry args={[0.2, 1.2, 0.1]} />
-                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+                <meshPhysicalMaterial color="#f5c890" metalness={0.8} roughness={0.1} clearcoat={1.0} />
             </mesh>
 
             {/* Right vertical bar */}
             <mesh position={[0.6, 0, 0]}>
                 <boxGeometry args={[0.2, 1.2, 0.1]} />
-                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+                <meshPhysicalMaterial color="#f5c890" metalness={0.8} roughness={0.1} clearcoat={1.0} />
             </mesh>
 
             {/* Left diagonal */}
             <mesh position={[-0.15, 0.3, 0]} rotation={[0, 0, Math.PI / 4.5]}>
                 <boxGeometry args={[0.15, 0.8, 0.08]} />
-                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+                <meshPhysicalMaterial color="#f5c890" metalness={0.8} roughness={0.1} clearcoat={1.0} />
             </mesh>
 
             {/* Right diagonal */}
             <mesh position={[0.15, 0.3, 0]} rotation={[0, 0, -Math.PI / 4.5]}>
                 <boxGeometry args={[0.15, 0.8, 0.08]} />
-                <meshPhysicalMaterial color="#b8d6ff" metalness={0.8} roughness={0.1} clearcoat={1.0} />
+                <meshPhysicalMaterial color="#f5c890" metalness={0.8} roughness={0.1} clearcoat={1.0} />
             </mesh>
 
             {/* Glow effect */}
-            <pointLight position={[0, 0, 0.5]} intensity={0.5} color="#b8d6ff" distance={2} />
+            <pointLight position={[0, 0, 0.5]} intensity={0.5} color="#f5c890" distance={2} />
         </group>
     )
 }
@@ -6045,7 +6045,7 @@ function BridgeCurveLine({ scrollRef }) {
         <Line
             ref={lineRef}
             points={BRIDGE_LINE_PTS}
-            color="#b8d6ff"
+            color="#f5c890"
             lineWidth={2}
             transparent
             opacity={0}
@@ -6067,7 +6067,7 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
             <PostProcessingEffects />
 
             <color attach="background" args={['#000000']} />
-            <fog attach="fog" args={['#0a0a0a', 8, 50]} />
+            <fog attach="fog" args={['#0a0805', 8, 50]} />
 
             {/* Animated grid background */}
             <AnimatedGrid />
@@ -6089,8 +6089,8 @@ function Scene({ scrollRef, currentSectionRef, onOpenProject }) {
                     buildUrl="https://github.com/moosefroggo/portfolio-2026/commit/7bf4176"
                     cornerLabel="SIG 2/5"
                     footerLabel="5M+ Vehicles Secured"
-                    colorHex="#00aaff"
-                    colorRgb="0,170,255"
+                    colorHex="#ff9933"
+                    colorRgb="255,153,51"
                     onOpen={() => onOpenProject?.(PROJECT_CARDS[0])}
                 />
             </group>}
@@ -6244,9 +6244,9 @@ function EliteLoader() {
     return (
         <div ref={loaderDivRef} style={{
             position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-            backgroundColor: '#02040a', zIndex: 9999, overflow: 'hidden',
+            backgroundColor: '#080503', zIndex: 9999, overflow: 'hidden',
             opacity: isFading ? 0 : 1, transition: 'opacity 0.5s ease',
-            pointerEvents: (canEnter && !isFading) ? 'all' : 'none', fontFamily: 'var(--font-mono)', color: '#8899cc'
+            pointerEvents: (canEnter && !isFading) ? 'all' : 'none', fontFamily: 'var(--font-mono)', color: '#c4a882'
         }}>
             <style>{`
                 @keyframes sweep {
@@ -6255,21 +6255,21 @@ function EliteLoader() {
                 }
                 .loader-sweep {
                     position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-                    background: linear-gradient(90deg, transparent, rgba(255, 0, 255, 0.5), rgba(0, 170, 255, 0.5), transparent);
+                    background: linear-gradient(90deg, transparent, rgba(255, 120, 30, 0.5), rgba(255, 153, 51, 0.5), transparent);
                     animation: sweep 4s linear infinite;
                     z-index: -1;
-                    box-shadow: 0 0 20px rgba(0, 170, 255, 0.4);
+                    box-shadow: 0 0 20px rgba(255, 153, 51, 0.4);
                 }
                 .loader-orb {
                     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
                     width: 300px; height: 300px; border-radius: 50%;
-                    background: radial-gradient(circle, rgba(255, 0, 255, 0.08) 0%, transparent 70%);
+                    background: radial-gradient(circle, rgba(255, 153, 51, 0.18) 0%, rgba(204, 102, 34, 0.08) 40%, transparent 70%);
                     z-index: -1; filter: blur(20px);
                 }
-                .loader-corner-tl { position: absolute; top: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(136,153,204,0.3); border-left: 2px solid rgba(136,153,204,0.3); }
-                .loader-corner-tr { position: absolute; top: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(136,153,204,0.3); border-right: 2px solid rgba(136,153,204,0.3); }
-                .loader-corner-bl { position: absolute; bottom: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136,153,204,0.3); border-left: 2px solid rgba(136,153,204,0.3); }
-                .loader-corner-br { position: absolute; bottom: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(136,153,204,0.3); border-right: 2px solid rgba(136,153,204,0.3); }
+                .loader-corner-tl { position: absolute; top: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(200,140,60,0.3); border-left: 2px solid rgba(200,140,60,0.3); }
+                .loader-corner-tr { position: absolute; top: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(200,140,60,0.3); border-right: 2px solid rgba(200,140,60,0.3); }
+                .loader-corner-bl { position: absolute; bottom: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(200,140,60,0.3); border-left: 2px solid rgba(200,140,60,0.3); }
+                .loader-corner-br { position: absolute; bottom: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(200,140,60,0.3); border-right: 2px solid rgba(200,140,60,0.3); }
                 @property --ba { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
                 @keyframes border-spin { to { --ba: 360deg; } }
                 .loader-btn-wrap {
@@ -6283,7 +6283,7 @@ function EliteLoader() {
                     position: absolute;
                     inset: 0;
                     padding: 1px;
-                    background: conic-gradient(from var(--ba), transparent 0% 55%, rgba(140,160,210,0.25) 65%, rgba(210,220,240,0.8) 72%, rgba(255,255,255,1) 75%, rgba(210,220,240,0.8) 78%, rgba(140,160,210,0.25) 85%, transparent 95% 100%);
+                    background: conic-gradient(from var(--ba), transparent 0% 55%, rgba(200,140,60,0.25) 65%, rgba(240,200,140,0.8) 72%, rgba(255,255,255,1) 75%, rgba(240,200,140,0.8) 78%, rgba(200,140,60,0.25) 85%, transparent 95% 100%);
                     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
                     -webkit-mask-composite: xor;
                     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -6476,16 +6476,16 @@ const SCROLL_HINT_CSS = `
 }
 .scroll-hint-mouse {
     width: 20px; height: 32px;
-    border: 1.5px solid rgba(136,153,204,0.45); border-radius: 10px;
+    border: 1.5px solid rgba(200,160,100,0.45); border-radius: 10px;
     display: flex; justify-content: center; padding-top: 5px; box-sizing: border-box;
 }
 .scroll-hint-wheel {
     width: 2px; height: 6px;
-    background: rgba(136,153,204,0.7); border-radius: 2px;
+    background: rgba(200,160,100,0.7); border-radius: 2px;
     animation: scrollWheelDrop 1.8s ease-in-out infinite;
 }
 .scroll-hint-label {
-    font-size: 8px; letter-spacing: 0.3em; color: rgba(136,153,204,0.4);
+    font-size: 8px; letter-spacing: 0.3em; color: rgba(200,160,100,0.4);
     font-family: 'Space Mono', monospace; text-transform: uppercase;
 }
 
@@ -6504,7 +6504,7 @@ const SCROLL_HINT_CSS = `
 .glitch-link {
     position: relative;
     display: inline-block;
-    background: linear-gradient(90deg, #8899cc 0%, #99aab5 25%, #ffffff 50%, #9ab4b4 75%, #8899cc 100%);
+    background: linear-gradient(90deg, #c4a882 0%, #c4a882 25%, #ffffff 50%, #b8956e 75%, #c4a882 100%);
     background-size: 200% auto;
     background-clip: text;
     -webkit-background-clip: text;
@@ -6524,21 +6524,21 @@ const SCROLL_HINT_CSS = `
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: #050510;
+    background: #0a0805;
     display: none;
     -webkit-text-fill-color: initial;
 }
 .glitch-link:hover::before {
     display: block;
     left: 2px;
-    text-shadow: -1px 0 #ff00c1;
+    text-shadow: -1px 0 #ff6622;
     clip-path: inset(10% 0 70% 0);
     animation: glitch-link-1 0.4s infinite linear alternate-reverse;
 }
 .glitch-link:hover::after {
     display: block;
     left: -2px;
-    text-shadow: 1px 0 #00fff9;
+    text-shadow: 1px 0 #ffd60a;
     clip-path: inset(70% 0 10% 0);
     animation: glitch-link-1 0.3s infinite linear alternate-reverse;
 }
@@ -6591,7 +6591,7 @@ function NavLinks() {
             transform: show ? 'translateY(0)' : 'translateY(-10px)',
             transition: 'opacity 0.6s ease, transform 0.6s ease',
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#8899cc', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', height: '36px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#c4a882', fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', height: '36px' }}>
                 {!isMobile && <>
                     <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>RESUME</a>
                     <a href="https://www.linkedin.com/in/mustafa-ali-akbar-a5195387/" target="_blank" rel="noreferrer" className="nav-link" onMouseEnter={() => sfx.hover()}>LINKEDIN</a>
@@ -6604,11 +6604,11 @@ function NavLinks() {
                         onClick={toggleMute}
                         title={muted ? 'Unmute sound' : 'Mute sound'}
                         style={{
-                            background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.2)',
+                            background: 'rgba(20,10,3,0.55)', border: '1px solid rgba(200,140,60,0.2)',
                             backdropFilter: 'blur(8px)', borderRadius: '50%',
                             width: '36px', height: '36px', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: muted ? 'rgba(136,153,204,0.35)' : 'rgba(136,153,204,0.85)',
+                            color: muted ? 'rgba(200,160,100,0.35)' : 'rgba(220,185,130,0.85)',
                             transition: 'color 0.2s, border-color 0.2s', padding: 0, flexShrink: 0,
                         }}
                     >
@@ -6646,8 +6646,8 @@ function SpineLogoModel() {
         if (g) { g.computeBoundingSphere(); s = 0.9 / (g.boundingSphere?.radius ?? 1) }
 
         const m = new THREE.MeshPhysicalMaterial({
-            color: '#ffffff', metalness: 1.0, roughness: 0.04,
-            clearcoat: 1.0, clearcoatRoughness: 0.02,
+            color: '#f5e8d0', metalness: 0.9, roughness: 0.08,
+            clearcoat: 0.8, clearcoatRoughness: 0.04,
         })
         m.onBeforeCompile = (shader) => {
             shader.uniforms.uTime = { value: 0 }
@@ -6698,9 +6698,9 @@ function SpineLogoLights() {
 
     return (
         <>
-            <ambientLight intensity={0.6} color="#aabbcc" />
+            <ambientLight intensity={0.6} color="#c4a882" />
             <pointLight ref={keyRef} position={[3, 4, 3]} intensity={6} color="#ffffff" />
-            <pointLight ref={fillRef} position={[-2, -2, 2]} intensity={2} color="#8899bb" />
+            <pointLight ref={fillRef} position={[-2, -2, 2]} intensity={2} color="#bb9955" />
         </>
     )
 }
@@ -6729,8 +6729,8 @@ function SpineLogo() {
                 width: LOGO_SIZE, height: LOGO_SIZE,
                 zIndex: 200,
                 filter: hovered
-                    ? 'drop-shadow(0 0 10px rgba(180,210,255,0.65))'
-                    : 'drop-shadow(0 0 4px rgba(180,200,255,0.2))',
+                    ? 'drop-shadow(0 0 10px rgba(255,180,80,0.65))'
+                    : 'drop-shadow(0 0 4px rgba(220,160,80,0.2))',
                 opacity: show ? 1 : 0,
                 transform: show ? 'translateY(0)' : 'translateY(-10px)',
                 transition: 'filter 0.3s ease, opacity 0.6s ease, transform 0.6s ease',
@@ -6748,7 +6748,7 @@ function SpineLogo() {
                 <React.Suspense fallback={null}>
                     <SpineLogoModel />
                     <SpineLogoLights />
-                    <Environment preset="city" />
+                    <Environment preset="sunset" />
                 </React.Suspense>
             </Canvas>
         </div>
@@ -6773,11 +6773,11 @@ function ShortcutPanel({ activeProject, currentSectionRef }) {
     const KEY = {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: 36,
-        background: 'rgba(10,12,30,0.45)',
-        border: '1px solid rgba(100,140,220,0.12)',
+        background: 'rgba(20,10,3,0.55)',
+        border: '1px solid rgba(200,140,60,0.15)',
         backdropFilter: 'blur(8px)',
         borderRadius: 6,
-        color: 'rgba(136,153,204,0.85)',
+        color: 'rgba(220,185,130,0.85)',
         fontFamily: "'Space Mono', monospace",
         fontSize: 13,
         lineHeight: 1,
@@ -6787,7 +6787,7 @@ function ShortcutPanel({ activeProject, currentSectionRef }) {
     const LABEL = {
         fontFamily: "'Space Mono', monospace",
         fontSize: 11,
-        color: 'rgba(136,153,204,0.45)',
+        color: 'rgba(200,160,100,0.45)',
         letterSpacing: '0.06em',
         whiteSpace: 'nowrap',
     }
@@ -6814,7 +6814,7 @@ function ShortcutPanel({ activeProject, currentSectionRef }) {
             <div style={{
                 width: inProjects ? 1 : 0,
                 height: 20,
-                background: 'rgba(100,140,220,0.15)',
+                background: 'rgba(200,140,60,0.15)',
                 overflow: 'hidden',
                 transition: 'width 0.3s ease, opacity 0.3s ease',
                 opacity: inProjects ? 1 : 0,
@@ -6841,11 +6841,11 @@ function MuteButton() {
             title={muted ? 'Unmute sound' : 'Mute sound'}
             style={{
                 position: 'fixed', bottom: '28px', right: 'clamp(16px, 4vw, 40px)', zIndex: 200,
-                background: 'rgba(10,12,30,0.45)', border: '1px solid rgba(100,140,220,0.12)',
+                background: 'rgba(20,10,3,0.55)', border: '1px solid rgba(200,140,60,0.15)',
                 backdropFilter: 'blur(8px)', borderRadius: '50%',
                 width: '36px', height: '36px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: muted ? 'rgba(136,153,204,0.35)' : 'rgba(136,153,204,0.85)',
+                color: muted ? 'rgba(200,160,100,0.35)' : 'rgba(220,185,130,0.85)',
                 fontSize: '15px', transition: 'color 0.2s, border-color 0.2s',
                 padding: 0,
             }}
@@ -6900,11 +6900,11 @@ function CursorOrb() {
                     soulRef.current.style.width = s
                     soulRef.current.style.height = s
                     soulRef.current.style.boxShadow = isHover
-                        ? '0 0 18px #ff00ff, 0 0 32px #ff00ff'
-                        : '0 0 5px #ff00ff, 0 0 10px #ff00ff'
+                        ? '0 0 18px #ff6622, 0 0 32px #ff6622'
+                        : '0 0 5px #ff6622, 0 0 10px #ff6622'
                     soulRef.current.style.background = isHover
-                        ? 'rgba(255, 0, 255, 0.35)'
-                        : 'rgba(255, 0, 255, 0.18)'
+                        ? 'rgba(255, 120, 30, 0.35)'
+                        : 'rgba(255, 120, 30, 0.18)'
                 }
                 if (coreRef.current) {
                     const c = isHover ? '5px' : '3px'
@@ -6927,11 +6927,11 @@ function CursorOrb() {
                 soulRef.current.style.width = s
                 soulRef.current.style.height = s
                 soulRef.current.style.boxShadow = _canvas3DPointer
-                    ? '0 0 18px #ff00ff, 0 0 32px #ff00ff'
-                    : '0 0 5px #ff00ff, 0 0 10px #ff00ff'
+                    ? '0 0 18px #ff6622, 0 0 32px #ff6622'
+                    : '0 0 5px #ff6622, 0 0 10px #ff6622'
                 soulRef.current.style.background = _canvas3DPointer
-                    ? 'rgba(255, 0, 255, 0.35)'
-                    : 'rgba(255, 0, 255, 0.18)'
+                    ? 'rgba(255, 120, 30, 0.35)'
+                    : 'rgba(255, 120, 30, 0.18)'
                 coreRef.current.style.width = _canvas3DPointer ? '5px' : '3px'
                 coreRef.current.style.height = _canvas3DPointer ? '5px' : '3px'
             }
@@ -6968,8 +6968,8 @@ function CursorOrb() {
                 width: '14px',
                 height: '14px',
                 borderRadius: '50%',
-                background: 'rgba(255, 0, 255, 0.18)',
-                boxShadow: '0 0 5px #ff00ff, 0 0 10px #ff00ff',
+                background: 'rgba(255, 120, 30, 0.18)',
+                boxShadow: '0 0 5px #ff6622, 0 0 10px #ff6622',
                 transition: 'width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
@@ -7005,7 +7005,7 @@ function SceneCursorLight() {
         lightRef.current.position.copy(state.camera.position).addScaledVector(_dir, 18)
     })
 
-    return <pointLight ref={lightRef} intensity={6} color="#ff00ff" distance={22} decay={2} />
+    return <pointLight ref={lightRef} intensity={6} color="#ff6622" distance={22} decay={2} />
 }
 
 // scroll ranges per card: [enter, exit]
@@ -7081,7 +7081,7 @@ function MobileProjectsOverlay({ scrollRef, onOpenProject }) {
                         <div style={{
                             fontFamily: 'var(--font-mono)',
                             fontSize: '11px',
-                            color: '#8899cc',
+                            color: '#c4a882',
                             lineHeight: 1.6,
                             letterSpacing: '0.04em',
                         }}>{config.subtitle}</div>
@@ -7093,7 +7093,7 @@ function MobileProjectsOverlay({ scrollRef, onOpenProject }) {
                             display: 'flex', gap: '10px',
                             fontFamily: 'var(--font-mono)',
                             fontSize: '10px',
-                            color: '#556688',
+                            color: '#8a6040',
                             letterSpacing: '0.08em',
                             textTransform: 'uppercase',
                             marginBottom: '16px',
@@ -7102,7 +7102,7 @@ function MobileProjectsOverlay({ scrollRef, onOpenProject }) {
                             <span>·</span>
                             <span>{config.stats.role}</span>
                             <span>·</span>
-                            <span>{config.stats.year}</span>
+                            <span>{config.stats.impact}</span>
                         </div>
                         <div
                             onClick={() => onOpenProject?.(config)}
@@ -7188,11 +7188,12 @@ function HeroSubtextCard({ scrollRef }) {
                     whiteSpace: 'nowrap',
                 }}>
                     <span style={{
-                        fontFamily: "'Space Mono', monospace",
+                        fontFamily: "'Switzer', sans-serif",
                         fontSize: 'clamp(11px, 1vw, 13px)',
                         letterSpacing: '0.18em',
-                        color: 'rgba(160,180,230,0.55)',
+                        color: 'rgba(220,170,90,0.7)',
                         textTransform: 'uppercase',
+                        fontWeight: 400,
                     }}>Open for work</span>
                 </div>
             )}
@@ -7215,11 +7216,12 @@ function HeroSubtextCard({ scrollRef }) {
                 maxWidth: window.innerWidth > 768 ? '860px' : '600px',
             }}>
                 <div style={{
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: 'clamp(12pt, 1.4vw, 14px)',
-                    letterSpacing: '0.08em',
-                    lineHeight: 1.6,
-                    color: '#99aacc',
+                    fontFamily: "'Switzer', sans-serif",
+                    fontSize: 'clamp(13px, 1.4vw, 15px)',
+                    letterSpacing: '0.04em',
+                    lineHeight: 1.7,
+                    fontWeight: 300,
+                    color: '#c4a882',
                     textAlign: window.innerWidth <= 768 ? 'left' : 'center',
                 }}>
                 Product Designer, currently designing an AI alert response agent for Dell's data centers. Previously at CBRE, Motive, and Educative.</div>
@@ -7414,7 +7416,7 @@ export default function Portfolio() {
             <div style={{
                 width: '100vw',
                 height: '100vh',
-                background: '#050510',
+                background: '#0a0805',
                 overflow: 'hidden',
                 cursor: window.matchMedia('(hover: none)').matches ? 'auto' : 'none'
             }}>
