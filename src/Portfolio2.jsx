@@ -94,7 +94,7 @@ const PROJECT_CARDS = [
         title: 'Engine Immobilizer', subtitle: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         desc: 'Allowing fleet managers to remotely immobilize stolen vehicles',
         tech: ['Blender', 'Figma', 'Origami Studio'],
-        stats: { role: 'Product Design Lead', impact: '7-figure impact', company: 'Motive' },
+        stats: { role: 'Product Design Lead', impact: '+$7M to ARR', company: 'Motive' },
         objectType: 'truck_immobilizer',
         video: '/demos/ei-noborder.mp4',
         caseStudy: {
@@ -175,7 +175,7 @@ const PROJECT_CARDS = [
         title: 'Workflows', subtitle: 'A central hub for project and documentation management helping fast moving teams optimize for outcomes',
         desc: 'A central hub for project and documentation management helping development teams reduce Slack messages',
         tech: ['Figma', 'Microsoft Clarity', 'JavaScript', 'FigJam'],
-        stats: { role: 'Product Design', impact: 'Scaled 50->600+', company: 'Educative' },
+        stats: { role: 'Product Design', impact: 'Landed $100K Deal', company: 'Educative' },
         objectType: 'workflows',
         video: '/demos/wf-noborder.mp4',
         caseStudy: {
