@@ -8,7 +8,11 @@ export default defineConfig({
     compression({ algorithm: 'gzip' }),
     compression({ algorithm: 'brotliCompress', ext: '.br' }),
   ],
+  css: {
+    devSourcemap: false, // Disable dev CSS sourcemaps which utilize eval() strings
+  },
   build: {
+    sourcemap: true, // Force Vite to generate clean, external static .map files instead of evals
     rollupOptions: {
       output: {
         manualChunks: {

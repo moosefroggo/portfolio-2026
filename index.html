@@ -5,7 +5,9 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mustafa Ali Akbar — Portfolio</title>
-    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@300,400,500&display=swap" />
+    <!-- Preload critical stylesheets and fonts -->
+    <link rel="preload" href="https://api.fontshare.com/v2/css?f[]=switzer@300,400,500,700&display=swap" as="style" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@300,400,500,700&display=swap" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="Mustafa Ali Akbar — Portfolio" />
@@ -21,7 +23,358 @@
     <meta name="twitter:image" content="https://mstf.work/textures/social-cover.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- 
+      ========================================================================
+      HYBRID STATIC LOADING SHELL (0.1S FCP GUARANTEE)
+      ========================================================================
+      * Rendered instantly by the browser's parser before any JS bundle loads.
+      * Dynamically updated and cleanly removed from the DOM by React upon loading.
+    -->
+    <div id="static-loader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #080503; z-index: 9999; overflow: hidden; font-family: monospace; color: #c4a882; transition: opacity 0.5s ease;">
+        <style>
+            @keyframes sweep {
+                0% { transform: translate3d(0, -10vh, 0); }
+                100% { transform: translate3d(0, 110vh, 0); }
+            }
+            .loader-sweep {
+                position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+                background: linear-gradient(90deg, transparent, rgba(255, 120, 30, 0.5), rgba(255, 153, 51, 0.5), transparent);
+                animation: sweep 4s linear infinite;
+                z-index: -1;
+                box-shadow: 0 0 20px rgba(255, 153, 51, 0.4);
+            }
+            .loader-orb {
+                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                width: 300px; height: 300px; border-radius: 50%;
+                background: radial-gradient(circle, rgba(255, 153, 51, 0.18) 0%, rgba(204, 102, 34, 0.08) 40%, transparent 70%);
+                z-index: -1; filter: blur(20px);
+            }
+            .loader-corner-tl { position: absolute; top: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(200,140,60,0.3); border-left: 2px solid rgba(200,140,60,0.3); }
+            .loader-corner-tr { position: absolute; top: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-top: 2px solid rgba(200,140,60,0.3); border-right: 2px solid rgba(200,140,60,0.3); }
+            .loader-corner-bl { position: absolute; bottom: clamp(20px,4vw,40px); left: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(200,140,60,0.3); border-left: 2px solid rgba(200,140,60,0.3); }
+            .loader-corner-br { position: absolute; bottom: clamp(20px,4vw,40px); right: clamp(20px,4vw,40px); width: 20px; height: 20px; border-bottom: 2px solid rgba(200,140,60,0.3); border-right: 2px solid rgba(200,140,60,0.3); }
+            @property --ba { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+            @keyframes border-spin { to { --ba: 360deg; } }
+            .loader-btn-wrap {
+                position: absolute;
+                top: 50%; left: 50%;
+                transform: translate(-50%, -50%);
+                padding: 1px;
+                opacity: 0;
+                transition: opacity 0.5s cubic-bezier(0.23, 1, 0.32, 1), transform 0.45s cubic-bezier(0.4, 0, 1, 1);
+                pointer-events: none;
+            }
+            .loader-btn-wrap.show {
+                opacity: 1;
+                pointer-events: all;
+            }
+            .loader-btn-wrap::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                padding: 1px;
+                background: conic-gradient(from var(--ba), transparent 0% 55%, rgba(200,140,60,0.25) 65%, rgba(240,200,140,0.8) 72%, rgba(255,255,255,1) 75%, rgba(240,200,140,0.8) 78%, rgba(200,140,60,0.25) 85%, transparent 95% 100%);
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: xor;
+                mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                mask-composite: exclude;
+                animation: border-spin 2.5s linear infinite;
+            }
+            .loader-enter-btn {
+                display: block;
+                border: none;
+                transition: background 0.35s, backdrop-filter 0.35s;
+            }
+            .loader-btn-wrap::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                padding: 1px;
+                background: rgba(200, 215, 240, 0.8);
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: xor;
+                mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                mask-composite: exclude;
+                opacity: 0;
+                transition: opacity 0.35s;
+                pointer-events: none;
+            }
+            .loader-btn-wrap:hover::after { opacity: 1; }
+            .loader-btn-wrap:hover::before { opacity: 0; transition: opacity 0.35s; }
+            .loader-btn-wrap:hover .loader-enter-btn {
+                background: rgba(180, 200, 240, 0.07) !important;
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
+            }
+        </style>
+
+        <div class="loader-sweep"></div>
+        <div class="loader-orb"></div>
+        <div class="loader-corner-tl" id="st-corner-tl"></div>
+        <div class="loader-corner-tr" id="st-corner-tr"></div>
+        <div class="loader-corner-bl" id="st-corner-bl"></div>
+        <div class="loader-corner-br" id="st-corner-br"></div>
+
+        <!-- Progress and quips — centermost -->
+        <div id="static-loading-text-container" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity 0.3s ease; pointer-events: none; z-index: 2; white-space: nowrap;">
+            <div id="static-progress-text" style="color: #ffffff; font-size: 20px; font-weight: 200; letter-spacing: 0.2em; font-family: monospace;">
+                00.00 %
+            </div>
+            <div id="static-quip-text" style="font-size: 10px; letter-spacing: 0.25em; color: rgba(255,255,255,0.35); text-align: center; font-family: monospace; transition: opacity 0.3s ease;">
+                untangling the cogs...
+            </div>
+        </div>
+
+        <!-- Enter Button Wrap -->
+        <div class="loader-btn-wrap" id="static-btn-wrap">
+            <button class="loader-enter-btn" id="static-enter-btn" style="background: transparent; color: #ffffff; padding: 12px 40px; font-size: 14px; letter-spacing: 0.6em; cursor: pointer; outline: none; text-indent: 0.6em; white-space: nowrap; transition: background 0.3s; display: flex; align-items: center; gap: 10px; font-family: monospace;">
+                MEET MUSTAFA <span style="font-size: 16px; letter-spacing: 0; opacity: 0.7;">→</span>
+            </button>
+        </div>
+
+        <!-- Enter Key Hint -->
+        <div id="static-enter-hint" style="position: absolute; bottom: clamp(20px, 4vw, 40px); left: 0; right: 0; justify-content: center; display: flex; align-items: center; gap: 8px; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; font-family: monospace; font-size: 10px; letter-spacing: 0.15em; color: rgba(255,255,255,0.25);">
+            PRESS <span style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); border-radius: 4px; padding: 3px 6px; font-size: 9px; line-height: 1; color: #ffffff;">ENTER</span>
+        </div>
+    </div>
+
+    <script>
+      (function() {
+        // Quick pre-hydration animations for the static shell
+        const quips = [
+            'switching from Opus 4.7 to 4.6...',
+            'getting rid of hallucinations...',
+            'cooking the website...',
+            'arguing with the GPU...',
+            'hiding the bugs...',
+            'compiling good taste...',
+            'untangling the cogs...',
+            'bribing the render pipeline...',
+            'making it look easy...',
+            'converting coffee to pixels...'
+        ];
+        let quipIdx = 0;
+        const quipEl = document.getElementById('static-quip-text');
+        if (quipEl) {
+          setInterval(() => {
+            quipEl.style.opacity = 0;
+            setTimeout(() => {
+              quipIdx = (quipIdx + 1) % quips.length;
+              quipEl.textContent = quips[quipIdx];
+              quipEl.style.opacity = 1;
+            }, 300);
+          }, 2000);
+        }
+
+        // Place corner bezels at their initial loader progress point (p = 0.35)
+        const hw = window.innerWidth / 2;
+        const hh = window.innerHeight / 2;
+        const inset = Math.min(40, window.innerWidth * 0.04);
+        const tx = ((hw - inset) * (1 - 0.35)).toFixed(1);
+        const ty = ((hh - inset) * (1 - 0.35)).toFixed(1);
+        
+        const tl = document.getElementById('st-corner-tl');
+        const tr = document.getElementById('st-corner-tr');
+        const bl = document.getElementById('st-corner-bl');
+        const br = document.getElementById('st-corner-br');
+        if (tl) tl.style.transform = `translate(${tx}px, ${ty}px)`;
+        if (tr) tr.style.transform = `translate(-${tx}px, ${ty}px)`;
+        if (bl) bl.style.transform = `translate(${tx}px, -${ty}px)`;
+        if (br) br.style.transform = `translate(-${tx}px, -${ty}px)`;
+      })();
+    </script>
+
+    <div id="root">
+      <!-- 
+        ========================================================================
+        STATIC SEMANTIC FALLBACK (PURE MACHINE INDEX & PREVIEW ESCAPE HATCH)
+        ========================================================================
+        * Loaded instantly by search engine crawlers and ATS scrapers.
+        * Completely invisible to all human browsers via inline hidden style.
+        * Instantly replaced by the React Three Fiber Canvas mount on render.
+      -->
+      <div class="static-fallback" style="display: none !important;">
+        <div class="framer-layout">
+          
+          <!-- LEFT SIDEBAR: Sticky Profile Deck -->
+          <aside class="framer-sidebar">
+            <div class="sidebar-sticky-content">
+              <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text font-mono">Active Design Lead</span>
+              </div>
+              <h1 class="framer-name">Mustafa<br />Ali Akbar</h1>
+              <p class="framer-tagline">Designing spatial systems, structural transitions, and interactive tools at the edge of design and engineering.</p>
+              
+              <div class="framer-contact-actions">
+                <a href="mailto:mustafa.aliakbar96@gmail.com" class="framer-btn framer-btn-primary font-mono">Connect via Email</a>
+                <a href="https://drive.google.com/file/d/1lFeiToMUnMRtD6pC40q_PyZW01hf9Kus/view?usp=sharing" target="_blank" rel="noopener noreferrer" class="framer-btn framer-btn-secondary font-mono">Resume.pdf ↓</a>
+              </div>
+            </div>
+          </aside>
+
+          <!-- RIGHT FEED: Case Studies, Ethos, History -->
+          <main class="framer-content-feed">
+            
+            <!-- Manifesto/Ethos Section -->
+            <section id="manifesto" class="framer-section">
+              <div class="framer-section-label font-mono">01 // CORE ETHOS</div>
+              <div class="manifesto-grid">
+                <article class="manifesto-block">
+                  <h3 class="manifesto-title font-mono">CRAFT</h3>
+                  <p class="manifesto-text">With an engineering background and a product designer's eye, I bridge the implementation gap. I jump directly into production code whenever the precision of a motion profile or spatial state transition calls for it.</p>
+                </article>
+                <article class="manifesto-block">
+                  <h3 class="manifesto-title font-mono">SYSTEMS</h3>
+                  <p class="manifesto-text">First designer at Educative. Designed and maintained a unified design system across six complex products, scaling the design division from a single practitioner to a team of ten.</p>
+                </article>
+                <article class="manifesto-block">
+                  <h3 class="manifesto-title font-mono">PURPOSE</h3>
+                  <p class="manifesto-text">Too much enterprise software still feels like it was engineered by engineers, for engineers. Designing highly functional, spatial, and human interfaces to bridge that gap is my driver.</p>
+                </article>
+              </div>
+            </section>
+
+            <!-- Case Studies Section -->
+            <section id="work" class="framer-section">
+              <div class="framer-section-label font-mono">02 // SELECTED WORK</div>
+
+              <!-- Project 1: Engine Immobilizer -->
+              <article class="framer-project-card">
+                <header class="project-header">
+                  <div class="project-meta-eyebrow font-mono">CASE STUDY 01 // MOTIVE</div>
+                  <h2 class="project-title">Engine Immobilizer</h2>
+                  <p class="project-description">Empowering fleet managers to remotely immobilize hijacked vehicles in high-risk territories.</p>
+                </header>
+
+                <div class="project-specs font-mono">
+                  <div class="spec-node"><span class="spec-label">ROLE</span><span class="spec-value">Design Lead</span></div>
+                  <div class="spec-node"><span class="spec-label">IMPACT</span><span class="spec-value">+$7M ARR Expansion</span></div>
+                  <div class="spec-node"><span class="spec-label">TIMELINE</span><span class="spec-value">2-Month Sprint</span></div>
+                </div>
+
+                <div class="project-narrative">
+                  <div class="narrative-block">
+                    <h3>The Challenge</h3>
+                    <p>When Motive started expanding into the Mexican logistics market in Q3 2023, local sales feedback was definitive: 90% of prospective clients demanded remote engine immobilization. We had lost several major enterprise deals to local competitors over this single missing capability. Remote immobilization immediately transformed from a future roadmap item into a high-stakes blocker between Motive and a massive national market. We had a strict two-month window to design and ship the full interface.</p>
+                  </div>
+
+                  <div class="narrative-block">
+                    <h3>The Constraints</h3>
+                    <p>The engineering landscape was highly fragmented. The administrative management interface was in the middle of a massive rewrite from 1.0 to 2.0, meaning the core Vehicles detail list page we needed to redesign was completely unbuilt. Concurrently, our hardware department was sourcing third-party device modules for the first time, introducing complex latency constraints on how cellular command packages were dispatched and confirmed.</p>
+                  </div>
+
+                  <div class="narrative-block">
+                    <h3>Field Insights &amp; Synthesis</h3>
+                    <p>I interviewed fleet operations managers on-site to understand high-stress safety workflows. The resulting designs addressed critical real-world realities: authorization had to stay strictly with operations dispatchers (never drivers), and signal-jamming attempts required automated hardware alerts. We prototyped and tested five UI configurations. A persistent, highly colored contextual banner won usability tests—immobilization is rare (less than 1% of fleets at any time), so the status required extreme emphasis during emergencies without cluttering daily telemetry views.</p>
+                  </div>
+
+                  <div class="narrative-block">
+                    <h3>The Deliverables &amp; Output</h3>
+                    <p>We designed and shipped a high-fidelity real-time command banner, live map track-and-follow modules, automated incident timeline loggers that pair dashcam footage with vehicle coordinates for audit reports, and cellular tamper alerts. The product launched in Q1 2024, fully unlocking the Mexican logistics market and driving a seven-figure ARR expansion within the first quarter.</p>
+                  </div>
+                </div>
+              </article>
+
+              <!-- Project 2: Workflows -->
+              <article class="framer-project-card">
+                <header class="project-header">
+                  <div class="project-meta-eyebrow font-mono">CASE STUDY 02 // EDUCATIVE</div>
+                  <h2 class="project-title">Workflows</h2>
+                  <p class="project-description">A unified, real-time multiplayer workspace built for engineering team coordination and document execution.</p>
+                </header>
+
+                <div class="project-specs font-mono">
+                  <div class="spec-node"><span class="spec-label">ROLE</span><span class="spec-value">Hybrid Manager &amp; IC</span></div>
+                  <div class="spec-node"><span class="spec-label">IMPACT</span><span class="spec-value">Closed $100K Deal</span></div>
+                  <div class="spec-node"><span class="spec-label">TIMELINE</span><span class="spec-value">8-Month Initiative</span></div>
+                </div>
+
+                <div class="project-narrative">
+                  <div class="narrative-block">
+                    <h3>The Challenge</h3>
+                    <p>As the internal product organization at Educative scaled from 50 to 600 people, collaborative speed broke down. Product specifications, design specs, and engineering roadmaps were scattered across isolated document silos. Teams suffered from severe context-switching fatigue, leading to missed sprints and communication gridlock. We set out to design "Workflows"—a central, multiplayer project workspace built to optimize organizational outcomes.</p>
+                  </div>
+
+                  <div class="narrative-block">
+                    <h3>My Role</h3>
+                    <p>Leveraging my tenure at the company, I collaborated directly with our executive sales, product, and engineering heads. I designed the core product architecture as an individual contributor while managing our growing design division, aligning designers and brand illustrators with our engineering execution.</p>
+                  </div>
+
+                  <div class="narrative-block">
+                    <h3>User Research &amp; Architecture</h3>
+                    <p>I conducted structural interviews with 31 internal and external participants (18 Engineering Managers and 13 Software Engineers) to isolate operational bottlenecks. EMs struggled to track real-time approval pipelines, sign-off requests frequently sat stale for days in Slack backlogs, and technical implementation discussions became completely lost in detached threads. We designed Workflows around a multiplayer document editor that contextually embeds task management boards, structured approval routing loops, and a centralized workspace overview.</p>
+                  </div>
+
+                  <div class="narrative-block">
+                    <h3>The Outcome</h3>
+                    <p>Workflows successfully eliminated status-chasing communication loops across our development divisions. The product served as our key competitive differentiator during subsequent sales cycles, directly securing a $100K enterprise sales contract.</p>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <!-- Experience Section -->
+            <section id="experience" class="framer-section">
+              <div class="framer-section-label font-mono">03 // HISTORY</div>
+              
+              <div class="framer-timeline">
+                <article class="timeline-row">
+                  <div class="timeline-meta font-mono">2026 — PRESENT</div>
+                  <div class="timeline-content">
+                    <h3 class="timeline-title">Dell</h3>
+                    <p class="timeline-role font-mono">AI Product Designer</p>
+                    <p class="timeline-desc">Designed automated, AI-driven data center cooling leak alert systems and modular hardware dashboards.</p>
+                  </div>
+                </article>
+
+                <article class="timeline-row">
+                  <div class="timeline-meta font-mono">2025</div>
+                  <div class="timeline-content">
+                    <h3 class="timeline-title">CBRE</h3>
+                    <p class="timeline-role font-mono">Interaction Designer</p>
+                    <p class="timeline-desc">Redesigned complex commercial lease abstraction workflows and modernized the corporate design system.</p>
+                  </div>
+                </article>
+
+                <article class="timeline-row">
+                  <div class="timeline-meta font-mono">2024</div>
+                  <div class="timeline-content">
+                    <h3 class="timeline-title">Motive</h3>
+                    <p class="timeline-role font-mono">Product Design Lead</p>
+                    <p class="timeline-desc">Led spatial design, user research, and deployment of the Engine Immobilizer system for the Latin American market expansion.</p>
+                  </div>
+                </article>
+
+                <article class="timeline-row">
+                  <div class="timeline-meta font-mono">2023</div>
+                  <div class="timeline-content">
+                    <h3 class="timeline-title">Educative</h3>
+                    <p class="timeline-role font-mono">Product Designer</p>
+                    <p class="timeline-desc">Designed "Workflows" collaboration platform and scaled the product design team from one to ten designers.</p>
+                  </div>
+                </article>
+              </div>
+
+              <div class="framer-capabilities">
+                <h4 class="capabilities-title font-mono">CAPABILITIES</h4>
+                <div class="capabilities-tags font-mono">
+                  <span>Figma</span> • <span>Blender (3D)</span> • <span>Three.js (WebGL)</span> • <span>React &amp; ES6+ JS</span> • <span>Rive</span> • <span>Origami Studio</span> • <span>Systems Architecture</span> • <span>User Research</span> • <span>Interactive Prototyping</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="framer-footer font-mono">
+              <span>MUSTAFA ALI AKBAR</span>
+              <span class="footer-dot"></span>
+              <span>MSTF.WORK // 2026</span>
+            </footer>
+
+          </main>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
