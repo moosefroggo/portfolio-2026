@@ -7237,7 +7237,7 @@ function HeroSubtextCard({ scrollRef }) {
                     color: '#c4a882',
                     textAlign: window.innerWidth <= 768 ? 'left' : 'center',
                 }}>
-                AI-native product designer, currently building a GLSL shader-based gradient engine for the <a href="https://github.com/moosefroggo/orb" target="_blank" rel="noopener noreferrer" className="web-link">web</a>. I'm driven by a heavy bias for action, extreme ownership, and zero ego.</div>
+                AI-native product designer, currently building a GLSL shader-based gradient engine for the <a href="https://moosefroggo.github.io/3d-gradients-generator/" target="_blank" rel="noopener noreferrer" className="web-link">web</a>. I'm driven by a heavy bias for action, extreme ownership, and zero ego.</div>
             </div>
         </>
     )
