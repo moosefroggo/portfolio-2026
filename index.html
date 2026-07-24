@@ -244,34 +244,34 @@
                 <header class="project-header">
                   <div class="project-meta-eyebrow font-mono">CASE STUDY 01 // MOTIVE</div>
                   <h2 class="project-title">Engine Immobilizer</h2>
-                  <p class="project-description">Empowering fleet managers to remotely immobilize hijacked vehicles in high-risk territories.</p>
+                  <p class="project-description">Remote immobilization for fleet managers responding to vehicle theft.</p>
                 </header>
 
                 <div class="project-specs font-mono">
-                  <div class="spec-node"><span class="spec-label">ROLE</span><span class="spec-value">Design Lead</span></div>
-                  <div class="spec-node"><span class="spec-label">IMPACT</span><span class="spec-value">+$7M ARR Expansion</span></div>
+                  <div class="spec-node"><span class="spec-label">ROLE</span><span class="spec-value">Product Design</span></div>
+                  <div class="spec-node"><span class="spec-label">IMPACT</span><span class="spec-value">+$8M ARR</span></div>
                   <div class="spec-node"><span class="spec-label">TIMELINE</span><span class="spec-value">2-Month Sprint</span></div>
                 </div>
 
                 <div class="project-narrative">
                   <div class="narrative-block">
                     <h3>The Challenge</h3>
-                    <p>When Motive started expanding into the Mexican logistics market in Q3 2023, local sales feedback was definitive: 90% of prospective clients demanded remote engine immobilization. We had lost several major enterprise deals to local competitors over this single missing capability. Remote immobilization immediately transformed from a future roadmap item into a high-stakes blocker between Motive and a massive national market. We had a strict two-month window to design and ship the full interface.</p>
+                    <p>I joined Motive in Q3 2023, right as plans to expand into Mexico were already in motion. Sales Engineers on the ground told us that 90% of prospects wanted remote immobilization. We had already lost one significant prospect because we did not have it. This was the only core requirement missing from our product offering. We backtracked on our priorities and had the rest of Q4 to figure it out for a Q1 2024 launch. Hardware, Tracking, and Platform all had to move together.</p>
                   </div>
 
                   <div class="narrative-block">
                     <h3>The Constraints</h3>
-                    <p>The engineering landscape was highly fragmented. The administrative management interface was in the middle of a massive rewrite from 1.0 to 2.0, meaning the core Vehicles detail list page we needed to redesign was completely unbuilt. Concurrently, our hardware department was sourcing third-party device modules for the first time, introducing complex latency constraints on how cellular command packages were dispatched and confirmed.</p>
+                    <p>Admin was moving from 1.0 to 2.0. The Vehicles page had been designed for 2.0 but never built, while the 1.0 version kept collecting one-off additions. I had to strip the page down, rebuild its hierarchy, and add Engine Immobilizer without creating work that would be thrown away a few months later. Fleet View's maps, icons, and historical tracking were also changing. Device Hub was still only a plan. We could not build the hardware in-house, so Motive sourced a third-party device for the first time.</p>
                   </div>
 
                   <div class="narrative-block">
                     <h3>Field Insights &amp; Synthesis</h3>
-                    <p>I interviewed fleet operations managers on-site to understand high-stress safety workflows. The resulting designs addressed critical real-world realities: authorization had to stay strictly with operations dispatchers (never drivers), and signal-jamming attempts required automated hardware alerts. We prototyped and tested five UI configurations. A persistent, highly colored contextual banner won usability tests—immobilization is rare (less than 1% of fleets at any time), so the status required extreme emphasis during emergencies without cluttering daily telemetry views.</p>
+                    <p>The control belonged to fleet managers. A vehicle was immobilized about five times per month, mostly after attempted robbery or drunk driving. The request usually began with a panic button or a call from the driver. Fleet managers also warned that thieves cut device wiring and that dead zones made remote commands unreliable. I tried five placements before choosing a banner under the tabs. It would appear for less than 1% of vehicles at a time, so if it was any quieter, it would be easy to miss.</p>
                   </div>
 
                   <div class="narrative-block">
                     <h3>The Deliverables &amp; Output</h3>
-                    <p>We designed and shipped a high-fidelity real-time command banner, live map track-and-follow modules, automated incident timeline loggers that pair dashcam footage with vehicle coordinates for audit reports, and cellular tamper alerts. The product launched in Q1 2024, fully unlocking the Mexican logistics market and driving a seven-figure ARR expansion within the first quarter.</p>
+                    <p>We shipped a persistent status banner, live location and video, follow mode, trip timeline events, and alerts for device removal and signal jamming. The product gave Sales the last core capability they needed for Mexico and added $8M to Motive's ARR. This was Motive's first third-party hardware product and my first project at the company.</p>
                   </div>
                 </div>
               </article>
@@ -281,11 +281,11 @@
                 <header class="project-header">
                   <div class="project-meta-eyebrow font-mono">CASE STUDY 02 // EDUCATIVE</div>
                   <h2 class="project-title">Workflows</h2>
-                  <p class="project-description">A unified, real-time multiplayer workspace built for engineering team coordination and document execution.</p>
+                  <p class="project-description">One place for engineering teams to write specs, assign work, request reviews, and track projects.</p>
                 </header>
 
                 <div class="project-specs font-mono">
-                  <div class="spec-node"><span class="spec-label">ROLE</span><span class="spec-value">Hybrid Manager &amp; IC</span></div>
+                  <div class="spec-node"><span class="spec-label">ROLE</span><span class="spec-value">Product Designer</span></div>
                   <div class="spec-node"><span class="spec-label">IMPACT</span><span class="spec-value">Closed $100K Deal</span></div>
                   <div class="spec-node"><span class="spec-label">TIMELINE</span><span class="spec-value">8-Month Initiative</span></div>
                 </div>
@@ -293,22 +293,22 @@
                 <div class="project-narrative">
                   <div class="narrative-block">
                     <h3>The Challenge</h3>
-                    <p>As the internal product organization at Educative scaled from 50 to 600 people, collaborative speed broke down. Product specifications, design specs, and engineering roadmaps were scattered across isolated document silos. Teams suffered from severe context-switching fatigue, leading to missed sprints and communication gridlock. We set out to design "Workflows"—a central, multiplayer project workspace built to optimize organizational outcomes.</p>
+                    <p>As our team at Educative scaled from 50 people to more than 600, a centralized repository for projects, communication, and documentation became necessary. The existing tools solved separate parts of the problem, requiring a lot of context switching and maintenance. To solve this for multiple personas across the company, we set out to build Workflows.</p>
                   </div>
 
                   <div class="narrative-block">
                     <h3>My Role</h3>
-                    <p>Leveraging my tenure at the company, I collaborated directly with our executive sales, product, and engineering heads. I designed the core product architecture as an individual contributor while managing our growing design division, aligning designers and brand illustrators with our engineering execution.</p>
+                    <p>By this point, I had been at Educative for over two years. It was an ambitious product that our leadership was heavily focused on, and I worked directly with sales, engineering, and product leadership on the end-to-end process. I was also involved in hiring and developing an outcome-focused team of designers and illustrators.</p>
                   </div>
 
                   <div class="narrative-block">
                     <h3>User Research &amp; Architecture</h3>
-                    <p>I conducted structural interviews with 31 internal and external participants (18 Engineering Managers and 13 Software Engineers) to isolate operational bottlenecks. EMs struggled to track real-time approval pipelines, sign-off requests frequently sat stale for days in Slack backlogs, and technical implementation discussions became completely lost in detached threads. We designed Workflows around a multiplayer document editor that contextually embeds task management boards, structured approval routing loops, and a centralized workspace overview.</p>
+                    <p>I spoke to 31 people, including 18 Engineering Managers and 13 Software Engineers, sourced through my LinkedIn network. Twenty-four used Jira and Confluence as a pair. At Educative, PMs split work between Monday and Slite, then manually linked records and updated both statuses. After synthesizing the findings, I took a weekend to prototype Projects Home, Project Details, and the Document page.</p>
                   </div>
 
                   <div class="narrative-block">
                     <h3>The Outcome</h3>
-                    <p>Workflows successfully eliminated status-chasing communication loops across our development divisions. The product served as our key competitive differentiator during subsequent sales cycles, directly securing a $100K enterprise sales contract.</p>
+                    <p>Sales used a prototype built from these designs during an enterprise pitch. The work helped Educative close a $100K deal.</p>
                   </div>
                 </div>
               </article>
