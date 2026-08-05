@@ -26,6 +26,7 @@ let loaderFullyHidden = false  // set true when EliteLoader unmounts
 let _canvas3DPointer = false   // true when hovering a clickable 3D object
 const heroIntroState = {
     phase: 'loading',
+    sceneReady: false,            // set after the first rendered Canvas frame
     morphProgress: 1,             // 1 = fully scattered, 0 = fully formed
     // Post-processing overrides — read by PostProcessingEffects
     bloomOverride: 2.5,       // starts hot, eases to null
@@ -325,7 +326,6 @@ const HERO_ANIMATION_DURATION = 3.5  // seconds for the entire smooth pullback
 
 function CameraController({ scrollRef }) {
     const { camera, size } = useThree()
-    const { progress, active: loadingActive } = useProgress()
 
     // Intro animation state
     const animTimeRef = useRef(0)
@@ -367,6 +367,7 @@ function CameraController({ scrollRef }) {
     }, [isPortrait, heroZ])
 
     useFrame((state, delta) => {
+        heroIntroState.sceneReady = true
         let isIntroFinished = heroIntroState.phase === 'done'
 
         // Shared compensation values for both narrow and ultrawide screens
@@ -380,7 +381,7 @@ function CameraController({ scrollRef }) {
 
         if (!isIntroFinished) {
             // ─── 1) HERO INTRO SEQUENCE ───────────────────────────────────────
-            const isLoaded = progress > 99.9 && !loadingActive && heroIntroState.hasEntered
+            const isLoaded = heroIntroState.sceneReady && heroIntroState.hasEntered
             if (!isLoaded) {
                 // Pin to start while loading
                 _targetPos.set(...HERO_INTRO_START.pos)
@@ -6287,6 +6288,7 @@ function EliteLoader() {
     const progressTargetRef = useRef(0)
     const displayProgressRef = useRef(0)
     const cornerLerpRef = useRef(0.35)
+    const isEnteringRef = useRef(false)
 
     console.log('EliteLoader Render - progress:', progress, 'active:', active)
 
@@ -6310,7 +6312,8 @@ function EliteLoader() {
             // the user still sees a premium, smoothly animating loader before entering.
             const elapsed = Date.now() - startTime
             const fallbackProgress = Math.min(100, (elapsed / 2200) * 100)
-            const target = Math.max(progressTargetRef.current, fallbackProgress)
+            const measuredTarget = Math.max(progressTargetRef.current, fallbackProgress)
+            const target = heroIntroState.sceneReady ? measuredTarget : Math.min(measuredTarget, 99)
             
             // Progress text
             const cur = displayProgressRef.current
@@ -6346,7 +6349,7 @@ function EliteLoader() {
             if (bl) bl.style.transform = `translate(${tx}px, -${ty}px)`
             if (br) br.style.transform = `translate(-${tx}px, -${ty}px)`
             
-            if (next >= 99.9) {
+            if (next >= 99.9 && heroIntroState.sceneReady) {
                 setCanEnter(true)
             }
             
@@ -6356,37 +6359,10 @@ function EliteLoader() {
         return () => cancelAnimationFrame(rafId)
     }, [])
 
-    // Bind events once the loading completes
-    useEffect(() => {
-        if (canEnter) {
-            const btnWrap = document.getElementById('static-btn-wrap')
-            if (btnWrap) {
-                btnWrap.classList.add('show')
-                const enterBtn = document.getElementById('static-enter-btn')
-                if (enterBtn) {
-                    enterBtn.onclick = handleEnter
-                    enterBtn.onpointerover = () => sfx.piano()
-                }
-            }
-            const loadingTextContainer = document.getElementById('static-loading-text-container')
-            if (loadingTextContainer) {
-                loadingTextContainer.style.opacity = 0
-            }
-            const enterHint = document.getElementById('static-enter-hint')
-            if (enterHint) {
-                enterHint.style.opacity = 1
-            }
-        }
-    }, [canEnter])
-
-    // Enter key shortcut
-    useEffect(() => {
-        const onKey = (e) => { if (e.key === 'Enter' && canEnter) handleEnter() }
-        window.addEventListener('keydown', onKey)
-        return () => window.removeEventListener('keydown', onKey)
-    }, [canEnter])
-
     const handleEnter = () => {
+        if (isEnteringRef.current || !heroIntroState.sceneReady) return
+        isEnteringRef.current = true
+
         if (!sfx.isMuted()) { 
             const click = getDigitalClickAudio()
             click.currentTime = 0
@@ -6398,6 +6374,7 @@ function EliteLoader() {
         if (btnWrap) {
             btnWrap.style.transform = 'translate(-50%, calc(-50% - 16px))'
             btnWrap.style.opacity = 0
+            btnWrap.style.pointerEvents = 'none'
         }
         
         const enterHint = document.getElementById('static-enter-hint')
@@ -6407,13 +6384,53 @@ function EliteLoader() {
 
         const staticLoader = document.getElementById('static-loader')
         if (staticLoader) {
-            staticLoader.style.opacity = 0
             setTimeout(() => { 
-                staticLoader.remove()
-                loaderFullyHidden = true 
-            }, 650)
+                staticLoader.style.opacity = 0
+                setTimeout(() => {
+                    staticLoader.remove()
+                    loaderFullyHidden = true
+                }, 650)
+            }, 700)
         }
     }
+
+    // Delegate the click so the static shell cannot lose its handler during hydration.
+    useEffect(() => {
+        if (canEnter) {
+            const btnWrap = document.getElementById('static-btn-wrap')
+            if (btnWrap) {
+                btnWrap.classList.add('show')
+            }
+            const loadingTextContainer = document.getElementById('static-loading-text-container')
+            if (loadingTextContainer) {
+                loadingTextContainer.style.opacity = 0
+            }
+            const enterHint = document.getElementById('static-enter-hint')
+            if (enterHint) {
+                enterHint.style.opacity = 1
+            }
+        }
+
+        const onClick = (event) => {
+            if (canEnter && event.target.closest('#static-btn-wrap')) handleEnter()
+        }
+        const onPointerOver = (event) => {
+            if (canEnter && event.target.closest('#static-btn-wrap')) sfx.piano()
+        }
+        document.addEventListener('click', onClick)
+        document.addEventListener('pointerover', onPointerOver)
+        return () => {
+            document.removeEventListener('click', onClick)
+            document.removeEventListener('pointerover', onPointerOver)
+        }
+    }, [canEnter])
+
+    // Enter key shortcut
+    useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Enter' && canEnter) handleEnter() }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [canEnter])
 
     return null
 }
@@ -7442,7 +7459,6 @@ export default function Portfolio() {
                 <MobileProjectsOverlay scrollRef={scrollRef} onOpenProject={handleOpenProject} />
                 <ScrollHint scrollRef={scrollRef} />
                 <ShortcutPanel activeProject={activeProject} currentSectionRef={currentSectionRef} />
-                <BridgeForeshadow scrollRef={scrollRef} />
                 <BioOverlay scrollRef={scrollRef} />
                 <DossierOverlay scrollRef={scrollRef} />
                 <ScrollBar scrollRef={scrollRef} currentSectionRef={currentSectionRef} />
